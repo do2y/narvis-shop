@@ -22,9 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Path alias */
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
+    /* Path alias — baseUrl 없이 paths만 사용 (TS 6+ deprecation 회피) */
     "paths": {
       "@/*": ["./src/*"]
     }
