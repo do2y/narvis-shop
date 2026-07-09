@@ -7,11 +7,8 @@ const EXAMPLE_CHIPS = [
   "자취 시작템 추천",
   "유럽 여행 준비물",
   "2만원 이하 선물",
-  "무선 키보드 추천",
   "집들이 선물 추천",
-  "비 오는 날 운동화",
-  "남자친구 생일선물",
-  "샤워기 필터 추천",
+  "무선 키보드 추천",
 ];
 
 // placeholder에 롤링될 예시 질문(문장형) — 입력 힌트 역할
@@ -33,7 +30,7 @@ export function Hero() {
   });
 
   return (
-    <section className="px-6 py-20 sm:py-28">
+    <section className="px-6 pt-20 pb-36 sm:pt-28 sm:pb-44">
       <div className="mx-auto max-w-3xl text-center">
         <p className="text-sm font-medium tracking-widest text-muted-foreground">
           AI SHOPPING AGENT
@@ -41,7 +38,7 @@ export function Hero() {
         <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
           원하는 걸 말하면
           <br />
-          <span className="text-muted-foreground">Jarvis가 찾아드립니다</span>
+          <span className="text-brand">Jarvis</span>가 찾아드립니다
         </h1>
 
         {/* 표시용 입력창 — 채팅 화면 생기면 제출 연결 (지금은 동작 없음) */}
@@ -100,9 +97,9 @@ export function Hero() {
           <button
             type="submit"
             aria-label="보내기"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground transition-opacity hover:opacity-90"
           >
-            <SendHorizontal className="size-5" />
+            <SendHorizontal className="size-4" />
           </button>
         </form>
 
