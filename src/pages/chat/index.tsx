@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
+import { fetchPopularAsCards } from "./api";
 import { useChatStore } from "./store";
 import { useChat } from "./useChat";
 import { MessageList } from "./components/MessageList";
@@ -11,18 +13,34 @@ import { ProductPanel } from "./components/ProductPanel";
 export default function ChatPage() {
   const [params, setParams] = useSearchParams();
   const { send, retry, startNewChat, isStreaming } = useChat();
-  const { messages, productGroups } = useChatStore();
+  const { messages, productGroups, setProductGroups } = useChatStore();
+
+  const q = params.get("q");
+  const categoryIdParam = params.get("categoryId");
+  const categoryId = categoryIdParam ? Number(categoryIdParam) : undefined;
+
+  // 초기 인기상품 — 카테고리 있으면 해당 카테고리, 없으면 전체
+  const { data: popularCards } = useQuery({
+    queryKey: ["chat", "popular", categoryId ?? null],
+    queryFn: () => fetchPopularAsCards(categoryId),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  // 대화 시작 전(메시지 없음)에는 인기상품을 초기 표시
+  useEffect(() => {
+    if (messages.length === 0 && popularCards && popularCards.length > 0) {
+      setProductGroups([{ title: "지금 인기 상품", items: popularCards }]);
+    }
+  }, [messages.length, popularCards, setProductGroups]);
 
   // 홈에서 넘어온 첫 메시지(?q=)는 "새 질문" → 기존 대화 초기화 후 시작.
-  // 재진입마다 새로 처리되도록 q 값 자체를 의존성으로 사용
-  const q = params.get("q");
   useEffect(() => {
     if (!q) return;
     startNewChat();
     send(q);
     params.delete("q");
     setParams(params, { replace: true });
-    // params/setParams는 매 렌더 재생성되므로 의존성에서 제외 (q 변화에만 반응)
+    // q 변화에만 반응 (params/setParams는 매 렌더 재생성)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
