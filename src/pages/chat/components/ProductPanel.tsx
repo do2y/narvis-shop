@@ -45,10 +45,7 @@ export function ProductPanel({ groups, isStreaming }: ProductPanelProps) {
     <div className="flex flex-col gap-8 p-4 sm:p-6">
       {groups.map((group) => (
         <section key={group.title} className="flex flex-col gap-4">
-          {/* 그룹이 하나뿐이면 제목 생략 가능하지만, 계약상 title 존재 → 표시 */}
-          {groups.length > 1 && (
-            <h2 className="text-lg font-bold">{group.title}</h2>
-          )}
+          <h2 className="text-lg font-bold">{group.title}</h2>
           <div className={GRID}>
             {group.items.map((product) => (
               <ChatProductCard key={product.productId} product={product} />

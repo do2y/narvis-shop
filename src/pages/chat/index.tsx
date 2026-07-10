@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
+import { useCategories } from "@/pages/home/useHomeData";
 import { fetchPopularAsCards } from "./api";
 import { useChatStore } from "./store";
 import { useChat } from "./useChat";
@@ -26,12 +27,21 @@ export default function ChatPage() {
     staleTime: 30 * 60 * 1000,
   });
 
+  // 카테고리 진입 시 제목에 카테고리명 반영 ("패션 인기 상품")
+  const { data: categories } = useCategories();
+  const categoryName = categoryId
+    ? categories?.find((c) => c.categoryId === categoryId)?.name
+    : undefined;
+  const popularTitle = categoryName
+    ? `${categoryName} 인기 상품`
+    : "지금 인기 상품";
+
   // 대화 시작 전(메시지 없음)에는 인기상품을 초기 표시
   useEffect(() => {
     if (messages.length === 0 && popularCards && popularCards.length > 0) {
-      setProductGroups([{ title: "지금 인기 상품", items: popularCards }]);
+      setProductGroups([{ title: popularTitle, items: popularCards }]);
     }
-  }, [messages.length, popularCards, setProductGroups]);
+  }, [messages.length, popularCards, popularTitle, setProductGroups]);
 
   // 홈에서 넘어온 첫 메시지(?q=)는 "새 질문" → 기존 대화 초기화 후 시작.
   useEffect(() => {
