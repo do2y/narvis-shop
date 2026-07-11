@@ -1,8 +1,10 @@
+import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCategories } from "../useHomeData";
 import { SectionHeading } from "./SectionHeading";
 
 export function CategoryGrid() {
+  const navigate = useNavigate();
   const { data: categories, isLoading, isError } = useCategories();
 
   return (
@@ -27,10 +29,11 @@ export function CategoryGrid() {
           )}
 
           {categories?.map((cat) => (
-            // TODO: 클릭 시 해당 카테고리명이 채팅 메시지로 입력되며 채팅 화면 이동
+            // 클릭 시 채팅으로 이동 — 해당 카테고리 인기상품을 초기 표시
             <button
               key={cat.categoryId}
               type="button"
+              onClick={() => navigate(`/chat?categoryId=${cat.categoryId}`)}
               className="flex flex-col items-center gap-2 rounded-xl border bg-background px-3 py-4 text-center shadow-sm transition-colors hover:bg-muted"
             >
               <span className="text-2xl" aria-hidden>
