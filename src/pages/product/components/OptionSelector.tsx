@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Minus, Plus } from "lucide-react";
 
 // 옵션 그룹 — 제품마다 축(컬러/사이즈/용량...)과 개수가 달라 배열로 받는다.
@@ -8,14 +8,31 @@ export interface OptionGroup {
   values: string[];
 }
 
+export interface OptionSelection {
+  // 그룹명 → 선택값. (예: { 컬러: "아이보리", 사이즈: "S" })
+  options: Record<string, string>;
+  quantity: number;
+}
+
 // options 배열을 그대로 map 렌더하므로 옵션이 몇 개든 자동 대응.
-// 계약 전이라 선택 상태는 로컬 UI만(구매 연동 별도).
-export function OptionSelector({ options }: { options: OptionGroup[] }) {
+// 선택 상태는 내부 관리하되, onChange로 상위에 올려 "바로 구매"·"장바구니"에서 사용.
+export function OptionSelector({
+  options,
+  onChange,
+}: {
+  options: OptionGroup[];
+  onChange?: (selection: OptionSelection) => void;
+}) {
   // 그룹명 → 선택값. 각 그룹 첫 값으로 초기화.
   const [selected, setSelected] = useState<Record<string, string>>(() =>
     Object.fromEntries(options.map((g) => [g.name, g.values[0] ?? ""])),
   );
   const [qty, setQty] = useState(1);
+
+  // 선택/수량 변경을 상위로 전파. (부모의 액션 버튼이 최신 선택을 읽도록)
+  useEffect(() => {
+    onChange?.({ options: selected, quantity: qty });
+  }, [selected, qty, onChange]);
 
   const pick = (name: string, value: string) =>
     setSelected((prev) => ({ ...prev, [name]: value }));

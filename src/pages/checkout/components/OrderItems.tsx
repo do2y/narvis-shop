@@ -1,0 +1,61 @@
+import type { CheckoutItem } from "../types";
+
+function formatPrice(v: number): string {
+  return `${v.toLocaleString("ko-KR")}원`;
+}
+
+// 주문 상품 목록 — 이미지·브랜드·이름·선택옵션·수량·가격.
+export function OrderItems({ items }: { items: CheckoutItem[] }) {
+  return (
+    <section className="rounded-xl border bg-background p-5 sm:p-6">
+      <h2 className="text-lg font-bold">주문 상품</h2>
+      <ul className="mt-4 flex flex-col gap-5">
+        {items.map((item, i) => {
+          const { product, options, quantity } = item;
+          const hasDiscount = product.originalPrice > product.price;
+          const optionText = Object.values(options).filter(Boolean);
+          return (
+            <li key={`${product.productId}-${i}`} className="flex gap-4">
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="size-20 shrink-0 rounded-xl border object-cover"
+              />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <p className="text-sm text-muted-foreground">
+                  {product.brandName}
+                </p>
+                <p className="text-sm font-semibold leading-snug">
+                  {product.name}
+                </p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {optionText.map((v) => (
+                    <span
+                      key={v}
+                      className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                    >
+                      {v}
+                    </span>
+                  ))}
+                  <span className="text-xs text-muted-foreground">
+                    · {quantity}개
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm font-bold">
+                    {formatPrice(product.price)}
+                  </span>
+                  {hasDiscount && (
+                    <span className="text-xs text-muted-foreground line-through">
+                      {formatPrice(product.originalPrice)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
