@@ -129,6 +129,10 @@ export const handlers = [
       },
     });
   }),
+
+  http.get(`${BASE}/api/mypage/orders`, () =>
+    HttpResponse.json({ orders: MOCK_ORDERS }),
+  ),
 ];
 
 // 인기상품 목 — categoryId로 카테고리별 필터 가능. home PopularProduct 계약 + categoryId
@@ -216,6 +220,83 @@ const POPULAR_PRODUCTS = [
     reviewCount: 9210,
     badge: "추천",
     reason: "민감한 피부도 부담 없이 쓰기 좋은 스테디셀러예요.",
+  },
+];
+
+// 마이페이지 주문 내역 목 — mypage/types.ts Order 계약
+const MOCK_ORDERS = [
+  {
+    orderId: "ORD-20250601",
+    orderedAt: "2025-06-01",
+    status: "CONFIRMED",
+    items: [
+      {
+        productId: 301,
+        name: "스테어넥 벨티드 미디 원피스 TSOP1180",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-dress1/200/200",
+        option: "아이보리 / S",
+        quantity: 1,
+        price: 92000,
+      },
+      {
+        productId: 302,
+        name: "오프숄더 시폰 미디 드레스 LB-D221",
+        brand: "르블랑",
+        imageUrl: "https://picsum.photos/seed/order-dress2/200/200",
+        option: "블랙 / M",
+        quantity: 1,
+        price: 89000,
+      },
+    ],
+  },
+  {
+    orderId: "ORD-20250515",
+    orderedAt: "2025-05-15",
+    status: "DELIVERED",
+    items: [
+      {
+        productId: 303,
+        name: "메리노 울 터틀넥 니트 TSKN1801",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-knit/200/200",
+        option: "크림 / M",
+        quantity: 1,
+        price: 89000,
+      },
+    ],
+  },
+  {
+    orderId: "ORD-20250428",
+    orderedAt: "2025-04-28",
+    status: "SHIPPING",
+    items: [
+      {
+        productId: 304,
+        name: "오버사이즈 울 블렌드 코트 TSCT3301",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-coat/200/200",
+        option: "카멜 / M",
+        quantity: 1,
+        price: 198000,
+      },
+    ],
+  },
+  {
+    orderId: "ORD-20250410",
+    orderedAt: "2025-04-10",
+    status: "PREPARING",
+    items: [
+      {
+        productId: 305,
+        name: "플리츠 미디 스커트 TSSK1402",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-skirt/200/200",
+        option: "네이비 / S",
+        quantity: 1,
+        price: 62000,
+      },
+    ],
   },
 ];
 
