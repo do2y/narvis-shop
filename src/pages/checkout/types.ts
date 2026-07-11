@@ -27,3 +27,20 @@ export interface Address {
   address: string;
   isDefault?: boolean;
 }
+
+// 결제 완료 후 완료 화면으로 넘기는 주문 결과.
+// 주문 생성 API 계약 전이라 주문번호·금액은 목으로 만들어 넘긴다.
+export interface OrderResult {
+  orderNo: string;
+  items: CheckoutItem[];
+  address: Address;
+  method: string;
+  itemsTotal: number;
+  discount: number;
+  finalTotal: number;
+}
+
+// navigate("/checkout/complete", { state })로 전달되는 페이로드.
+export interface OrderCompleteState {
+  order: OrderResult;
+}

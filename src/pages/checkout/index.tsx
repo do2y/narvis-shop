@@ -4,8 +4,16 @@ import { Check } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Address, CheckoutState } from "./types";
-import { PAYMENT_METHODS, PLACEHOLDER_ADDRESSES } from "./placeholder";
+import type {
+  Address,
+  CheckoutState,
+  OrderCompleteState,
+} from "./types";
+import {
+  MOCK_FAIL_CARD,
+  PAYMENT_METHODS,
+  PLACEHOLDER_ADDRESSES,
+} from "./placeholder";
 import { OrderItems } from "./components/OrderItems";
 import { ShippingSection } from "./components/ShippingSection";
 import { AddressFormModal } from "./components/AddressFormModal";
@@ -28,7 +36,12 @@ export default function CheckoutPage() {
   const [addressId, setAddressId] = useState(defaultAddressId);
   const [addrModalOpen, setAddrModalOpen] = useState(false);
   const [method, setMethod] = useState<string>(PAYMENT_METHODS[0]);
+  const [cardNumber, setCardNumber] = useState("");
   const [agreed, setAgreed] = useState(false);
+
+  // 모의 결제 처리 상태. paying=승인 대기 중, payError=실패 안내(재시도 유도).
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   // 새 배송지 임시 id 카운터 — 서버 id 부여 전 로컬 구분용.
   const nextIdRef = useRef(1);
@@ -72,10 +85,46 @@ export default function CheckoutPage() {
     );
   }
 
+  // 카드 결제인데 "실패 카드"면 승인 실패로 처리. 공백 차이는 무시하고 비교.
+  const isFailCard =
+    method === "신용 · 체크카드" &&
+    cardNumber.replace(/\s/g, "") === MOCK_FAIL_CARD.replace(/\s/g, "");
+
   // 결제대행 계약 전 — 실제 결제는 목. 동의 시에만 활성화.
   const handleSubmit = () => {
-    // TODO: 주문 생성 API 연결 후 주문 완료 화면으로 이동.
-    navigate("/");
+    const address = addresses.find((a) => a.id === addressId);
+    if (!address || paying) return;
+
+    setPayError(null);
+    setPaying(true);
+
+    // 승인 대기를 흉내낸 지연 후 성공/실패 분기.
+    // TODO: 주문 생성 API 연결 → 실제 승인 응답으로 성공/실패·주문번호 교체.
+    setTimeout(() => {
+      setPaying(false);
+
+      if (isFailCard) {
+        // 자동 재시도하지 않고 안내만 — 사용자가 카드 수정 후 다시 시도.
+        setPayError(
+          "카드 승인에 실패했어요. 카드 정보를 확인한 뒤 다시 시도해주세요.",
+        );
+        return;
+      }
+
+      const orderNo = `ORD-${new Date().getFullYear()}${String(Date.now()).slice(-8)}`;
+      const order: OrderCompleteState["order"] = {
+        orderNo,
+        items,
+        address,
+        method,
+        itemsTotal,
+        discount,
+        finalTotal: itemsTotal - discount,
+      };
+
+      // replace로 이동 — 뒤로가기로 결제 화면에 돌아와 중복 결제하는 것을 막는다.
+      navigate("/checkout/complete", { state: { order }, replace: true });
+    }, 800);
   };
 
   return (
@@ -94,7 +143,18 @@ export default function CheckoutPage() {
               onSelect={setAddressId}
               onAddClick={() => setAddrModalOpen(true)}
             />
-            <PaymentSection method={method} onMethodChange={setMethod} />
+            <PaymentSection
+              method={method}
+              onMethodChange={(m) => {
+                setMethod(m);
+                setPayError(null); // 수단 변경 시 이전 실패 안내 제거
+              }}
+              cardNumber={cardNumber}
+              onCardNumberChange={(v) => {
+                setCardNumber(v);
+                setPayError(null); // 카드 수정 시 이전 실패 안내 제거
+              }}
+            />
 
             {/* 동의 */}
             <section className="rounded-xl border bg-background p-5 sm:p-6">
@@ -131,6 +191,8 @@ export default function CheckoutPage() {
               itemsTotal={itemsTotal}
               discount={discount}
               canSubmit={agreed}
+              paying={paying}
+              error={payError}
               onSubmit={handleSubmit}
             />
           </div>

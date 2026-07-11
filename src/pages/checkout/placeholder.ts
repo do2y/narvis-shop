@@ -27,3 +27,7 @@ export const PAYMENT_METHODS = [
   "토스페이",
   "무통장 입금",
 ] as const;
+
+// 모의 결제 실패 재현용 카드번호. 실제 PG 미연동이라 이 카드로만 실패를 재현한다.
+// (PG 테스트 샌드박스의 "실패 카드" 관례를 따름.) 계약 후 실제 승인 응답으로 대체.
+export const MOCK_FAIL_CARD = "4111 1111 1111 0000";

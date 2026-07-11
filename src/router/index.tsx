@@ -11,6 +11,7 @@ const BrandPage = lazy(() => import('@/pages/brand'));
 const CartPage = lazy(() => import('@/pages/cart'));
 const WishlistPage = lazy(() => import('@/pages/wishlist'));
 const CheckoutPage = lazy(() => import('@/pages/checkout'));
+const OrderCompletePage = lazy(() => import('@/pages/checkout/OrderComplete'));
 const MyPage = lazy(() => import('@/pages/mypage'));
 const InquiryPage = lazy(() => import('@/pages/inquiry'));
 const SellerPage = lazy(() => import('@/pages/seller'));
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
           { path: '/cart', element: <CartPage /> },
           { path: '/wishlist', element: <WishlistPage /> }, // 찜: 로그인 필요
           { path: '/checkout', element: <CheckoutPage /> },
+          { path: '/checkout/complete', element: <OrderCompletePage /> },
           { path: '/mypage/*', element: <MyPage /> },
         ],
       },

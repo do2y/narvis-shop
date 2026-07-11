@@ -1,3 +1,4 @@
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function formatPrice(v: number): string {
@@ -9,11 +10,15 @@ export function OrderSummary({
   itemsTotal,
   discount,
   canSubmit,
+  paying,
+  error,
   onSubmit,
 }: {
   itemsTotal: number;
   discount: number;
   canSubmit: boolean;
+  paying: boolean; // 승인 대기 중
+  error: string | null; // 결제 실패 안내 (있으면 재시도 유도)
   onSubmit: () => void;
 }) {
   const finalTotal = itemsTotal - discount;
@@ -44,12 +49,26 @@ export function OrderSummary({
         <span className="text-xl font-bold">{formatPrice(finalTotal)}</span>
       </div>
 
+      {error && (
+        <div
+          role="alert"
+          className="mt-5 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <Button
         className="mt-5 h-12 w-full rounded-xl text-base"
-        disabled={!canSubmit}
+        disabled={!canSubmit || paying}
         onClick={onSubmit}
       >
-        {formatPrice(finalTotal)} 결제하기
+        {paying
+          ? "결제 처리 중…"
+          : error
+            ? "다시 시도"
+            : `${formatPrice(finalTotal)} 결제하기`}
       </Button>
     </div>
   );
