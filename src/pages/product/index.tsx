@@ -1,12 +1,15 @@
-import { useParams } from "react-router-dom";
+import { useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Star } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuthStore } from "@/shared/stores/authStore";
 import type { ProductCard } from "@/shared/types/chat";
+import type { CheckoutState } from "@/pages/checkout/types";
 import { ImageGallery } from "./components/ImageGallery";
-import { OptionSelector } from "./components/OptionSelector";
+import { OptionSelector, type OptionSelection } from "./components/OptionSelector";
 import { SpecTable } from "./components/SpecTable";
 import { ReviewSummary } from "./components/ReviewSummary";
 import { RecommendRow } from "./components/RecommendRow";
@@ -18,7 +21,11 @@ function formatPrice(v: number): string {
 
 export default function ProductPage() {
   const { productId } = useParams<{ productId: string }>();
+  const navigate = useNavigate();
   const id = Number(productId);
+
+  // OptionSelector의 최신 선택값을 담아두는 ref. 렌더 유발이 필요 없어 state 대신 ref 사용.
+  const selectionRef = useRef<OptionSelection>({ options: {}, quantity: 1 });
 
   // 캐시 승계: 챗봇/홈 카드에서 setQueryData(['products', id])로 시딩한 데이터를 즉시 사용.
   // 상세 API가 붙기 전까지는 시딩 데이터(부분)만 렌더. queryFn 미지정이라 재조회는 하지 않음.
@@ -56,6 +63,36 @@ export default function ProductPage() {
   // 시딩 카드에 있는 값(가격·평점·리뷰수 등)은 product를 그대로 사용.
   const d = PLACEHOLDER_DETAIL;
   const images = [product.imageUrl, ...d.images];
+
+  const user = useAuthStore.getState().user;
+
+  const buyNow = () => {
+    // 구매는 로그인 필요(CLAUDE.md). 게스트면 현재 상세로 복귀하도록 returnUrl 걸어 로그인 유도.
+    // (state는 리다이렉트로 유실되므로 로그인 후 상세에서 다시 "바로 구매"하게 한다.)
+    if (!user) {
+      const returnUrl = encodeURIComponent(`/products/${id}`);
+      navigate(`/login?returnUrl=${returnUrl}`);
+      return;
+    }
+    const { options, quantity } = selectionRef.current;
+    const state: CheckoutState = {
+      items: [
+        {
+          product: {
+            productId: product.productId,
+            name: product.name,
+            brandName: product.brandName,
+            price: product.price,
+            originalPrice: product.originalPrice,
+            imageUrl: product.imageUrl,
+          },
+          options,
+          quantity,
+        },
+      ],
+    };
+    navigate("/checkout", { state });
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -100,9 +137,14 @@ export default function ProductPage() {
               )}
             </div>
 
-            <OptionSelector options={d.options} />
+            <OptionSelector
+              options={d.options}
+              onChange={(sel) => {
+                selectionRef.current = sel;
+              }}
+            />
 
-            {/* 액션 — 찜/장바구니/바로구매. TODO: 각 API·훅 연결 */}
+            {/* 액션 — 찜/장바구니/바로구매. TODO: 찜·장바구니 API·훅 연결 */}
             <div className="mt-2 flex items-center gap-3">
               <Button variant="outline" size="icon" aria-label="찜하기" className="size-11 shrink-0">
                 <Heart className="size-5" />
@@ -110,7 +152,9 @@ export default function ProductPage() {
               <Button variant="outline" className="h-11 flex-1">
                 장바구니
               </Button>
-              <Button className="h-11 flex-1">바로 구매</Button>
+              <Button className="h-11 flex-1" onClick={buyNow}>
+                바로 구매
+              </Button>
             </div>
           </div>
         </div>
