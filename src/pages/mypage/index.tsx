@@ -3,6 +3,7 @@ import { AppHeader } from "@/shared/ui/AppHeader";
 import { ProfileHeader } from "./components/ProfileHeader";
 import { MyPageNav } from "./components/MyPageNav";
 import OrdersPage from "./OrdersPage";
+import RecentProductsPage from "./RecentProductsPage";
 import ComingSoonPage from "./ComingSoonPage";
 
 export default function MyPage() {
@@ -22,10 +23,7 @@ export default function MyPage() {
                 path="claims"
                 element={<ComingSoonPage title="취소·반품·교환" />}
               />
-              <Route
-                path="recent"
-                element={<ComingSoonPage title="최근 본 상품" />}
-              />
+              <Route path="recent" element={<RecentProductsPage />} />
               <Route
                 path="wishlist"
                 element={<ComingSoonPage title="찜" />}

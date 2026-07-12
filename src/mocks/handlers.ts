@@ -133,6 +133,10 @@ export const handlers = [
   http.get(`${BASE}/api/mypage/orders`, () =>
     HttpResponse.json({ orders: MOCK_ORDERS }),
   ),
+
+  http.get(`${BASE}/api/mypage/recent-products`, () =>
+    HttpResponse.json({ products: MOCK_RECENT_PRODUCTS }),
+  ),
 ];
 
 // 인기상품 목 — categoryId로 카테고리별 필터 가능. home PopularProduct 계약 + categoryId
@@ -297,6 +301,74 @@ const MOCK_ORDERS = [
         price: 62000,
       },
     ],
+  },
+];
+
+// 최근 본 상품 목 — mypage/types.ts RecentProduct 계약. viewedAt 내림차순(최신순).
+const MOCK_RECENT_PRODUCTS = [
+  {
+    productId: 301,
+    name: "스테어넥 벨티드 미디 원피스",
+    brand: "더센트",
+    imageUrl: "https://picsum.photos/seed/recent-dress1/500/500",
+    price: 92000,
+    viewedAt: "2025-07-12T10:24:00+09:00",
+  },
+  {
+    productId: 203,
+    name: "플리츠 새틴 롱 원피스 EH2241",
+    brand: "에르모사",
+    imageUrl: "https://picsum.photos/seed/recent-dress3/500/500",
+    price: 145000,
+    viewedAt: "2025-07-12T09:58:00+09:00",
+  },
+  {
+    productId: 306,
+    name: "오프숄더 시폰 미디 드레스",
+    brand: "르블랑",
+    imageUrl: "https://picsum.photos/seed/recent-dress4/500/500",
+    price: 89000,
+    viewedAt: "2025-07-11T21:12:00+09:00",
+  },
+  {
+    productId: 202,
+    name: "세탄 드레이프 원피스 NVOP3300",
+    brand: "라인어디션",
+    imageUrl: "https://picsum.photos/seed/recent-dress2/500/500",
+    price: 118000,
+    viewedAt: "2025-07-11T18:40:00+09:00",
+  },
+  {
+    productId: 205,
+    name: "플로럴 랩 원피스 FL7788",
+    brand: "라인어디션",
+    imageUrl: "https://picsum.photos/seed/recent-dress5/500/500",
+    price: 108000,
+    viewedAt: "2025-07-10T14:05:00+09:00",
+  },
+  {
+    productId: 204,
+    name: "코튼 셔츠 원피스 CH1020",
+    brand: "데일리로브",
+    imageUrl: "https://picsum.photos/seed/recent-dress6/500/500",
+    price: 64000,
+    viewedAt: "2025-07-09T20:31:00+09:00",
+  },
+  {
+    productId: 303,
+    name: "메리노 울 터틀넥 니트 TSKN1801",
+    brand: "더센트",
+    imageUrl: "https://picsum.photos/seed/recent-knit/500/500",
+    price: 89000,
+    viewedAt: "2025-07-08T11:47:00+09:00",
+  },
+  {
+    productId: 206,
+    name: "도트 퍼프 원피스 DT3311",
+    brand: "쁘띠메종",
+    imageUrl: "https://picsum.photos/seed/recent-dot/500/500",
+    price: 73000,
+    viewedAt: "2025-07-07T16:22:00+09:00",
   },
 ];
 

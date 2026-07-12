@@ -24,3 +24,14 @@ export interface Order {
   status: OrderStatus;
   items: OrderItem[];
 }
+
+// 최근 본 상품 — 카드 표시용. 상세 진입 시 캐시 시딩하도록 카드 수준 데이터 포함.
+// viewedAt으로 최신순 정렬(서버가 정렬해 내려주는 것을 기준으로 표시).
+export interface RecentProduct {
+  productId: number;
+  name: string;
+  brand: string;
+  imageUrl: string;
+  price: number;
+  viewedAt: string; // ISO 일시 — 최신순 정렬 기준
+}
