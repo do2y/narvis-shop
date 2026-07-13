@@ -70,6 +70,22 @@ export interface Claim {
   requestedAt: string; // ISO 날짜 (YYYY-MM-DD) — 최신순 정렬 기준
 }
 
+// 문의 처리 상태 (스크린샷: 처리중 / 답변완료) — 문의 챗봇에서 접수, 읽기 전용.
+export type InquiryStatus =
+  | "PENDING" // 처리중 (관리자 답변 대기)
+  | "ANSWERED"; // 답변완료
+
+// 문의 내역 — 문의 챗봇(9번)에서 접수한 문의. 답변완료 시 answer 포함.
+export interface Inquiry {
+  inquiryId: string; // "INQ-20250602"
+  title: string; // "환불 처리 기간이 얼마나 걸리나요?"
+  status: InquiryStatus;
+  content: string; // 문의 본문
+  answer: string | null; // 답변 (PENDING이면 null)
+  createdAt: string; // ISO 날짜 (YYYY-MM-DD) — 최신순 정렬 기준
+  answeredAt: string | null; // 답변 일시 (PENDING이면 null)
+}
+
 // 후기 작성 요청 — 백엔드 POST /api/reviews 계약. 사진은 백엔드 붙을 때 필드 추가.
 export interface CreateReviewRequest {
   orderId: string;

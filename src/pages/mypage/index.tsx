@@ -8,7 +8,7 @@ import ReviewWritePage from "./ReviewWritePage";
 import RecentProductsPage from "./RecentProductsPage";
 import WishlistPage from "./WishlistPage";
 import AddressesPage from "./AddressesPage";
-import ComingSoonPage from "./ComingSoonPage";
+import InquiriesPage from "./InquiriesPage";
 
 export default function MyPage() {
   return (
@@ -28,10 +28,7 @@ export default function MyPage() {
               <Route path="recent" element={<RecentProductsPage />} />
               <Route path="wishlist" element={<WishlistPage />} />
               <Route path="addresses" element={<AddressesPage />} />
-              <Route
-                path="inquiries"
-                element={<ComingSoonPage title="문의 내역" />}
-              />
+              <Route path="inquiries" element={<InquiriesPage />} />
               {/* 알 수 없는 하위 경로 → 주문 내역으로 */}
               <Route path="*" element={<Navigate to="orders" replace />} />
             </Routes>

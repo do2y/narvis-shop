@@ -4,6 +4,7 @@ import type {
   AddressInput,
   Claim,
   CreateReviewRequest,
+  Inquiry,
   Order,
   RecentProduct,
   WishlistProduct,
@@ -39,6 +40,14 @@ export async function fetchClaims(): Promise<Claim[]> {
 
 export async function createReview(body: CreateReviewRequest): Promise<void> {
   await api.post("/api/reviews", body);
+}
+
+// 문의 내역 — 읽기 전용(문의 챗봇에서 접수). 답변은 관리자가 등록.
+export async function fetchInquiries(): Promise<Inquiry[]> {
+  const { data } = await api.get<{ inquiries: Inquiry[] }>(
+    "/api/mypage/inquiries",
+  );
+  return data.inquiries;
 }
 
 // ── 배송지 관리 ──
