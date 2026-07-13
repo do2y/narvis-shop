@@ -24,6 +24,75 @@ const MOCK_ACCOUNTS: Record<
   "admin@test.com": { id: 3, nickname: "관리자", role: "ADMIN" },
 };
 
+// 찜한 상품 목 — mypage/types.ts WishlistProduct 계약. wishedAt 내림차순(최신순).
+// let: 찜 해제 DELETE에서 배열을 갈아끼워 목에도 반영. 핸들러가 참조하므로 배열 위에 선언.
+let mockWishlist = [
+  {
+    productId: 202,
+    name: "세탄 드레이프 원피스 NVOP3300",
+    brand: "라인어디션",
+    imageUrl: "https://picsum.photos/seed/wish-dress2/500/500",
+    price: 118000,
+    wishedAt: "2025-07-12T11:02:00+09:00",
+  },
+  {
+    productId: 203,
+    name: "플리츠 새틴 롱 원피스 EH2241",
+    brand: "에르모사",
+    imageUrl: "https://picsum.photos/seed/wish-dress3/500/500",
+    price: 145000,
+    wishedAt: "2025-07-11T19:20:00+09:00",
+  },
+  {
+    productId: 301,
+    name: "스테어넥 벨티드 미디 원피스",
+    brand: "더센트",
+    imageUrl: "https://picsum.photos/seed/wish-dress1/500/500",
+    price: 92000,
+    wishedAt: "2025-07-10T13:44:00+09:00",
+  },
+  {
+    productId: 205,
+    name: "플로럴 랩 원피스 FL7788",
+    brand: "라인어디션",
+    imageUrl: "https://picsum.photos/seed/wish-dress5/500/500",
+    price: 108000,
+    wishedAt: "2025-07-09T10:15:00+09:00",
+  },
+  {
+    productId: 206,
+    name: "도트 퍼프 원피스 DT3311",
+    brand: "쁘띠메종",
+    imageUrl: "https://picsum.photos/seed/wish-dot/500/500",
+    price: 73000,
+    wishedAt: "2025-07-08T22:03:00+09:00",
+  },
+];
+
+// 배송지 목 — mypage/types.ts Address 계약. let: CRUD/기본설정 DELETE·PATCH가 갱신.
+// 핸들러가 참조하므로 배열 위에 선언.
+let mockAddresses = [
+  {
+    addressId: "ADDR-1",
+    label: "집",
+    recipient: "김소이",
+    phone: "010-1234-5678",
+    zipCode: "06292",
+    address: "서울특별시 강남구 테헤란로 123 101동 302호",
+    isDefault: true,
+  },
+  {
+    addressId: "ADDR-2",
+    label: "회사",
+    recipient: "김소이",
+    phone: "010-1234-5678",
+    zipCode: "04799",
+    address: "서울특별시 성동구 왕십리로 50 센터포인트빌딩 8층",
+    isDefault: false,
+  },
+];
+let nextAddressSeq = 3;
+
 export const handlers = [
   http.post(`${BASE}/api/auth/login`, async ({ request }) => {
     const { email } = (await request.json()) as {
@@ -129,6 +198,95 @@ export const handlers = [
       },
     });
   }),
+
+  http.get(`${BASE}/api/mypage/orders`, () =>
+    HttpResponse.json({ orders: MOCK_ORDERS }),
+  ),
+
+  http.get(`${BASE}/api/mypage/recent-products`, () =>
+    HttpResponse.json({ products: MOCK_RECENT_PRODUCTS }),
+  ),
+
+  http.get(`${BASE}/api/mypage/claims`, () =>
+    HttpResponse.json({ claims: MOCK_CLAIMS }),
+  ),
+
+  // ── 배송지 관리 (CRUD + 기본 설정) — mypage/types.ts Address 계약 ──
+  http.get(`${BASE}/api/mypage/addresses`, () =>
+    HttpResponse.json({ addresses: mockAddresses }),
+  ),
+
+  http.post(`${BASE}/api/mypage/addresses`, async ({ request }) => {
+    const input = (await request.json()) as Omit<
+      (typeof mockAddresses)[number],
+      "addressId" | "isDefault"
+    >;
+    // 첫 배송지는 자동 기본. addressId는 목 증가값.
+    const created = {
+      ...input,
+      addressId: `ADDR-${nextAddressSeq++}`,
+      isDefault: mockAddresses.length === 0,
+    };
+    mockAddresses = [...mockAddresses, created];
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.put(`${BASE}/api/mypage/addresses/:addressId`, async ({ params, request }) => {
+    const id = String(params.addressId);
+    const input = (await request.json()) as Partial<(typeof mockAddresses)[number]>;
+    mockAddresses = mockAddresses.map((a) =>
+      a.addressId === id ? { ...a, ...input, addressId: id } : a,
+    );
+    const updated = mockAddresses.find((a) => a.addressId === id);
+    return updated
+      ? HttpResponse.json(updated)
+      : new HttpResponse(null, { status: 404 });
+  }),
+
+  http.delete(`${BASE}/api/mypage/addresses/:addressId`, ({ params }) => {
+    const id = String(params.addressId);
+    const removed = mockAddresses.find((a) => a.addressId === id);
+    mockAddresses = mockAddresses.filter((a) => a.addressId !== id);
+    // 기본 배송지를 지우면 남은 첫 항목을 기본으로 승격
+    if (removed?.isDefault && mockAddresses.length > 0) {
+      mockAddresses = mockAddresses.map((a, i) => ({ ...a, isDefault: i === 0 }));
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.patch(`${BASE}/api/mypage/addresses/:addressId/default`, ({ params }) => {
+    const id = String(params.addressId);
+    mockAddresses = mockAddresses.map((a) => ({
+      ...a,
+      isDefault: a.addressId === id,
+    }));
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // 후기 작성 — 목은 접수만 확인(사진 업로드는 백엔드 붙을 때). 성공 시 생성 결과 반환.
+  http.post(`${BASE}/api/reviews`, async ({ request }) => {
+    const body = (await request.json()) as {
+      orderId: string;
+      productId: number;
+      rating: number;
+      content: string;
+    };
+    return HttpResponse.json(
+      { reviewId: `REV-${body.productId}`, ...body },
+      { status: 201 },
+    );
+  }),
+
+  http.get(`${BASE}/api/wishlist`, () =>
+    HttpResponse.json({ products: mockWishlist }),
+  ),
+
+  // 찜 해제 — 목에서도 반영되도록 모듈 배열에서 제거
+  http.delete(`${BASE}/api/wishlist/:productId`, ({ params }) => {
+    const id = Number(params.productId);
+    mockWishlist = mockWishlist.filter((p) => p.productId !== id);
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];
 
 // 인기상품 목 — categoryId로 카테고리별 필터 가능. home PopularProduct 계약 + categoryId
@@ -216,6 +374,186 @@ const POPULAR_PRODUCTS = [
     reviewCount: 9210,
     badge: "추천",
     reason: "민감한 피부도 부담 없이 쓰기 좋은 스테디셀러예요.",
+  },
+];
+
+// 마이페이지 주문 내역 목 — mypage/types.ts Order 계약
+const MOCK_ORDERS = [
+  {
+    orderId: "ORD-20250601",
+    orderedAt: "2025-06-01",
+    status: "CONFIRMED",
+    items: [
+      {
+        productId: 301,
+        name: "스테어넥 벨티드 미디 원피스 TSOP1180",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-dress1/200/200",
+        option: "아이보리 / S",
+        quantity: 1,
+        price: 92000,
+      },
+      {
+        productId: 302,
+        name: "오프숄더 시폰 미디 드레스 LB-D221",
+        brand: "르블랑",
+        imageUrl: "https://picsum.photos/seed/order-dress2/200/200",
+        option: "블랙 / M",
+        quantity: 1,
+        price: 89000,
+      },
+    ],
+  },
+  {
+    orderId: "ORD-20250515",
+    orderedAt: "2025-05-15",
+    status: "DELIVERED",
+    items: [
+      {
+        productId: 303,
+        name: "메리노 울 터틀넥 니트 TSKN1801",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-knit/200/200",
+        option: "크림 / M",
+        quantity: 1,
+        price: 89000,
+      },
+    ],
+  },
+  {
+    orderId: "ORD-20250428",
+    orderedAt: "2025-04-28",
+    status: "SHIPPING",
+    items: [
+      {
+        productId: 304,
+        name: "오버사이즈 울 블렌드 코트 TSCT3301",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-coat/200/200",
+        option: "카멜 / M",
+        quantity: 1,
+        price: 198000,
+      },
+    ],
+  },
+  {
+    orderId: "ORD-20250410",
+    orderedAt: "2025-04-10",
+    status: "PREPARING",
+    items: [
+      {
+        productId: 305,
+        name: "플리츠 미디 스커트 TSSK1402",
+        brand: "더센트",
+        imageUrl: "https://picsum.photos/seed/order-skirt/200/200",
+        option: "네이비 / S",
+        quantity: 1,
+        price: 62000,
+      },
+    ],
+  },
+];
+
+// 최근 본 상품 목 — mypage/types.ts RecentProduct 계약. viewedAt 내림차순(최신순).
+const MOCK_RECENT_PRODUCTS = [
+  {
+    productId: 301,
+    name: "스테어넥 벨티드 미디 원피스",
+    brand: "더센트",
+    imageUrl: "https://picsum.photos/seed/recent-dress1/500/500",
+    price: 92000,
+    viewedAt: "2025-07-12T10:24:00+09:00",
+  },
+  {
+    productId: 203,
+    name: "플리츠 새틴 롱 원피스 EH2241",
+    brand: "에르모사",
+    imageUrl: "https://picsum.photos/seed/recent-dress3/500/500",
+    price: 145000,
+    viewedAt: "2025-07-12T09:58:00+09:00",
+  },
+  {
+    productId: 306,
+    name: "오프숄더 시폰 미디 드레스",
+    brand: "르블랑",
+    imageUrl: "https://picsum.photos/seed/recent-dress4/500/500",
+    price: 89000,
+    viewedAt: "2025-07-11T21:12:00+09:00",
+  },
+  {
+    productId: 202,
+    name: "세탄 드레이프 원피스 NVOP3300",
+    brand: "라인어디션",
+    imageUrl: "https://picsum.photos/seed/recent-dress2/500/500",
+    price: 118000,
+    viewedAt: "2025-07-11T18:40:00+09:00",
+  },
+  {
+    productId: 205,
+    name: "플로럴 랩 원피스 FL7788",
+    brand: "라인어디션",
+    imageUrl: "https://picsum.photos/seed/recent-dress5/500/500",
+    price: 108000,
+    viewedAt: "2025-07-10T14:05:00+09:00",
+  },
+  {
+    productId: 204,
+    name: "코튼 셔츠 원피스 CH1020",
+    brand: "데일리로브",
+    imageUrl: "https://picsum.photos/seed/recent-dress6/500/500",
+    price: 64000,
+    viewedAt: "2025-07-09T20:31:00+09:00",
+  },
+  {
+    productId: 303,
+    name: "메리노 울 터틀넥 니트 TSKN1801",
+    brand: "더센트",
+    imageUrl: "https://picsum.photos/seed/recent-knit/500/500",
+    price: 89000,
+    viewedAt: "2025-07-08T11:47:00+09:00",
+  },
+  {
+    productId: 206,
+    name: "도트 퍼프 원피스 DT3311",
+    brand: "쁘띠메종",
+    imageUrl: "https://picsum.photos/seed/recent-dot/500/500",
+    price: 73000,
+    viewedAt: "2025-07-07T16:22:00+09:00",
+  },
+];
+
+// 취소·반품·교환 목 — mypage/types.ts Claim 계약. requestedAt 내림차순(최신순).
+// 원 주문(MOCK_ORDERS)의 상품과 연결.
+const MOCK_CLAIMS = [
+  {
+    claimId: "CLM-20250520",
+    orderId: "ORD-20250515",
+    productId: 303,
+    productName: "메리노 울 터틀넥 니트 TSKN1801",
+    type: "RETURN",
+    status: "PROCESSING",
+    reason: "단순 변심",
+    requestedAt: "2025-05-20",
+  },
+  {
+    claimId: "CLM-20250503",
+    orderId: "ORD-20250428",
+    productId: 304,
+    productName: "오버사이즈 울 블렌드 코트 TSCT3301",
+    type: "EXCHANGE",
+    status: "COMPLETED",
+    reason: "사이즈 불량",
+    requestedAt: "2025-05-03",
+  },
+  {
+    claimId: "CLM-20250412",
+    orderId: "ORD-20250410",
+    productId: 305,
+    productName: "플리츠 미디 스커트 TSSK1402",
+    type: "CANCEL",
+    status: "COMPLETED",
+    reason: "주문 실수",
+    requestedAt: "2025-04-12",
   },
 ];
 
