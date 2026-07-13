@@ -7,6 +7,7 @@ import ClaimsPage from "./ClaimsPage";
 import ReviewWritePage from "./ReviewWritePage";
 import RecentProductsPage from "./RecentProductsPage";
 import WishlistPage from "./WishlistPage";
+import AddressesPage from "./AddressesPage";
 import ComingSoonPage from "./ComingSoonPage";
 
 export default function MyPage() {
@@ -26,10 +27,7 @@ export default function MyPage() {
               <Route path="claims" element={<ClaimsPage />} />
               <Route path="recent" element={<RecentProductsPage />} />
               <Route path="wishlist" element={<WishlistPage />} />
-              <Route
-                path="addresses"
-                element={<ComingSoonPage title="배송지 관리" />}
-              />
+              <Route path="addresses" element={<AddressesPage />} />
               <Route
                 path="inquiries"
                 element={<ComingSoonPage title="문의 내역" />}

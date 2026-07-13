@@ -77,3 +77,18 @@ export interface CreateReviewRequest {
   rating: number; // 1~5
   content: string;
 }
+
+// 배송지 — 마이페이지 배송지 관리(CRUD + 기본 설정). 배송지 API 계약과 1:1.
+// (체크아웃에도 유사 타입이 있으나 별도 유지 — 공용화는 승격 시점에)
+export interface Address {
+  addressId: string;
+  label: string; // "집", "회사"
+  recipient: string;
+  phone: string;
+  zipCode: string; // "06292"
+  address: string; // 도로명 기본주소 + 상세주소 합친 표시값
+  isDefault: boolean;
+}
+
+// 배송지 추가/수정 요청 — id·isDefault 제외한 입력값(기본 설정은 별도 API).
+export type AddressInput = Omit<Address, "addressId" | "isDefault">;

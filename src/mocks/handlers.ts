@@ -69,6 +69,30 @@ let mockWishlist = [
   },
 ];
 
+// 배송지 목 — mypage/types.ts Address 계약. let: CRUD/기본설정 DELETE·PATCH가 갱신.
+// 핸들러가 참조하므로 배열 위에 선언.
+let mockAddresses = [
+  {
+    addressId: "ADDR-1",
+    label: "집",
+    recipient: "김소이",
+    phone: "010-1234-5678",
+    zipCode: "06292",
+    address: "서울특별시 강남구 테헤란로 123 101동 302호",
+    isDefault: true,
+  },
+  {
+    addressId: "ADDR-2",
+    label: "회사",
+    recipient: "김소이",
+    phone: "010-1234-5678",
+    zipCode: "04799",
+    address: "서울특별시 성동구 왕십리로 50 센터포인트빌딩 8층",
+    isDefault: false,
+  },
+];
+let nextAddressSeq = 3;
+
 export const handlers = [
   http.post(`${BASE}/api/auth/login`, async ({ request }) => {
     const { email } = (await request.json()) as {
@@ -186,6 +210,58 @@ export const handlers = [
   http.get(`${BASE}/api/mypage/claims`, () =>
     HttpResponse.json({ claims: MOCK_CLAIMS }),
   ),
+
+  // ── 배송지 관리 (CRUD + 기본 설정) — mypage/types.ts Address 계약 ──
+  http.get(`${BASE}/api/mypage/addresses`, () =>
+    HttpResponse.json({ addresses: mockAddresses }),
+  ),
+
+  http.post(`${BASE}/api/mypage/addresses`, async ({ request }) => {
+    const input = (await request.json()) as Omit<
+      (typeof mockAddresses)[number],
+      "addressId" | "isDefault"
+    >;
+    // 첫 배송지는 자동 기본. addressId는 목 증가값.
+    const created = {
+      ...input,
+      addressId: `ADDR-${nextAddressSeq++}`,
+      isDefault: mockAddresses.length === 0,
+    };
+    mockAddresses = [...mockAddresses, created];
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.put(`${BASE}/api/mypage/addresses/:addressId`, async ({ params, request }) => {
+    const id = String(params.addressId);
+    const input = (await request.json()) as Partial<(typeof mockAddresses)[number]>;
+    mockAddresses = mockAddresses.map((a) =>
+      a.addressId === id ? { ...a, ...input, addressId: id } : a,
+    );
+    const updated = mockAddresses.find((a) => a.addressId === id);
+    return updated
+      ? HttpResponse.json(updated)
+      : new HttpResponse(null, { status: 404 });
+  }),
+
+  http.delete(`${BASE}/api/mypage/addresses/:addressId`, ({ params }) => {
+    const id = String(params.addressId);
+    const removed = mockAddresses.find((a) => a.addressId === id);
+    mockAddresses = mockAddresses.filter((a) => a.addressId !== id);
+    // 기본 배송지를 지우면 남은 첫 항목을 기본으로 승격
+    if (removed?.isDefault && mockAddresses.length > 0) {
+      mockAddresses = mockAddresses.map((a, i) => ({ ...a, isDefault: i === 0 }));
+    }
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.patch(`${BASE}/api/mypage/addresses/:addressId/default`, ({ params }) => {
+    const id = String(params.addressId);
+    mockAddresses = mockAddresses.map((a) => ({
+      ...a,
+      isDefault: a.addressId === id,
+    }));
+    return new HttpResponse(null, { status: 204 });
+  }),
 
   // 후기 작성 — 목은 접수만 확인(사진 업로드는 백엔드 붙을 때). 성공 시 생성 결과 반환.
   http.post(`${BASE}/api/reviews`, async ({ request }) => {

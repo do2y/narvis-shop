@@ -1,5 +1,7 @@
 import { api } from "@/shared/api/client";
 import type {
+  Address,
+  AddressInput,
   Claim,
   CreateReviewRequest,
   Order,
@@ -37,4 +39,31 @@ export async function fetchClaims(): Promise<Claim[]> {
 
 export async function createReview(body: CreateReviewRequest): Promise<void> {
   await api.post("/api/reviews", body);
+}
+
+// ── 배송지 관리 ──
+export async function fetchAddresses(): Promise<Address[]> {
+  const { data } = await api.get<{ addresses: Address[] }>(
+    "/api/mypage/addresses",
+  );
+  return data.addresses;
+}
+
+export async function addAddress(input: AddressInput): Promise<void> {
+  await api.post("/api/mypage/addresses", input);
+}
+
+export async function updateAddress(
+  addressId: string,
+  input: AddressInput,
+): Promise<void> {
+  await api.put(`/api/mypage/addresses/${addressId}`, input);
+}
+
+export async function removeAddress(addressId: string): Promise<void> {
+  await api.delete(`/api/mypage/addresses/${addressId}`);
+}
+
+export async function setDefaultAddress(addressId: string): Promise<void> {
+  await api.patch(`/api/mypage/addresses/${addressId}/default`);
 }
