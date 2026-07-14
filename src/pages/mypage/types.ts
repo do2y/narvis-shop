@@ -90,6 +90,16 @@ export interface Claim {
   requestedAt: string; // ISO 날짜 (YYYY-MM-DD) — 최신순 정렬 기준
 }
 
+// 반품·교환 신청 요청 — 주문 내역에서 접수. 백엔드 POST /api/mypage/claims 계약.
+// detail(상세 설명)은 선택. type은 RETURN(반품) | EXCHANGE(교환)만 이 흐름에서 사용.
+export interface CreateClaimRequest {
+  orderId: string;
+  productId: number;
+  type: ClaimType;
+  reason: string;
+  detail?: string;
+}
+
 // 문의 처리 상태 (스크린샷: 처리중 / 답변완료) — 문의 챗봇에서 접수, 읽기 전용.
 export type InquiryStatus =
   | "PENDING" // 처리중 (관리자 답변 대기)

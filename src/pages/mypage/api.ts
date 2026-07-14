@@ -3,6 +3,7 @@ import type {
   Address,
   AddressInput,
   Claim,
+  CreateClaimRequest,
   CreateReviewRequest,
   Inquiry,
   Order,
@@ -44,6 +45,11 @@ export async function removeWishlistItem(productId: number): Promise<void> {
 export async function fetchClaims(): Promise<Claim[]> {
   const { data } = await api.get<{ claims: Claim[] }>("/api/mypage/claims");
   return data.claims;
+}
+
+// 반품·교환 신청 접수 — 성공 시 훅에서 claims 캐시 무효화.
+export async function createClaim(body: CreateClaimRequest): Promise<void> {
+  await api.post("/api/mypage/claims", body);
 }
 
 export async function createReview(body: CreateReviewRequest): Promise<void> {

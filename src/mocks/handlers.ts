@@ -222,6 +222,40 @@ export const handlers = [
     HttpResponse.json({ claims: MOCK_CLAIMS }),
   ),
 
+  // 반품·교환 신청 접수 — mypage/types.ts CreateClaimRequest 계약.
+  // 원 주문에서 상품명을 찾아 Claim으로 만들어 목록 맨 앞(최신순)에 추가.
+  http.post(`${BASE}/api/mypage/claims`, async ({ request }) => {
+    const body = (await request.json()) as {
+      orderId: string;
+      productId: number;
+      type: "CANCEL" | "RETURN" | "EXCHANGE";
+      reason: string;
+      detail?: string;
+    };
+    const order = MOCK_ORDERS.find((o) => o.orderId === body.orderId);
+    const item = order?.items.find((i) => i.productId === body.productId);
+    if (!order || !item) {
+      return HttpResponse.json(
+        { message: "주문 상품을 찾을 수 없어요." },
+        { status: 400 },
+      );
+    }
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const seq = String(nextClaimSeq++).padStart(3, "0");
+    const created = {
+      claimId: `CLM-NEW${seq}`,
+      orderId: body.orderId,
+      productId: body.productId,
+      productName: item.name,
+      type: body.type,
+      status: "REQUESTED" as const, // 접수 → 이후 처리중/완료로 전환(목에선 고정)
+      reason: body.reason,
+      requestedAt: today,
+    };
+    MOCK_CLAIMS = [created, ...MOCK_CLAIMS];
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
   // 문의 내역 — 읽기 전용. mypage/types.ts Inquiry 계약.
   http.get(`${BASE}/api/mypage/inquiries`, () =>
     HttpResponse.json({ inquiries: MOCK_INQUIRIES }),
@@ -609,8 +643,9 @@ const MOCK_RECENT_PRODUCTS = [
 ];
 
 // 취소·반품·교환 목 — mypage/types.ts Claim 계약. requestedAt 내림차순(최신순).
-// 원 주문(MOCK_ORDERS)의 상품과 연결.
-const MOCK_CLAIMS = [
+// 원 주문(MOCK_ORDERS)의 상품과 연결. let: 주문 내역에서 신청(POST) 시 추가.
+let nextClaimSeq = 1;
+let MOCK_CLAIMS = [
   {
     claimId: "CLM-20250520",
     orderId: "ORD-20250515",
