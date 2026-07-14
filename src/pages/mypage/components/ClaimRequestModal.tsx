@@ -64,8 +64,9 @@ export function ClaimRequestModal({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<ClaimRequestFormInput>({
+  } = useForm<ClaimRequestFormInput, unknown, ClaimRequestFormValues>({
     // 폼 필드는 문자열(input) → coerce 후 productId: number(output)로 검증.
+    // 3번째 제네릭(output)으로 handleSubmit 콜백이 변환된 값을 받게 한다.
     resolver: zodResolver(claimRequestSchema),
     defaultValues: {
       productId: order.items[0]?.productId,
