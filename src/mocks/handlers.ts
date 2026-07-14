@@ -273,12 +273,62 @@ export const handlers = [
     HttpResponse.json({ orders: MOCK_ORDERS }),
   ),
 
+  // 주문 상세 — mypage/types.ts OrderDetail 계약. 목록 항목 + 배송지·결제·금액 분해.
+  http.get(`${BASE}/api/mypage/orders/:orderId`, ({ params }) => {
+    const order = MOCK_ORDERS.find((o) => o.orderId === params.orderId);
+    if (!order) {
+      return HttpResponse.json({ message: "주문을 찾을 수 없어요." }, {
+        status: 404,
+      });
+    }
+    return HttpResponse.json(buildOrderDetail(order));
+  }),
+
   http.get(`${BASE}/api/mypage/recent-products`, () =>
     HttpResponse.json({ products: MOCK_RECENT_PRODUCTS }),
   ),
 
   http.get(`${BASE}/api/mypage/claims`, () =>
     HttpResponse.json({ claims: MOCK_CLAIMS }),
+  ),
+
+  // 반품·교환 신청 접수 — mypage/types.ts CreateClaimRequest 계약.
+  // 원 주문에서 상품명을 찾아 Claim으로 만들어 목록 맨 앞(최신순)에 추가.
+  http.post(`${BASE}/api/mypage/claims`, async ({ request }) => {
+    const body = (await request.json()) as {
+      orderId: string;
+      productId: number;
+      type: "CANCEL" | "RETURN" | "EXCHANGE";
+      reason: string;
+      detail?: string;
+    };
+    const order = MOCK_ORDERS.find((o) => o.orderId === body.orderId);
+    const item = order?.items.find((i) => i.productId === body.productId);
+    if (!order || !item) {
+      return HttpResponse.json(
+        { message: "주문 상품을 찾을 수 없어요." },
+        { status: 400 },
+      );
+    }
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const seq = String(nextClaimSeq++).padStart(3, "0");
+    const created = {
+      claimId: `CLM-NEW${seq}`,
+      orderId: body.orderId,
+      productId: body.productId,
+      productName: item.name,
+      type: body.type,
+      status: "REQUESTED" as const, // 접수 → 이후 처리중/완료로 전환(목에선 고정)
+      reason: body.reason,
+      requestedAt: today,
+    };
+    MOCK_CLAIMS = [created, ...MOCK_CLAIMS];
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  // 문의 내역 — 읽기 전용. mypage/types.ts Inquiry 계약.
+  http.get(`${BASE}/api/mypage/inquiries`, () =>
+    HttpResponse.json({ inquiries: MOCK_INQUIRIES }),
   ),
 
   // ── 배송지 관리 (CRUD + 기본 설정) — mypage/types.ts Address 계약 ──
@@ -548,6 +598,76 @@ const MOCK_ORDERS = [
   },
 ];
 
+// 주문별 배송지·결제 스냅샷 — orderId 기준. 금액은 items에서 파생(buildOrderDetail).
+const ORDER_DETAIL_META = {
+  "ORD-20250601": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-1234-5678",
+      zipCode: "06292",
+      address: "서울시 강남구 테헤란로 123 102동 1503호",
+      request: "부재 시 경비실에 맡겨주세요.",
+    },
+    paymentMethod: "신용카드",
+    discount: 5000,
+    shippingFee: 0,
+  },
+  "ORD-20250515": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-1234-5678",
+      zipCode: "06292",
+      address: "서울시 강남구 테헤란로 123 102동 1503호",
+      request: "",
+    },
+    paymentMethod: "카카오페이",
+    discount: 0,
+    shippingFee: 3000,
+  },
+  "ORD-20250428": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-9876-5432",
+      zipCode: "04524",
+      address: "서울시 중구 을지로 100 5층",
+      request: "배송 전 연락 부탁드려요.",
+    },
+    paymentMethod: "신용카드",
+    discount: 10000,
+    shippingFee: 0,
+  },
+  "ORD-20250410": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-1234-5678",
+      zipCode: "06292",
+      address: "서울시 강남구 테헤란로 123 102동 1503호",
+      request: "",
+    },
+    paymentMethod: "네이버페이",
+    discount: 0,
+    shippingFee: 0,
+  },
+} as const;
+
+// 목록 주문 + 메타로 OrderDetail 조립. itemsTotal은 항목 합, finalTotal은 파생.
+function buildOrderDetail(order: (typeof MOCK_ORDERS)[number]) {
+  const meta = ORDER_DETAIL_META[order.orderId as keyof typeof ORDER_DETAIL_META];
+  const itemsTotal = order.items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  );
+  return {
+    ...order,
+    shipping: meta.shipping,
+    paymentMethod: meta.paymentMethod,
+    itemsTotal,
+    discount: meta.discount,
+    shippingFee: meta.shippingFee,
+    finalTotal: itemsTotal - meta.discount + meta.shippingFee,
+  };
+}
+
 // 최근 본 상품 목 — mypage/types.ts RecentProduct 계약. viewedAt 내림차순(최신순).
 const MOCK_RECENT_PRODUCTS = [
   {
@@ -617,8 +737,9 @@ const MOCK_RECENT_PRODUCTS = [
 ];
 
 // 취소·반품·교환 목 — mypage/types.ts Claim 계약. requestedAt 내림차순(최신순).
-// 원 주문(MOCK_ORDERS)의 상품과 연결.
-const MOCK_CLAIMS = [
+// 원 주문(MOCK_ORDERS)의 상품과 연결. let: 주문 내역에서 신청(POST) 시 추가.
+let nextClaimSeq = 1;
+let MOCK_CLAIMS = [
   {
     claimId: "CLM-20250520",
     orderId: "ORD-20250515",
@@ -648,6 +769,41 @@ const MOCK_CLAIMS = [
     status: "COMPLETED",
     reason: "주문 실수",
     requestedAt: "2025-04-12",
+  },
+];
+
+// 문의 내역 목 — mypage/types.ts Inquiry 계약. createdAt 내림차순(최신순).
+// 답변완료(ANSWERED)만 answer·answeredAt 포함, 처리중(PENDING)은 null.
+const MOCK_INQUIRIES = [
+  {
+    inquiryId: "INQ-20250602",
+    title: "환불 처리 기간이 얼마나 걸리나요?",
+    status: "PENDING",
+    content:
+      "지난주에 반품 신청한 니트 환불이 아직 안 됐어요. 보통 며칠 정도 걸리나요?",
+    answer: null,
+    createdAt: "2025-06-02",
+    answeredAt: null,
+  },
+  {
+    inquiryId: "INQ-20250518",
+    title: "배송이 너무 늦어요",
+    status: "ANSWERED",
+    content: "주문한 지 일주일이 지났는데 아직 배송 시작 안내가 없어요.",
+    answer:
+      "고객님, 주문하신 상품은 현재 물류센터에서 출고 준비 중이며 1~2일 내 발송될 예정입니다. 배송이 지연되어 불편을 드려 죄송합니다.",
+    createdAt: "2025-05-18",
+    answeredAt: "2025-05-19",
+  },
+  {
+    inquiryId: "INQ-20250430",
+    title: "사이즈 교환 방법이 궁금해요",
+    status: "ANSWERED",
+    content: "구매한 코트가 조금 커서 한 사이즈 작은 걸로 교환하고 싶어요.",
+    answer:
+      "마이페이지 > 주문 내역에서 해당 상품의 [교환 신청]을 눌러 원하는 사이즈를 선택하시면 됩니다. 교환 배송비는 단순 변심의 경우 고객 부담인 점 참고 부탁드립니다.",
+    createdAt: "2025-04-30",
+    answeredAt: "2025-05-02",
   },
 ];
 
