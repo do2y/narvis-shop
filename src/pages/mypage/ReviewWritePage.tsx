@@ -3,7 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, X } from "lucide-react";
+import { Check, ImagePlus, X } from "lucide-react";
 import type { ProductCard } from "@/shared/types/chat";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -38,7 +38,7 @@ export default function ReviewWritePage() {
     defaultValues: { rating: 0, content: "" },
   });
 
-  const { mutate, isPending, errorMessage } = useCreateReview();
+  const { mutate, isPending, isSuccess, errorMessage } = useCreateReview();
 
   // 필수 파라미터 없이 직접 진입 → 주문 내역으로
   if (!orderId || !Number.isFinite(productId)) {
@@ -46,11 +46,31 @@ export default function ReviewWritePage() {
   }
 
   const onSubmit = (values: ReviewValues) => {
-    mutate(
-      { orderId, productId, ...values },
-      { onSuccess: () => navigate("/mypage/orders", { replace: true }) },
-    );
+    // 성공 시 즉시 이동하지 않고 완료 화면(isSuccess)으로 전환 — 아래 렌더 분기.
+    mutate({ orderId, productId, ...values });
   };
+
+  // 후기 등록 완료 — 피드백 화면. 반품·교환 완료 화면과 동일 톤.
+  if (isSuccess) {
+    return (
+      <div className="flex flex-col items-center py-10 text-center sm:py-16">
+        <span className="flex size-14 items-center justify-center rounded-full bg-green-50 text-green-600">
+          <Check className="size-7" />
+        </span>
+        <p className="mt-4 text-base font-bold">후기가 등록됐어요</p>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          소중한 후기 감사해요. 다른 분들의 구매에 큰 도움이 돼요.
+        </p>
+        <Button
+          type="button"
+          className="mt-6 h-11 rounded-full px-6"
+          onClick={() => navigate("/mypage/orders", { replace: true })}
+        >
+          주문 내역으로
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
