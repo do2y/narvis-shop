@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "../utils/formatPrice";
@@ -71,13 +71,12 @@ export function OrderCard({ order }: { order: Order }) {
             {order.orderedAt.replace(/-/g, ".")} · {order.orderId}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => setNotice(true)}
+        <Link
+          to={`/mypage/orders/${order.orderId}`}
           className="shrink-0 text-sm text-muted-foreground hover:text-foreground"
         >
           주문 상세
-        </button>
+        </Link>
       </div>
 
       {/* 상품 목록 */}

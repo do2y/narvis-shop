@@ -6,6 +6,7 @@ import type {
   CreateReviewRequest,
   Inquiry,
   Order,
+  OrderDetail,
   RecentProduct,
   WishlistProduct,
 } from "./types";
@@ -13,6 +14,13 @@ import type {
 export async function fetchOrders(): Promise<Order[]> {
   const { data } = await api.get<{ orders: Order[] }>("/api/mypage/orders");
   return data.orders;
+}
+
+export async function fetchOrder(orderId: string): Promise<OrderDetail> {
+  const { data } = await api.get<OrderDetail>(
+    `/api/mypage/orders/${orderId}`,
+  );
+  return data;
 }
 
 export async function fetchRecentProducts(): Promise<RecentProduct[]> {

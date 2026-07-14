@@ -203,6 +203,17 @@ export const handlers = [
     HttpResponse.json({ orders: MOCK_ORDERS }),
   ),
 
+  // 주문 상세 — mypage/types.ts OrderDetail 계약. 목록 항목 + 배송지·결제·금액 분해.
+  http.get(`${BASE}/api/mypage/orders/:orderId`, ({ params }) => {
+    const order = MOCK_ORDERS.find((o) => o.orderId === params.orderId);
+    if (!order) {
+      return HttpResponse.json({ message: "주문을 찾을 수 없어요." }, {
+        status: 404,
+      });
+    }
+    return HttpResponse.json(buildOrderDetail(order));
+  }),
+
   http.get(`${BASE}/api/mypage/recent-products`, () =>
     HttpResponse.json({ products: MOCK_RECENT_PRODUCTS }),
   ),
@@ -458,6 +469,76 @@ const MOCK_ORDERS = [
     ],
   },
 ];
+
+// 주문별 배송지·결제 스냅샷 — orderId 기준. 금액은 items에서 파생(buildOrderDetail).
+const ORDER_DETAIL_META = {
+  "ORD-20250601": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-1234-5678",
+      zipCode: "06292",
+      address: "서울시 강남구 테헤란로 123 102동 1503호",
+      request: "부재 시 경비실에 맡겨주세요.",
+    },
+    paymentMethod: "신용카드",
+    discount: 5000,
+    shippingFee: 0,
+  },
+  "ORD-20250515": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-1234-5678",
+      zipCode: "06292",
+      address: "서울시 강남구 테헤란로 123 102동 1503호",
+      request: "",
+    },
+    paymentMethod: "카카오페이",
+    discount: 0,
+    shippingFee: 3000,
+  },
+  "ORD-20250428": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-9876-5432",
+      zipCode: "04524",
+      address: "서울시 중구 을지로 100 5층",
+      request: "배송 전 연락 부탁드려요.",
+    },
+    paymentMethod: "신용카드",
+    discount: 10000,
+    shippingFee: 0,
+  },
+  "ORD-20250410": {
+    shipping: {
+      recipient: "김소이",
+      phone: "010-1234-5678",
+      zipCode: "06292",
+      address: "서울시 강남구 테헤란로 123 102동 1503호",
+      request: "",
+    },
+    paymentMethod: "네이버페이",
+    discount: 0,
+    shippingFee: 0,
+  },
+} as const;
+
+// 목록 주문 + 메타로 OrderDetail 조립. itemsTotal은 항목 합, finalTotal은 파생.
+function buildOrderDetail(order: (typeof MOCK_ORDERS)[number]) {
+  const meta = ORDER_DETAIL_META[order.orderId as keyof typeof ORDER_DETAIL_META];
+  const itemsTotal = order.items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  );
+  return {
+    ...order,
+    shipping: meta.shipping,
+    paymentMethod: meta.paymentMethod,
+    itemsTotal,
+    discount: meta.discount,
+    shippingFee: meta.shippingFee,
+    finalTotal: itemsTotal - meta.discount + meta.shippingFee,
+  };
+}
 
 // 최근 본 상품 목 — mypage/types.ts RecentProduct 계약. viewedAt 내림차순(최신순).
 const MOCK_RECENT_PRODUCTS = [

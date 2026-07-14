@@ -25,6 +25,26 @@ export interface Order {
   items: OrderItem[];
 }
 
+// 주문 배송지 스냅샷 — 주문 시점 배송 정보(현재 배송지 관리와 별개로 고정 저장).
+export interface OrderShipping {
+  recipient: string;
+  phone: string;
+  zipCode: string; // "06292"
+  address: string; // 도로명 기본주소 + 상세주소 합친 표시값
+  request: string; // 배송 요청사항 ("" 가능)
+}
+
+// 주문 상세 — 목록(Order)에 배송지·결제·금액 분해를 더한 단건 조회 응답.
+// checkout OrderResult와 동일한 금액 모델(상품금액/할인/배송비/총액).
+export interface OrderDetail extends Order {
+  shipping: OrderShipping;
+  paymentMethod: string; // 표시값 "신용카드", "카카오페이" 등
+  itemsTotal: number; // 상품 금액 합계
+  discount: number; // 할인 금액(양수)
+  shippingFee: number; // 배송비
+  finalTotal: number; // 최종 결제 금액
+}
+
 // 최근 본 상품 — 카드 표시용. 상세 진입 시 캐시 시딩하도록 카드 수준 데이터 포함.
 // viewedAt으로 최신순 정렬(서버가 정렬해 내려주는 것을 기준으로 표시).
 export interface RecentProduct {
