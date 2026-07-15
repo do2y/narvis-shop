@@ -29,41 +29,46 @@ const MOCK_ACCOUNTS: Record<
 let mockWishlist = [
   {
     productId: 202,
-    name: "세탄 드레이프 원피스 NVOP3300",
+    name: "코튼 릴렉스 반팔 티셔츠 NVOP3300",
     brand: "라인어디션",
-    imageUrl: "https://picsum.photos/seed/wish-dress2/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20251015/5593843/5593843_17652503983820_big.png?w=1200",
     price: 118000,
     wishedAt: "2025-07-12T11:02:00+09:00",
   },
   {
     productId: 203,
-    name: "플리츠 새틴 롱 원피스 EH2241",
+    name: "피그먼트 워시드 오버핏 티셔츠 EH2241",
     brand: "에르모사",
-    imageUrl: "https://picsum.photos/seed/wish-dress3/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20240328/4002805/4002805_17331895953907_big.jpg?w=1200",
     price: 145000,
     wishedAt: "2025-07-11T19:20:00+09:00",
   },
   {
     productId: 301,
-    name: "스테어넥 벨티드 미디 원피스",
+    name: "에센셜 크루넥 반팔 티셔츠",
     brand: "더센트",
-    imageUrl: "https://picsum.photos/seed/wish-dress1/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20230724/3421211/3421211_17803608469427_big.jpg?w=1200",
     price: 92000,
     wishedAt: "2025-07-10T13:44:00+09:00",
   },
   {
     productId: 205,
-    name: "플로럴 랩 원피스 FL7788",
+    name: "드롭숄더 하프 슬리브 티셔츠 FL7788",
     brand: "라인어디션",
-    imageUrl: "https://picsum.photos/seed/wish-dress5/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20260505/6421311/6421311_17779600135524_big.jpg?w=1200",
     price: 108000,
     wishedAt: "2025-07-09T10:15:00+09:00",
   },
   {
     productId: 206,
-    name: "도트 퍼프 원피스 DT3311",
+    name: "가먼트 다잉 포켓 티셔츠 DT3311",
     brand: "쁘띠메종",
-    imageUrl: "https://picsum.photos/seed/wish-dot/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/prd_img/20260618/6694104/detail_6694104_17817540680127_big.jpg?w=1200",
     price: 73000,
     wishedAt: "2025-07-08T22:03:00+09:00",
   },
@@ -99,34 +104,34 @@ let mockCart = [
   {
     cartItemId: "CART-1",
     productId: 301,
-    name: "스테어넥 벨티드 미디 원피스 TSOP1180",
+    name: "가먼트 다잉 오버핏 반팔 티셔츠 TSOP1180",
     brand: "더센트",
-    imageUrl: "https://picsum.photos/seed/cart-dress1/300/300",
+    imageUrl: "https://image.msscdn.net/thumbnails/images/goods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200",
     price: 92000,
     originalPrice: 230000,
-    options: { 컬러: "아이보리", 사이즈: "S" },
+    options: { 컬러: "차콜", 사이즈: "L" },
     quantity: 1,
   },
   {
     cartItemId: "CART-2",
     productId: 306,
-    name: "오프숄더 시폰 미디 드레스 LB-D221",
+    name: "소프트 코튼 크루넥 반팔 티셔츠 LB-D221",
     brand: "르블랑",
-    imageUrl: "https://picsum.photos/seed/cart-dress2/300/300",
+    imageUrl: "https://image.msscdn.net/thumbnails/images/goods_img/20250722/5262448/5262448_17561780734495_big.jpg?w=1200",
     price: 89000,
     originalPrice: 89000,
-    options: { 컬러: "블랙", 사이즈: "M" },
+    options: { 컬러: "그레이", 사이즈: "M" },
     quantity: 1,
   },
   {
     cartItemId: "CART-3",
     productId: 303,
-    name: "메리노 울 터틀넥 니트 TSKN1801",
+    name: "헤비웨이트 오버핏 티셔츠 TSKN1801",
     brand: "더센트",
-    imageUrl: "https://picsum.photos/seed/cart-knit/300/300",
+    imageUrl: "https://image.msscdn.net/thumbnails/images/goods_img/20260618/6694104/6694104_17817540562281_big.jpg?w=1200",
     price: 89000,
     originalPrice: 112000,
-    options: { 컬러: "크림", 사이즈: "M" },
+    options: { 컬러: "카키", 사이즈: "L" },
     quantity: 2,
   },
 ];
@@ -135,30 +140,34 @@ let mockCart = [
 const MOCK_CART_RECOMMENDATIONS = [
   {
     productId: 401,
-    name: "골드 미니 클러치백",
-    brand: "르블랑",
-    imageUrl: "https://picsum.photos/seed/cart-bag/400/400",
+    name: "코튼 오버핏 반팔 티셔츠",
+    brand: "라인어디션",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202607/11f17a9c4f2b986d9993179502b182f7.jpg?width=1440&format=webp",
     price: 49000,
   },
   {
     productId: 402,
-    name: "스틸레토 앵클 스트랩 힐",
-    brand: "슈에뜨",
-    imageUrl: "https://picsum.photos/seed/cart-heel/400/400",
+    name: "워시드 크루넥 스웨트셔츠",
+    brand: "더센트",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202605/11f14e99a7e5bcd883a42f85ec813387.jpg?width=408&format=webp",
     price: 89000,
   },
   {
     productId: 403,
-    name: "펄 드롭 이어링",
-    brand: "아뜨리에",
-    imageUrl: "https://picsum.photos/seed/cart-earring/400/400",
+    name: "베이직 피그먼트 티셔츠",
+    brand: "에르모사",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20251022/5625561/5625561_17610941581236_big.jpg?w=1200",
     price: 28000,
   },
   {
     productId: 404,
-    name: "캐시미어 머플러",
+    name: "릴렉스핏 하프 슬리브 니트",
     brand: "울프포드",
-    imageUrl: "https://picsum.photos/seed/cart-muffler/400/400",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202606/11f16f98cff926419090358d89120339.png?width=1440&format=webp",
     price: 64000,
   },
 ];
@@ -277,9 +286,12 @@ export const handlers = [
   http.get(`${BASE}/api/mypage/orders/:orderId`, ({ params }) => {
     const order = MOCK_ORDERS.find((o) => o.orderId === params.orderId);
     if (!order) {
-      return HttpResponse.json({ message: "주문을 찾을 수 없어요." }, {
-        status: 404,
-      });
+      return HttpResponse.json(
+        { message: "주문을 찾을 수 없어요." },
+        {
+          status: 404,
+        },
+      );
     }
     return HttpResponse.json(buildOrderDetail(order));
   }),
@@ -351,17 +363,22 @@ export const handlers = [
     return HttpResponse.json(created, { status: 201 });
   }),
 
-  http.put(`${BASE}/api/mypage/addresses/:addressId`, async ({ params, request }) => {
-    const id = String(params.addressId);
-    const input = (await request.json()) as Partial<(typeof mockAddresses)[number]>;
-    mockAddresses = mockAddresses.map((a) =>
-      a.addressId === id ? { ...a, ...input, addressId: id } : a,
-    );
-    const updated = mockAddresses.find((a) => a.addressId === id);
-    return updated
-      ? HttpResponse.json(updated)
-      : new HttpResponse(null, { status: 404 });
-  }),
+  http.put(
+    `${BASE}/api/mypage/addresses/:addressId`,
+    async ({ params, request }) => {
+      const id = String(params.addressId);
+      const input = (await request.json()) as Partial<
+        (typeof mockAddresses)[number]
+      >;
+      mockAddresses = mockAddresses.map((a) =>
+        a.addressId === id ? { ...a, ...input, addressId: id } : a,
+      );
+      const updated = mockAddresses.find((a) => a.addressId === id);
+      return updated
+        ? HttpResponse.json(updated)
+        : new HttpResponse(null, { status: 404 });
+    },
+  ),
 
   http.delete(`${BASE}/api/mypage/addresses/:addressId`, ({ params }) => {
     const id = String(params.addressId);
@@ -369,19 +386,25 @@ export const handlers = [
     mockAddresses = mockAddresses.filter((a) => a.addressId !== id);
     // 기본 배송지를 지우면 남은 첫 항목을 기본으로 승격
     if (removed?.isDefault && mockAddresses.length > 0) {
-      mockAddresses = mockAddresses.map((a, i) => ({ ...a, isDefault: i === 0 }));
+      mockAddresses = mockAddresses.map((a, i) => ({
+        ...a,
+        isDefault: i === 0,
+      }));
     }
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.patch(`${BASE}/api/mypage/addresses/:addressId/default`, ({ params }) => {
-    const id = String(params.addressId);
-    mockAddresses = mockAddresses.map((a) => ({
-      ...a,
-      isDefault: a.addressId === id,
-    }));
-    return new HttpResponse(null, { status: 204 });
-  }),
+  http.patch(
+    `${BASE}/api/mypage/addresses/:addressId/default`,
+    ({ params }) => {
+      const id = String(params.addressId);
+      mockAddresses = mockAddresses.map((a) => ({
+        ...a,
+        isDefault: a.addressId === id,
+      }));
+      return new HttpResponse(null, { status: 204 });
+    },
+  ),
 
   // 후기 작성 — 목은 접수만 확인(사진 업로드는 백엔드 붙을 때). 성공 시 생성 결과 반환.
   http.post(`${BASE}/api/reviews`, async ({ request }) => {
@@ -398,9 +421,7 @@ export const handlers = [
   }),
 
   // ── 장바구니 ──
-  http.get(`${BASE}/api/cart`, () =>
-    HttpResponse.json({ items: mockCart }),
-  ),
+  http.get(`${BASE}/api/cart`, () => HttpResponse.json({ items: mockCart })),
 
   http.get(`${BASE}/api/cart/recommendations`, () =>
     HttpResponse.json({ products: MOCK_CART_RECOMMENDATIONS }),
@@ -440,7 +461,8 @@ const POPULAR_PRODUCTS = [
     categoryId: 1,
     name: "Logitech MX Keys Mini 무선 키보드",
     brand: "Logitech",
-    imageUrl: "https://picsum.photos/seed/keyboard/600/450",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202601/11f0ed21bafcaaeca540f7b64137d1e5.jpg?width=1440&format=webp",
     price: 119000,
     listPrice: 149000,
     discountRate: 20,
@@ -454,7 +476,8 @@ const POPULAR_PRODUCTS = [
     categoryId: 1,
     name: "Sony WH-1000XM5 노이즈캔슬링 헤드폰",
     brand: "Sony",
-    imageUrl: "https://picsum.photos/seed/headphone/600/450",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202604/11f137b51654a49dbc92213193f65993.jpg?width=1440&format=webp",
     price: 389000,
     listPrice: 449000,
     discountRate: 13,
@@ -468,7 +491,8 @@ const POPULAR_PRODUCTS = [
     categoryId: 6,
     name: "아이리스오야마 수납박스 6P 세트",
     brand: "아이리스오야마",
-    imageUrl: "https://picsum.photos/seed/box/600/450",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202606/11f1687874f0acbd9090abe3de51eb89.png?width=400&format=webp",
     price: 42900,
     listPrice: 55000,
     discountRate: 22,
@@ -482,7 +506,8 @@ const POPULAR_PRODUCTS = [
     categoryId: 2,
     name: "브리타 마렐라 정수 물병 1.4L",
     brand: "브리타",
-    imageUrl: "https://picsum.photos/seed/bottle/600/450",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202602/11f10618d50592d0a3c0c51b729aeb9e.jpg?width=1440&format=webp",
     price: 34000,
     listPrice: 34000,
     discountRate: 0,
@@ -496,7 +521,8 @@ const POPULAR_PRODUCTS = [
     categoryId: 4,
     name: "베이직 오버핏 코튼 셔츠",
     brand: "데일리로브",
-    imageUrl: "https://picsum.photos/seed/shirt/600/450",
+    imageUrl:
+      "https://img.29cm.co.kr/next-product/2026/07/02/fb5e5f5674454a2e81c81b5d1b0e830a_20260702163831.jpg?width=400&format=webp",
     price: 39000,
     listPrice: 59000,
     discountRate: 34,
@@ -510,7 +536,8 @@ const POPULAR_PRODUCTS = [
     categoryId: 8,
     name: "센텔라 수분 진정 토너 300ml",
     brand: "라운드랩",
-    imageUrl: "https://picsum.photos/seed/toner/600/450",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202605/11f15b279fa6d9659f7f97288c3b29a9.jpg?width=400&format=webp",
     price: 18900,
     listPrice: 25000,
     discountRate: 24,
@@ -530,19 +557,21 @@ const MOCK_ORDERS = [
     items: [
       {
         productId: 301,
-        name: "스테어넥 벨티드 미디 원피스 TSOP1180",
+        name: "가먼트 다잉 오버핏 반팔 티셔츠 TSOP1180",
         brand: "더센트",
-        imageUrl: "https://picsum.photos/seed/order-dress1/200/200",
-        option: "아이보리 / S",
+        imageUrl:
+          "https://image.msscdn.net/thumbnails/images/goods_img/20230724/3421211/3421211_17803608469427_big.jpg?w=1200",
+        option: "차콜 / L",
         quantity: 1,
         price: 92000,
       },
       {
         productId: 302,
-        name: "오프숄더 시폰 미디 드레스 LB-D221",
+        name: "소프트 코튼 크루넥 반팔 티셔츠 LB-D221",
         brand: "르블랑",
-        imageUrl: "https://picsum.photos/seed/order-dress2/200/200",
-        option: "블랙 / M",
+        imageUrl:
+          "https://image.msscdn.net/thumbnails/images/goods_img/20250722/5262448/5262448_17561780734495_big.jpg?w=1200",
+        option: "그레이 / M",
         quantity: 1,
         price: 89000,
       },
@@ -555,10 +584,11 @@ const MOCK_ORDERS = [
     items: [
       {
         productId: 303,
-        name: "메리노 울 터틀넥 니트 TSKN1801",
+        name: "헤비웨이트 오버핏 티셔츠 TSKN1801",
         brand: "더센트",
-        imageUrl: "https://picsum.photos/seed/order-knit/200/200",
-        option: "크림 / M",
+        imageUrl:
+          "https://image.msscdn.net/thumbnails/images/goods_img/20260618/6694104/6694104_17817540562281_big.jpg?w=1200",
+        option: "카키 / L",
         quantity: 1,
         price: 89000,
       },
@@ -571,10 +601,11 @@ const MOCK_ORDERS = [
     items: [
       {
         productId: 304,
-        name: "오버사이즈 울 블렌드 코트 TSCT3301",
+        name: "브러시드 플리스 스웨트셔츠 TSCT3301",
         brand: "더센트",
-        imageUrl: "https://picsum.photos/seed/order-coat/200/200",
-        option: "카멜 / M",
+        imageUrl:
+          "https://image.msscdn.net/thumbnails/images/goods_img/20251022/5625561/5625561_17610941581236_big.jpg?w=1200",
+        option: "그레이 / M",
         quantity: 1,
         price: 198000,
       },
@@ -587,10 +618,11 @@ const MOCK_ORDERS = [
     items: [
       {
         productId: 305,
-        name: "플리츠 미디 스커트 TSSK1402",
+        name: "릴렉스핏 하프 슬리브 니트 TSSK1402",
         brand: "더센트",
-        imageUrl: "https://picsum.photos/seed/order-skirt/200/200",
-        option: "네이비 / S",
+        imageUrl:
+          "https://img.29cm.co.kr/item/202606/11f16f98cff926419090358d89120339.png?width=1440&format=webp",
+        option: "차콜 / M",
         quantity: 1,
         price: 62000,
       },
@@ -652,7 +684,8 @@ const ORDER_DETAIL_META = {
 
 // 목록 주문 + 메타로 OrderDetail 조립. itemsTotal은 항목 합, finalTotal은 파생.
 function buildOrderDetail(order: (typeof MOCK_ORDERS)[number]) {
-  const meta = ORDER_DETAIL_META[order.orderId as keyof typeof ORDER_DETAIL_META];
+  const meta =
+    ORDER_DETAIL_META[order.orderId as keyof typeof ORDER_DETAIL_META];
   const itemsTotal = order.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
@@ -672,65 +705,73 @@ function buildOrderDetail(order: (typeof MOCK_ORDERS)[number]) {
 const MOCK_RECENT_PRODUCTS = [
   {
     productId: 301,
-    name: "스테어넥 벨티드 미디 원피스",
+    name: "에센셜 크루넥 반팔 티셔츠",
     brand: "더센트",
-    imageUrl: "https://picsum.photos/seed/recent-dress1/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20230724/3421211/3421211_17803608469427_big.jpg?w=1200",
     price: 92000,
     viewedAt: "2025-07-12T10:24:00+09:00",
   },
   {
     productId: 203,
-    name: "플리츠 새틴 롱 원피스 EH2241",
+    name: "피그먼트 워시드 오버핏 티셔츠 EH2241",
     brand: "에르모사",
-    imageUrl: "https://picsum.photos/seed/recent-dress3/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20240328/4002805/4002805_17331895953907_big.jpg?w=1200",
     price: 145000,
     viewedAt: "2025-07-12T09:58:00+09:00",
   },
   {
     productId: 306,
-    name: "오프숄더 시폰 미디 드레스",
+    name: "소프트 코튼 크루넥 반팔 티셔츠",
     brand: "르블랑",
-    imageUrl: "https://picsum.photos/seed/recent-dress4/500/500",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202606/11f16f98cff926419090358d89120339.png?width=1440&format=webp",
     price: 89000,
     viewedAt: "2025-07-11T21:12:00+09:00",
   },
   {
     productId: 202,
-    name: "세탄 드레이프 원피스 NVOP3300",
+    name: "코튼 릴렉스 반팔 티셔츠 NVOP3300",
     brand: "라인어디션",
-    imageUrl: "https://picsum.photos/seed/recent-dress2/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20251015/5593843/5593843_17652503983820_big.png?w=1200",
     price: 118000,
     viewedAt: "2025-07-11T18:40:00+09:00",
   },
   {
     productId: 205,
-    name: "플로럴 랩 원피스 FL7788",
+    name: "드롭숄더 하프 슬리브 티셔츠 FL7788",
     brand: "라인어디션",
-    imageUrl: "https://picsum.photos/seed/recent-dress5/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20260505/6421311/6421311_17779600135524_big.jpg?w=1200",
     price: 108000,
     viewedAt: "2025-07-10T14:05:00+09:00",
   },
   {
     productId: 204,
-    name: "코튼 셔츠 원피스 CH1020",
+    name: "코튼 오버핏 반팔 티셔츠 CH1020",
     brand: "데일리로브",
-    imageUrl: "https://picsum.photos/seed/recent-dress6/500/500",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202604/11f132e7cad3859a9ec501cbcc2e8a97.jpg?width=720&format=webp",
     price: 64000,
     viewedAt: "2025-07-09T20:31:00+09:00",
   },
   {
     productId: 303,
-    name: "메리노 울 터틀넥 니트 TSKN1801",
+    name: "헤비웨이트 오버핏 티셔츠 TSKN1801",
     brand: "더센트",
-    imageUrl: "https://picsum.photos/seed/recent-knit/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20260618/6694104/6694104_17817540562281_big.jpg?w=1200",
     price: 89000,
     viewedAt: "2025-07-08T11:47:00+09:00",
   },
   {
     productId: 206,
-    name: "도트 퍼프 원피스 DT3311",
+    name: "가먼트 다잉 포켓 티셔츠 DT3311",
     brand: "쁘띠메종",
-    imageUrl: "https://picsum.photos/seed/recent-dot/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/prd_img/20260618/6694104/detail_6694104_17817540680127_big.jpg?w=1200",
     price: 73000,
     viewedAt: "2025-07-07T16:22:00+09:00",
   },
@@ -744,7 +785,7 @@ let MOCK_CLAIMS = [
     claimId: "CLM-20250520",
     orderId: "ORD-20250515",
     productId: 303,
-    productName: "메리노 울 터틀넥 니트 TSKN1801",
+    productName: "헤비웨이트 오버핏 티셔츠 TSKN1801",
     type: "RETURN",
     status: "PROCESSING",
     reason: "단순 변심",
@@ -754,7 +795,7 @@ let MOCK_CLAIMS = [
     claimId: "CLM-20250503",
     orderId: "ORD-20250428",
     productId: 304,
-    productName: "오버사이즈 울 블렌드 코트 TSCT3301",
+    productName: "브러시드 플리스 스웨트셔츠 TSCT3301",
     type: "EXCHANGE",
     status: "COMPLETED",
     reason: "사이즈 불량",
@@ -764,7 +805,7 @@ let MOCK_CLAIMS = [
     claimId: "CLM-20250412",
     orderId: "ORD-20250410",
     productId: 305,
-    productName: "플리츠 미디 스커트 TSSK1402",
+    productName: "릴렉스핏 하프 슬리브 니트 TSSK1402",
     type: "CANCEL",
     status: "COMPLETED",
     reason: "주문 실수",
@@ -810,66 +851,72 @@ const MOCK_INQUIRIES = [
 const MOCK_CHAT_PRODUCTS = [
   {
     productId: 201,
-    name: "스테어넥 벨티드 미디 원피스 TSOP1180",
+    name: "가먼트 다잉 오버핏 반팔 티셔츠 TSOP1180",
     brandName: "더센트",
     price: 92000,
     originalPrice: 230000,
-    imageUrl: "https://picsum.photos/seed/dress1/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200",
     rating: 4.6,
     reviewCount: 312,
     reason: "미니멀한 라인이라 호텔 레스토랑에 과하지 않게 어울려요.",
   },
   {
     productId: 202,
-    name: "세탄 드레이프 원피스 NVOP3300",
+    name: "코튼 릴렉스 반팔 티셔츠 NVOP3300",
     brandName: "라인어디션",
     price: 118000,
     originalPrice: 214000,
-    imageUrl: "https://picsum.photos/seed/dress2/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20251015/5593843/5593843_17652503983820_big.png?w=1200",
     rating: 4.8,
     reviewCount: 521,
     reason: "은은한 광택이 조명 아래서 우아하게 살아나요.",
   },
   {
     productId: 203,
-    name: "플리츠 새틴 롱 원피스 EH2241",
+    name: "피그먼트 워시드 오버핏 티셔츠 EH2241",
     brandName: "에르모사",
     price: 145000,
     originalPrice: 207000,
-    imageUrl: "https://picsum.photos/seed/dress3/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20240328/4002805/4002805_17331895953907_big.jpg?w=1200",
     rating: 4.7,
     reviewCount: 208,
     reason: "기념일 분위기에 잘 맞는 우아한 실루엣이에요.",
   },
   {
     productId: 204,
-    name: "코튼 셔츠 원피스 CH1020",
+    name: "코튼 오버핏 반팔 티셔츠 CH1020",
     brandName: "데일리로브",
     price: 64000,
     originalPrice: 89000,
-    imageUrl: "https://picsum.photos/seed/dress4/500/500",
+    imageUrl:
+      "https://img.29cm.co.kr/item/202604/11f132e7cad3859a9ec501cbcc2e8a97.jpg?width=720&format=webp",
     rating: 4.4,
     reviewCount: 890,
-    reason: "데일리로 편하게 입기 좋은 기본 원피스예요.",
+    reason: "데일리로 편하게 입기 좋은 기본 티셔츠예요.",
   },
   {
     productId: 205,
-    name: "플로럴 랩 원피스 FL7788",
+    name: "드롭숄더 하프 슬리브 티셔츠 FL7788",
     brandName: "라인어디션",
     price: 108000,
     originalPrice: 168000,
-    imageUrl: "https://picsum.photos/seed/dress5/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/goods_img/20260505/6421311/6421311_17779600135524_big.jpg?w=1200",
     rating: 4.5,
     reviewCount: 447,
     reason: "화사한 패턴이 봄 나들이에 잘 어울려요.",
   },
   {
     productId: 206,
-    name: "도트 퍼프 원피스 DT3311",
+    name: "가먼트 다잉 포켓 티셔츠 DT3311",
     brandName: "쁘띠메종",
     price: 73000,
     originalPrice: 120000,
-    imageUrl: "https://picsum.photos/seed/dress6/500/500",
+    imageUrl:
+      "https://image.msscdn.net/thumbnails/images/prd_img/20260618/6694104/detail_6694104_17817540680127_big.jpg?w=1200",
     rating: 4.6,
     reviewCount: 356,
     reason: "레트로한 도트 패턴으로 사랑스러운 무드를 줘요.",
