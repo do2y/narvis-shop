@@ -128,7 +128,7 @@ function SelectBox({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}
-        className="h-11 w-full appearance-none rounded-xl border bg-background px-4 pr-10 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-11 w-full appearance-none rounded-sm border bg-background px-4 pr-10 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>

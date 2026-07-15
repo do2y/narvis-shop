@@ -67,7 +67,7 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
 
       <button
         type="button"
-        className="mt-3 inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border text-sm font-medium transition-colors hover:bg-muted"
+        className="mt-3 inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-sm border text-sm font-medium transition-colors hover:bg-muted"
       >
         <ShoppingCart className="size-4" />
         장바구니 담기

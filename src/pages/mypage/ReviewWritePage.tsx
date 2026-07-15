@@ -78,11 +78,11 @@ export default function ReviewWritePage() {
 
       {/* 대상 상품 요약 — 시딩 캐시 있으면 표시 */}
       {product && (
-        <div className="mt-5 flex gap-4 rounded-xl border bg-background p-4">
+        <div className="mt-5 flex gap-4 rounded-sm border bg-background p-4">
           <img
             src={product.imageUrl}
             alt=""
-            className="size-16 shrink-0 rounded-xl bg-muted object-cover"
+            className="size-16 shrink-0 rounded-sm bg-muted object-cover"
           />
           <div className="flex min-w-0 flex-col justify-center gap-1">
             <p className="text-xs text-muted-foreground">{product.brandName}</p>
@@ -120,7 +120,7 @@ export default function ReviewWritePage() {
             placeholder="상품은 어떠셨나요? 사이즈, 소재, 배송 등 솔직한 후기를 남겨주세요."
             aria-invalid={!!errors.content}
             className={cn(
-              "w-full resize-none rounded-xl border border-input bg-transparent px-3.5 py-3 text-sm outline-none transition-colors",
+              "w-full resize-none rounded-sm border border-input bg-transparent px-3.5 py-3 text-sm outline-none transition-colors",
               "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
               "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20",
             )}

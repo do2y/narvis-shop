@@ -7,7 +7,7 @@ function formatPrice(v: number): string {
 // 주문 상품 목록 — 이미지·브랜드·이름·선택옵션·수량·가격.
 export function OrderItems({ items }: { items: CheckoutItem[] }) {
   return (
-    <section className="rounded-xl border bg-background p-5 sm:p-6">
+    <section className="rounded-sm border bg-background p-5 sm:p-6">
       <h2 className="text-lg font-bold">주문 상품</h2>
       <ul className="mt-4 flex flex-col gap-5">
         {items.map((item, i) => {
@@ -19,7 +19,7 @@ export function OrderItems({ items }: { items: CheckoutItem[] }) {
               <img
                 src={product.imageUrl}
                 alt={product.name}
-                className="size-20 shrink-0 rounded-xl border object-cover"
+                className="size-20 shrink-0 rounded-sm border object-cover"
               />
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <p className="text-sm text-muted-foreground">

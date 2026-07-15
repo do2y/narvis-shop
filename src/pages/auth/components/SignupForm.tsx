@@ -60,7 +60,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           autoComplete="email"
           placeholder="name@example.com"
           aria-invalid={!!errors.email}
-          className="h-11 rounded-xl"
+          className="h-11 rounded-sm"
           {...register("email")}
         />
         {errors.email && (
@@ -76,7 +76,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           autoComplete="nickname"
           placeholder="홈화면에 표시될 이름"
           aria-invalid={!!errors.nickname}
-          className="h-11 rounded-xl"
+          className="h-11 rounded-sm"
           {...register("nickname")}
         />
         {errors.nickname && (
@@ -99,7 +99,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                   onClick={() => field.onChange(g.value)}
                   aria-pressed={field.value === g.value}
                   className={cn(
-                    "h-11 rounded-xl border text-sm font-medium transition-colors",
+                    "h-11 rounded-sm border text-sm font-medium transition-colors",
                     field.value === g.value
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-input bg-background hover:bg-muted",
@@ -123,7 +123,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           id="signup-birth"
           type="date"
           aria-invalid={!!errors.birthDate}
-          className="h-11 rounded-xl"
+          className="h-11 rounded-sm"
           {...register("birthDate")}
         />
         {errors.birthDate && (
@@ -141,7 +141,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             autoComplete="new-password"
             placeholder="8자 이상"
             aria-invalid={!!errors.password}
-            className="h-11 rounded-xl pr-11"
+            className="h-11 rounded-sm pr-11"
             {...register("password")}
           />
           <button
@@ -171,7 +171,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
           autoComplete="new-password"
           placeholder="••••••••"
           aria-invalid={!!errors.passwordConfirm}
-          className="h-11 rounded-xl"
+          className="h-11 rounded-sm"
           {...register("passwordConfirm")}
         />
         {errors.passwordConfirm && (

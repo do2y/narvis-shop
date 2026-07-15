@@ -11,7 +11,7 @@ function InquiriesSkeleton() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="flex items-center gap-3 rounded-xl border bg-background px-5 py-4"
+          className="flex items-center gap-3 rounded-sm border bg-background px-5 py-4"
         >
           <Skeleton className="h-7 w-16 rounded-full" />
           <Skeleton className="h-5 flex-1 max-w-56" />
@@ -33,7 +33,7 @@ export default function InquiriesPage() {
         {isPending ? (
           <InquiriesSkeleton />
         ) : isError ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm text-muted-foreground">
               문의 내역을 불러오지 못했어요.
             </p>
@@ -49,7 +49,7 @@ export default function InquiriesPage() {
             </button>
           </div>
         ) : inquiries.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm font-medium">문의 내역이 없어요</p>
             <p className="text-sm text-muted-foreground">
               문의 챗봇으로 궁금한 점을 남기면 여기에서 확인할 수 있어요.

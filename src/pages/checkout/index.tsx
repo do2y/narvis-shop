@@ -157,7 +157,7 @@ export default function CheckoutPage() {
             />
 
             {/* 동의 */}
-            <section className="rounded-xl border bg-background p-5 sm:p-6">
+            <section className="rounded-sm border bg-background p-5 sm:p-6">
               <button
                 type="button"
                 onClick={() => setAgreed((v) => !v)}

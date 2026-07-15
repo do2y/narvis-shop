@@ -19,7 +19,7 @@ export function CategoryGrid() {
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {isLoading &&
             Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
+              <Skeleton key={i} className="h-24 rounded-sm" />
             ))}
 
           {isError && (
@@ -34,7 +34,7 @@ export function CategoryGrid() {
               key={cat.categoryId}
               type="button"
               onClick={() => navigate(`/chat?categoryId=${cat.categoryId}`)}
-              className="flex flex-col items-center gap-2 rounded-xl border bg-background px-3 py-4 text-center shadow-sm transition-colors hover:bg-muted"
+              className="flex flex-col items-center gap-2 rounded-sm border bg-background px-3 py-4 text-center shadow-sm transition-colors hover:bg-muted"
             >
               <span className="text-2xl" aria-hidden>
                 {cat.emoji}

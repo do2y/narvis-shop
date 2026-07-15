@@ -35,7 +35,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
           autoComplete="email"
           placeholder="name@example.com"
           aria-invalid={!!errors.email}
-          className="h-11 rounded-xl"
+          className="h-11 rounded-sm"
           {...register("email")}
         />
         {errors.email && (
@@ -51,7 +51,7 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
           autoComplete="current-password"
           placeholder="••••••••"
           aria-invalid={!!errors.password}
-          className="h-11 rounded-xl"
+          className="h-11 rounded-sm"
           {...register("password")}
         />
         {errors.password && (

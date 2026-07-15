@@ -15,8 +15,8 @@ function CartSkeleton() {
   return (
     <div className="flex flex-col gap-4">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex gap-4 rounded-xl border bg-background p-4 sm:p-5">
-          <Skeleton className="size-20 rounded-xl sm:size-24" />
+        <div key={i} className="flex gap-4 rounded-sm border bg-background p-4 sm:p-5">
+          <Skeleton className="size-20 rounded-sm sm:size-24" />
           <div className="flex flex-1 flex-col gap-2">
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-4 w-48" />
@@ -102,7 +102,7 @@ export default function CartPage() {
             <CartSkeleton />
           </div>
         ) : isError ? (
-          <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed bg-background py-16 text-center">
+          <div className="mt-6 flex flex-col items-center gap-3 rounded-sm border border-dashed bg-background py-16 text-center">
             <p className="text-sm text-muted-foreground">
               장바구니를 불러오지 못했어요.
             </p>
@@ -118,7 +118,7 @@ export default function CartPage() {
             </button>
           </div>
         ) : items.length === 0 ? (
-          <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed bg-background py-16 text-center">
+          <div className="mt-6 flex flex-col items-center gap-3 rounded-sm border border-dashed bg-background py-16 text-center">
             <p className="text-sm font-medium">장바구니가 비어 있어요</p>
             <p className="text-sm text-muted-foreground">
               마음에 드는 상품을 담아보세요.
@@ -135,7 +135,7 @@ export default function CartPage() {
             {/* 좌: 목록 */}
             <div className="flex-1">
               {/* 전체 선택 / 선택 삭제 바 */}
-              <div className="flex items-center justify-between rounded-xl border bg-background px-5 py-4">
+              <div className="flex items-center justify-between rounded-sm border bg-background px-5 py-4">
                 <button
                   type="button"
                   onClick={toggleAll}

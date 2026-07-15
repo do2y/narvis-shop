@@ -18,7 +18,7 @@ export function CartSummary({
   const canOrder = selectedCount > 0;
 
   return (
-    <div className="rounded-xl border bg-background p-5 sm:p-6">
+    <div className="rounded-sm border bg-background p-5 sm:p-6">
       <h2 className="text-lg font-bold">주문 요약</h2>
 
       <dl className="mt-5 flex flex-col gap-3 text-sm">
@@ -40,7 +40,7 @@ export function CartSummary({
         </div>
       </dl>
 
-      <p className="mt-3 rounded-xl bg-muted px-3 py-2.5 text-xs text-muted-foreground">
+      <p className="mt-3 rounded-sm bg-muted px-3 py-2.5 text-xs text-muted-foreground">
         5만원 이상 구매 시 무료 배송
       </p>
 

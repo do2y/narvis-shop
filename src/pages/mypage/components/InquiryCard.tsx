@@ -30,7 +30,7 @@ export function InquiryCard({ inquiry }: { inquiry: Inquiry }) {
   );
 
   return (
-    <article className="rounded-xl border bg-background">
+    <article className="rounded-sm border bg-background">
       {expandable ? (
         <button
           type="button"
@@ -52,7 +52,7 @@ export function InquiryCard({ inquiry }: { inquiry: Inquiry }) {
               {inquiry.content}
             </p>
           </div>
-          <div className="rounded-xl bg-muted/50 px-4 py-3">
+          <div className="rounded-sm bg-muted/50 px-4 py-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-muted-foreground">답변</p>
               {inquiry.answeredAt && (
