@@ -22,7 +22,7 @@ export function MyPageNav() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex h-11 items-center whitespace-nowrap rounded-xl px-4 text-sm font-medium transition-colors",
+                  "flex h-11 items-center whitespace-nowrap rounded-sm px-4 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",

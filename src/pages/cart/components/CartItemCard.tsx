@@ -22,7 +22,7 @@ export function CartItemCard({
   const optionText = Object.values(item.options).join(" / ");
 
   return (
-    <article className="flex gap-4 rounded-xl border bg-background p-4 sm:p-5">
+    <article className="flex gap-4 rounded-sm border bg-background p-4 sm:p-5">
       {/* 선택 체크박스 */}
       <button
         type="button"
@@ -41,7 +41,7 @@ export function CartItemCard({
       <img
         src={item.imageUrl}
         alt=""
-        className="size-20 shrink-0 rounded-xl bg-muted object-cover sm:size-24"
+        className="size-20 shrink-0 rounded-sm bg-muted object-cover sm:size-24"
       />
 
       <div className="flex min-w-0 flex-1 flex-col">

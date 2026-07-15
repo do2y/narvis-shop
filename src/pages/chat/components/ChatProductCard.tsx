@@ -23,7 +23,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   };
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border bg-background">
+    <div className="group flex flex-col overflow-hidden rounded-sm border bg-background">
       <div className="relative aspect-square overflow-hidden bg-muted">
         <button
           type="button"

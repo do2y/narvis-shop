@@ -30,7 +30,7 @@ export function HowItWorks() {
           {STEPS.map((step) => (
             <div
               key={step.no}
-              className="rounded-xl border bg-background p-6 shadow-sm"
+              className="rounded-sm border bg-background p-6 shadow-sm"
             >
               <p className="text-4xl font-bold text-muted-foreground/40">
                 {step.no}

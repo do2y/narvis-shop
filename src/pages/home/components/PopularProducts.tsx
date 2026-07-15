@@ -24,7 +24,7 @@ export function PopularProducts() {
           {isLoading &&
             Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex flex-col gap-3">
-                <Skeleton className="aspect-[4/3] rounded-xl" />
+                <Skeleton className="aspect-[4/3] rounded-sm" />
                 <Skeleton className="h-4 w-3/4 rounded-full" />
                 <Skeleton className="h-4 w-1/2 rounded-full" />
               </div>

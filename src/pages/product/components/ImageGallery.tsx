@@ -14,7 +14,7 @@ export function ImageGallery({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted">
+      <div className="aspect-square w-full overflow-hidden rounded-sm bg-muted">
         {main && (
           <img src={main} alt={alt} className="size-full object-cover" />
         )}
@@ -30,7 +30,7 @@ export function ImageGallery({
               aria-label={`이미지 ${i + 1}`}
               aria-pressed={i === active}
               className={cn(
-                "aspect-square w-20 shrink-0 overflow-hidden rounded-xl border-2 transition-colors",
+                "aspect-square w-20 shrink-0 overflow-hidden rounded-sm border-2 transition-colors",
                 i === active ? "border-primary" : "border-transparent",
               )}
             >

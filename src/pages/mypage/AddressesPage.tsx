@@ -12,7 +12,7 @@ function AddressesSkeleton() {
   return (
     <div className="flex flex-col gap-4">
       {[0, 1].map((i) => (
-        <div key={i} className="rounded-xl border bg-background p-5">
+        <div key={i} className="rounded-sm border bg-background p-5">
           <div className="flex items-center justify-between">
             <Skeleton className="h-6 w-16" />
             <Skeleton className="h-5 w-12" />
@@ -67,7 +67,7 @@ export default function AddressesPage() {
         {isPending ? (
           <AddressesSkeleton />
         ) : isError ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm text-muted-foreground">
               배송지를 불러오지 못했어요.
             </p>
@@ -99,7 +99,7 @@ export default function AddressesPage() {
             <button
               type="button"
               onClick={openAdd}
-              className="flex h-14 items-center justify-center gap-1.5 rounded-xl border border-dashed text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              className="flex h-14 items-center justify-center gap-1.5 rounded-sm border border-dashed text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
             >
               <Plus className="size-4" />
               배송지 추가

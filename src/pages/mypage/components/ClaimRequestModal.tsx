@@ -116,14 +116,14 @@ export function ClaimRequestModal({
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 flex-1 rounded-xl"
+                className="h-11 flex-1 rounded-sm"
                 onClick={() => onOpenChange(false)}
               >
                 닫기
               </Button>
               <Button
                 type="button"
-                className="h-11 flex-1 rounded-xl"
+                className="h-11 flex-1 rounded-sm"
                 onClick={() => {
                   onOpenChange(false);
                   navigate("/mypage/claims");
@@ -153,7 +153,7 @@ export function ClaimRequestModal({
             <Label htmlFor="claim-product">신청 상품</Label>
             {single ? (
               <>
-                <p className="rounded-xl border bg-muted/40 px-4 py-3 text-sm">
+                <p className="rounded-sm border bg-muted/40 px-4 py-3 text-sm">
                   {order.items[0].name}
                 </p>
                 <input
@@ -167,7 +167,7 @@ export function ClaimRequestModal({
                 id="claim-product"
                 aria-invalid={!!errors.productId}
                 className={cn(
-                  "h-11 rounded-xl border bg-background px-3 text-sm",
+                  "h-11 rounded-sm border bg-background px-3 text-sm",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 )}
                 {...register("productId")}
@@ -194,7 +194,7 @@ export function ClaimRequestModal({
               aria-invalid={!!errors.reason}
               defaultValue=""
               className={cn(
-                "h-11 rounded-xl border bg-background px-3 text-sm",
+                "h-11 rounded-sm border bg-background px-3 text-sm",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               )}
               {...register("reason")}
@@ -222,7 +222,7 @@ export function ClaimRequestModal({
               placeholder="자세한 사유를 남겨주시면 처리에 도움이 돼요."
               aria-invalid={!!errors.detail}
               className={cn(
-                "resize-none rounded-xl border bg-background px-3 py-2.5 text-sm",
+                "resize-none rounded-sm border bg-background px-3 py-2.5 text-sm",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               )}
               {...register("detail")}
@@ -243,7 +243,7 @@ export function ClaimRequestModal({
             <Button
               type="button"
               variant="outline"
-              className="h-11 flex-1 rounded-xl"
+              className="h-11 flex-1 rounded-sm"
               onClick={() => onOpenChange(false)}
             >
               취소
@@ -251,7 +251,7 @@ export function ClaimRequestModal({
             <Button
               type="submit"
               disabled={isPending}
-              className="h-11 flex-1 rounded-xl"
+              className="h-11 flex-1 rounded-sm"
             >
               {isPending ? "신청 중…" : "신청하기"}
             </Button>

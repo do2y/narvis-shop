@@ -23,7 +23,7 @@ export function CartRecommendations() {
   };
 
   return (
-    <section className="mt-6 rounded-xl border bg-background p-5 sm:p-6">
+    <section className="mt-6 rounded-sm border bg-background p-5 sm:p-6">
       <h2 className="text-base font-bold">함께 구매하면 좋은 상품</h2>
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {items.map((item) => (
@@ -34,7 +34,7 @@ export function CartRecommendations() {
             aria-label={`${item.name} 상세 보기`}
             className="group flex flex-col text-left"
           >
-            <div className="aspect-square overflow-hidden rounded-xl bg-muted">
+            <div className="aspect-square overflow-hidden rounded-sm bg-muted">
               <img
                 src={item.imageUrl}
                 alt={item.name}

@@ -24,7 +24,7 @@ export function OrderSummary({
   const finalTotal = itemsTotal - discount;
 
   return (
-    <div className="rounded-xl border bg-background p-5 sm:p-6 lg:sticky lg:top-20">
+    <div className="rounded-sm border bg-background p-5 sm:p-6 lg:sticky lg:top-20">
       <h2 className="text-lg font-bold">결제 금액</h2>
 
       <dl className="mt-4 flex flex-col gap-2.5 text-sm">
@@ -52,7 +52,7 @@ export function OrderSummary({
       {error && (
         <div
           role="alert"
-          className="mt-5 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+          className="mt-5 flex items-start gap-2 rounded-sm border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <span>{error}</span>
@@ -60,7 +60,7 @@ export function OrderSummary({
       )}
 
       <Button
-        className="mt-5 h-12 w-full rounded-xl text-base"
+        className="mt-5 h-12 w-full rounded-sm text-base"
         disabled={!canSubmit || paying}
         onClick={onSubmit}
       >

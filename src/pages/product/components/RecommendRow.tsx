@@ -37,9 +37,9 @@ export function RecommendRow({
           {items.map((item) => (
             <div
               key={item.productId}
-              className="flex gap-3 rounded-xl border bg-background p-4"
+              className="flex gap-3 rounded-sm border bg-background p-4"
             >
-              <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+              <div className="size-16 shrink-0 overflow-hidden rounded-sm bg-muted">
                 <img
                   src={item.imageUrl}
                   alt={item.name}
@@ -66,7 +66,7 @@ export function RecommendRow({
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {items.map((item) => (
             <div key={item.productId} className="flex flex-col gap-2">
-              <div className="aspect-square overflow-hidden rounded-xl bg-muted">
+              <div className="aspect-square overflow-hidden rounded-sm bg-muted">
                 <img
                   src={item.imageUrl}
                   alt={item.name}

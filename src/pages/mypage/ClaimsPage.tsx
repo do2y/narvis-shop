@@ -9,7 +9,7 @@ function ClaimsSkeleton() {
   return (
     <div className="flex flex-col gap-4">
       {[0, 1].map((i) => (
-        <div key={i} className="rounded-xl border bg-background px-5 py-4">
+        <div key={i} className="rounded-sm border bg-background px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
               <Skeleton className="h-7 w-16 rounded-full" />
@@ -36,7 +36,7 @@ export default function ClaimsPage() {
         {isPending ? (
           <ClaimsSkeleton />
         ) : isError ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm text-muted-foreground">
               신청 내역을 불러오지 못했어요.
             </p>
@@ -52,7 +52,7 @@ export default function ClaimsPage() {
             </button>
           </div>
         ) : claims.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm font-medium">
               취소·반품·교환 내역이 없어요
             </p>

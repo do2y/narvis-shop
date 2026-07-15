@@ -14,7 +14,7 @@ export function AddressCard({
   busy?: boolean;
 }) {
   return (
-    <article className="rounded-xl border bg-background p-5">
+    <article className="rounded-sm border bg-background p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="font-semibold">{address.label}</span>

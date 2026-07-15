@@ -27,7 +27,7 @@ export function RecentProductCard({ product }: { product: RecentProduct }) {
       aria-label={`${product.name} 상세 보기`}
       className="group flex flex-col text-left"
     >
-      <div className="aspect-square overflow-hidden rounded-xl bg-muted">
+      <div className="aspect-square overflow-hidden rounded-sm bg-muted">
         <img
           src={product.imageUrl}
           alt={product.name}

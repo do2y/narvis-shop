@@ -15,7 +15,7 @@ export default function MyPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AppHeader />
-      <main className="mx-auto w-full max-w-5xl flex-1 p-4 pb-20 sm:p-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 p-4 pb-20 sm:p-6">
         <ProfileHeader />
 
         <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:gap-10">

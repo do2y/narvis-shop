@@ -74,7 +74,7 @@ export function AddressFormModal({
               id="addr-label"
               placeholder="집, 회사 등"
               aria-invalid={!!errors.label}
-              className="h-11 rounded-xl"
+              className="h-11 rounded-sm"
               {...register("label")}
             />
           </Field>
@@ -88,7 +88,7 @@ export function AddressFormModal({
               id="addr-recipient"
               autoComplete="name"
               aria-invalid={!!errors.recipient}
-              className="h-11 rounded-xl"
+              className="h-11 rounded-sm"
               {...register("recipient")}
             />
           </Field>
@@ -101,7 +101,7 @@ export function AddressFormModal({
               autoComplete="tel"
               placeholder="010-1234-5678"
               aria-invalid={!!errors.phone}
-              className="h-11 rounded-xl"
+              className="h-11 rounded-sm"
               {...register("phone")}
             />
           </Field>
@@ -112,7 +112,7 @@ export function AddressFormModal({
               id="addr-address"
               placeholder="도로명 주소"
               aria-invalid={!!errors.address}
-              className="h-11 rounded-xl"
+              className="h-11 rounded-sm"
               {...register("address")}
             />
           </Field>
@@ -121,7 +121,7 @@ export function AddressFormModal({
             <Input
               id="addr-detail"
               placeholder="동·호수 등 (선택)"
-              className="h-11 rounded-xl"
+              className="h-11 rounded-sm"
               {...register("detail")}
             />
           </Field>
@@ -130,12 +130,12 @@ export function AddressFormModal({
             <Button
               type="button"
               variant="outline"
-              className="h-11 flex-1 rounded-xl"
+              className="h-11 flex-1 rounded-sm"
               onClick={() => handleOpenChange(false)}
             >
               취소
             </Button>
-            <Button type="submit" className="h-11 flex-1 rounded-xl">
+            <Button type="submit" className="h-11 flex-1 rounded-sm">
               저장
             </Button>
           </div>

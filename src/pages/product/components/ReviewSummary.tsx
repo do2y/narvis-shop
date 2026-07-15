@@ -36,7 +36,7 @@ export function ReviewSummary({
       </div>
 
       {/* 평균 + 분포 바 */}
-      <div className="flex flex-col gap-6 rounded-xl bg-muted/40 p-6 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-6 rounded-sm bg-muted/40 p-6 sm:flex-row sm:items-center">
         <div className="flex shrink-0 flex-col items-center gap-1 sm:w-32">
           <p className="text-4xl font-bold">{average.toFixed(1)}</p>
           <Stars value={average} />

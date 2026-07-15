@@ -9,7 +9,7 @@ export function ProductCard({ product }: { product: PopularProduct }) {
     // TODO: 클릭 시 상품 상세로 이동 + 카드 데이터를 setQueryData(['products', id])로 시딩
     <button
       type="button"
-      className="group flex flex-col overflow-hidden rounded-xl border bg-background text-left shadow-sm transition-colors hover:bg-muted/40"
+      className="group flex flex-col overflow-hidden rounded-sm border bg-background text-left shadow-sm transition-colors hover:bg-muted/40"
     >
       <div className="aspect-[4/3] overflow-hidden bg-muted">
         <img

@@ -3,7 +3,7 @@ export function SpecTable({ rows }: { rows: { label: string; value: string }[] }
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-lg font-bold">상품 정보</h2>
-      <div className="overflow-hidden rounded-xl border">
+      <div className="overflow-hidden rounded-sm border">
         <table className="w-full text-sm">
           <tbody className="divide-y">
             {rows.map((row) => (

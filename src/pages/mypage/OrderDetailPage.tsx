@@ -48,7 +48,7 @@ function DetailItem({
         <img
           src={item.imageUrl}
           alt=""
-          className="size-20 rounded-xl bg-muted object-cover"
+          className="size-20 rounded-sm bg-muted object-cover"
         />
       </Link>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -85,7 +85,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border bg-background px-5 py-4">
+    <section className="rounded-sm border bg-background px-5 py-4">
       <h3 className="text-sm font-bold">{title}</h3>
       <div className="mt-3">{children}</div>
     </section>
@@ -95,9 +95,9 @@ function Section({
 function DetailSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <Skeleton className="h-24 rounded-xl" />
-      <Skeleton className="h-32 rounded-xl" />
-      <Skeleton className="h-40 rounded-xl" />
+      <Skeleton className="h-24 rounded-sm" />
+      <Skeleton className="h-32 rounded-sm" />
+      <Skeleton className="h-40 rounded-sm" />
     </div>
   );
 }
@@ -140,7 +140,7 @@ export default function OrderDetailPage() {
         {isPending ? (
           <DetailSkeleton />
         ) : isError ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm text-muted-foreground">
               주문 정보를 불러오지 못했어요.
             </p>
@@ -158,7 +158,7 @@ export default function OrderDetailPage() {
         ) : (
           <div className="flex flex-col gap-4">
             {/* 주문 요약 */}
-            <section className="rounded-xl border bg-background px-5 py-4">
+            <section className="rounded-sm border bg-background px-5 py-4">
               <div className="flex items-center gap-3">
                 <OrderStatusBadge status={order.status} />
                 <span className="text-sm text-muted-foreground">

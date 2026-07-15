@@ -17,7 +17,7 @@ export function PaymentSection({
   const isCard = method === "신용 · 체크카드";
 
   return (
-    <section className="rounded-xl border bg-background p-5 sm:p-6">
+    <section className="rounded-sm border bg-background p-5 sm:p-6">
       <h2 className="text-lg font-bold">결제 수단</h2>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -50,7 +50,7 @@ export function PaymentSection({
               placeholder="0000 0000 0000 0000"
               value={cardNumber}
               onChange={(e) => onCardNumberChange(e.target.value)}
-              className="h-11 w-full rounded-xl border px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-11 w-full rounded-sm border px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             {/* 데모 안내 — 실패 플로우를 테스트할 수 있도록 실패 카드 노출 */}
             <p className="text-xs text-muted-foreground">
@@ -71,7 +71,7 @@ export function PaymentSection({
               <input
                 inputMode="numeric"
                 placeholder="MM/YY"
-                className="h-11 w-full rounded-xl border px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-11 w-full rounded-sm border px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
             <div className="flex flex-1 flex-col gap-2">
@@ -79,7 +79,7 @@ export function PaymentSection({
               <input
                 inputMode="numeric"
                 placeholder="000"
-                className="h-11 w-full rounded-xl border px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-11 w-full rounded-sm border px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
           </div>

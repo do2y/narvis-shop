@@ -3,7 +3,7 @@ import { ClaimStatusBadge, ClaimTypeBadge } from "./ClaimBadges";
 
 export function ClaimCard({ claim }: { claim: Claim }) {
   return (
-    <article className="rounded-xl border bg-background px-5 py-4">
+    <article className="rounded-sm border bg-background px-5 py-4">
       {/* 상단: 상태·종류 뱃지 / 우측 신청일 */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">

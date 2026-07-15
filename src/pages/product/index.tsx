@@ -42,7 +42,7 @@ export default function ProductPage() {
         <AppHeader />
         <main className="mx-auto w-full max-w-5xl p-4 sm:p-6">
           <div className="flex flex-col gap-8 lg:flex-row">
-            <Skeleton className="aspect-square w-full rounded-xl lg:w-1/2" />
+            <Skeleton className="aspect-square w-full rounded-sm lg:w-1/2" />
             <div className="flex flex-1 flex-col gap-3">
               <Skeleton className="h-4 w-1/4 rounded-full" />
               <Skeleton className="h-7 w-3/4 rounded-full" />
@@ -182,7 +182,7 @@ export default function ProductPage() {
         />
 
         {/* 브랜드 배너 */}
-        <section className="flex items-center justify-between rounded-xl border bg-muted/30 p-5">
+        <section className="flex items-center justify-between rounded-sm border bg-muted/30 p-5">
           <div className="flex items-center gap-3">
             <span className="flex size-11 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
               {product.brandName.slice(0, 1)}

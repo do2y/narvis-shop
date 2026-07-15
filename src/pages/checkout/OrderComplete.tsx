@@ -57,7 +57,7 @@ export default function OrderCompletePage() {
           <OrderItems items={order.items} />
 
           {/* 배송지 */}
-          <section className="rounded-xl border bg-background p-5 sm:p-6">
+          <section className="rounded-sm border bg-background p-5 sm:p-6">
             <h2 className="text-lg font-bold">배송지</h2>
             <div className="mt-4 flex flex-col gap-1 text-sm">
               <p className="font-semibold">
@@ -69,7 +69,7 @@ export default function OrderCompletePage() {
           </section>
 
           {/* 결제 정보 */}
-          <section className="rounded-xl border bg-background p-5 sm:p-6">
+          <section className="rounded-sm border bg-background p-5 sm:p-6">
             <h2 className="text-lg font-bold">결제 정보</h2>
             <dl className="mt-4 flex flex-col gap-2.5 text-sm">
               <div className="flex justify-between">
@@ -105,7 +105,7 @@ export default function OrderCompletePage() {
               to="/mypage/orders"
               className={cn(
                 buttonVariants(),
-                "h-12 flex-1 rounded-xl text-base",
+                "h-12 flex-1 rounded-sm text-base",
               )}
             >
               주문 내역 보기
@@ -114,7 +114,7 @@ export default function OrderCompletePage() {
               to="/"
               className={cn(
                 buttonVariants({ variant: "outline" }),
-                "h-12 flex-1 rounded-xl text-base",
+                "h-12 flex-1 rounded-sm text-base",
               )}
             >
               쇼핑 계속하기

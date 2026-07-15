@@ -60,7 +60,7 @@ export function ProductPanel({ groups, isStreaming }: ProductPanelProps) {
 // 실제 상품 카드와 같은 레이아웃(정사각 이미지 + 텍스트 줄)의 스켈레톤
 function ProductCardSkeleton() {
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border">
+    <div className="flex flex-col overflow-hidden rounded-sm border">
       <Skeleton className="aspect-square rounded-none" />
       <div className="flex flex-col gap-2 p-4">
         <Skeleton className="h-3 w-1/3 rounded-full" />

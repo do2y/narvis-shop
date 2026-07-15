@@ -9,13 +9,13 @@ function OrdersSkeleton() {
   return (
     <div className="flex flex-col gap-5">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="rounded-xl border bg-background">
+        <div key={i} className="rounded-sm border bg-background">
           <div className="flex items-center justify-between border-b px-5 py-4">
             <Skeleton className="h-7 w-40" />
             <Skeleton className="h-5 w-16" />
           </div>
           <div className="flex gap-4 px-5 py-4">
-            <Skeleton className="size-16 rounded-xl sm:size-20" />
+            <Skeleton className="size-16 rounded-sm sm:size-20" />
             <div className="flex flex-1 flex-col gap-2">
               <Skeleton className="h-3 w-16" />
               <Skeleton className="h-4 w-48" />
@@ -39,7 +39,7 @@ export default function OrdersPage() {
         {isPending ? (
           <OrdersSkeleton />
         ) : isError ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm text-muted-foreground">
               주문 내역을 불러오지 못했어요.
             </p>
@@ -55,7 +55,7 @@ export default function OrdersPage() {
             </button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed py-16 text-center">
             <p className="text-sm font-medium">아직 주문 내역이 없어요</p>
             <p className="text-sm text-muted-foreground">
               마음에 드는 상품을 찾아 첫 주문을 시작해보세요.
