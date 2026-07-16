@@ -9,12 +9,14 @@ import { useChatStore } from "./store";
 import { useChat } from "./useChat";
 import { MessageList } from "./components/MessageList";
 import { ChatInput } from "./components/ChatInput";
+import { ConditionChips } from "./components/ConditionChips";
 import { ProductPanel } from "./components/ProductPanel";
 
 export default function ChatPage() {
   const [params, setParams] = useSearchParams();
-  const { send, retry, startNewChat, isStreaming } = useChat();
-  const { messages, productGroups, setProductGroups } = useChatStore();
+  const { send, retry, removeCondition, startNewChat, isStreaming } = useChat();
+  const { messages, productGroups, setProductGroups, conditions } =
+    useChatStore();
 
   const q = params.get("q");
   const categoryIdParam = params.get("categoryId");
@@ -67,7 +69,7 @@ export default function ChatPage() {
           <button
             type="button"
             onClick={startNewChat}
-            className="flex items-center gap-1 border-l pl-4 text-sm font-medium text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 border-l pl-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground active:scale-95"
           >
             <Plus className="size-4" />새 대화
           </button>
@@ -85,7 +87,13 @@ export default function ChatPage() {
             />
           </div>
 
-          <div className="border-t p-4">
+          <div className="flex flex-col gap-3 border-t p-4">
+            {/* AI가 추출한 조건 칩 — X 제거 시 "[조건 제거] …" 후속 메시지 전송 */}
+            <ConditionChips
+              conditions={conditions}
+              onRemove={removeCondition}
+              disabled={isStreaming}
+            />
             <ChatInput onSend={send} disabled={isStreaming} />
           </div>
         </div>

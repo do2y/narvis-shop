@@ -19,7 +19,7 @@ export function ConditionChips({
       {conditions.map((c) => (
         <span
           key={c}
-          className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-sm"
+          className="flex animate-in items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-sm duration-200 fade-in zoom-in-95"
         >
           {c}
           <button
@@ -27,7 +27,7 @@ export function ConditionChips({
             onClick={() => onRemove(c)}
             disabled={disabled}
             aria-label={`${c} 조건 제거`}
-            className="text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            className="text-muted-foreground transition-all hover:text-foreground active:scale-90 disabled:opacity-50"
           >
             <X className="size-3.5" />
           </button>
