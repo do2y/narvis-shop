@@ -14,7 +14,7 @@ import { ProductPanel } from "./components/ProductPanel";
 
 export default function ChatPage() {
   const [params, setParams] = useSearchParams();
-  const { send, retry, removeCondition, startNewChat, isStreaming } = useChat();
+  const { send, retry, startNewChat, isStreaming } = useChat();
   const { messages, productGroups, setProductGroups, conditions } =
     useChatStore();
 
@@ -88,12 +88,8 @@ export default function ChatPage() {
           </div>
 
           <div className="flex flex-col gap-3 border-t p-4">
-            {/* AI가 추출한 조건 칩 — X 제거 시 "[조건 제거] …" 후속 메시지 전송 */}
-            <ConditionChips
-              conditions={conditions}
-              onRemove={removeCondition}
-              disabled={isStreaming}
-            />
+            {/* AI가 추출한 조건 표시 (표시 전용). 조건 완화는 suggestions가 담당 */}
+            <ConditionChips conditions={conditions} />
             <ChatInput onSend={send} disabled={isStreaming} />
           </div>
         </div>

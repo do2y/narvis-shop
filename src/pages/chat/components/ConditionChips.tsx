@@ -1,17 +1,9 @@
-import { X } from "lucide-react";
-
 interface ConditionChipsProps {
   conditions: string[];
-  onRemove: (name: string) => void;
-  disabled?: boolean;
 }
 
-// AI가 추출한 조건 칩 — X 클릭 시 후속 메시지로 제거 요청 (별도 API 없음, CLAUDE.md)
-export function ConditionChips({
-  conditions,
-  onRemove,
-  disabled,
-}: ConditionChipsProps) {
+// AI가 추출한 조건을 표시. 조건 완화는 suggestions 이벤트가 담당하므로 여기선 표시 전용.
+export function ConditionChips({ conditions }: ConditionChipsProps) {
   if (conditions.length === 0) return null;
 
   return (
@@ -19,18 +11,9 @@ export function ConditionChips({
       {conditions.map((c) => (
         <span
           key={c}
-          className="flex animate-in items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-sm duration-200 fade-in zoom-in-95"
+          className="animate-in rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground duration-200 fade-in zoom-in-95"
         >
           {c}
-          <button
-            type="button"
-            onClick={() => onRemove(c)}
-            disabled={disabled}
-            aria-label={`${c} 조건 제거`}
-            className="text-muted-foreground transition-all hover:text-foreground active:scale-90 disabled:opacity-50"
-          >
-            <X className="size-3.5" />
-          </button>
         </span>
       ))}
     </div>
