@@ -10,11 +10,9 @@ interface ProductPanelProps {
 
 const GRID = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3";
 
-// 우측 상품 패널 — 상황 추천은 카테고리별 그룹으로 묶어 표시
 export function ProductPanel({ groups, isStreaming }: ProductPanelProps) {
   const isEmpty = groups.length === 0;
 
-  // 상품 찾는 중(스트리밍 + 아직 결과 없음) → 스켈레톤 카드로 로딩 표현
   if (isEmpty && isStreaming) {
     return (
       <div className="p-4 sm:p-6">
@@ -27,12 +25,11 @@ export function ProductPanel({ groups, isStreaming }: ProductPanelProps) {
     );
   }
 
-  // 대화 시작 전 빈 상태
   if (isEmpty) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+      <div className="flex h-full animate-in flex-col items-center justify-center gap-3 p-8 text-center duration-500 fade-in">
         <span className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <MessagesSquare className="size-7" />
+          <MessagesSquare className="size-7" strokeWidth={1.5} />
         </span>
         <p className="text-sm text-muted-foreground">
           대화를 시작하면 추천 상품이 여기에 표시돼요.
@@ -44,8 +41,11 @@ export function ProductPanel({ groups, isStreaming }: ProductPanelProps) {
   return (
     <div className="flex flex-col gap-8 p-4 sm:p-6">
       {groups.map((group) => (
-        <section key={group.title} className="flex flex-col gap-4">
-          <h2 className="text-lg font-bold">{group.title}</h2>
+        <section
+          key={group.title}
+          className="flex animate-in flex-col gap-4 duration-300 fade-in slide-in-from-bottom-2"
+        >
+          <h2 className="text-lg font-bold tracking-tight">{group.title}</h2>
           <div className={GRID}>
             {group.items.map((product) => (
               <ChatProductCard key={product.productId} product={product} />
@@ -57,7 +57,6 @@ export function ProductPanel({ groups, isStreaming }: ProductPanelProps) {
   );
 }
 
-// 실제 상품 카드와 같은 레이아웃(정사각 이미지 + 텍스트 줄)의 스켈레톤
 function ProductCardSkeleton() {
   return (
     <div className="flex flex-col overflow-hidden rounded-sm border">

@@ -1,9 +1,24 @@
+import { cn } from "@/lib/utils";
 import type { ChatMessage } from "../store";
 
 interface MessageListProps {
   messages: ChatMessage[];
   isStreaming: boolean;
   onRetry: () => void;
+}
+
+function TypingIndicator() {
+  return (
+    <span className="flex items-center gap-1 py-1" aria-label="입력 중">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+          style={{ animationDelay: `${i * 150}ms` }}
+        />
+      ))}
+    </span>
+  );
 }
 
 export function MessageList({
@@ -23,34 +38,40 @@ export function MessageList({
           isStreaming && isLast && msg.role === "assistant" && !msg.text;
 
         return msg.role === "user" ? (
-          <div key={msg.id} className="flex items-start justify-end gap-2">
-            <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+          <div
+            key={msg.id}
+            className="flex animate-in items-start justify-end gap-2 duration-300 fade-in slide-in-from-bottom-2 slide-in-from-right-2"
+          >
+            <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm leading-relaxed tracking-tight text-primary-foreground">
               {msg.text}
             </span>
             <Avatar />
           </div>
         ) : (
-          <div key={msg.id} className="flex items-start gap-2">
+          <div
+            key={msg.id}
+            className="flex animate-in items-start gap-2 duration-300 fade-in slide-in-from-bottom-2 slide-in-from-left-2"
+          >
             <Avatar />
             {msg.error ? (
-              // 응답 실패 — 말풍선 안에서 에러 + 재시도 (자동 재시도 금지, CLAUDE.md)
               <div className="flex max-w-[80%] flex-col items-start gap-2 rounded-2xl rounded-tl-sm bg-destructive/10 px-4 py-2.5">
                 <span className="text-sm text-destructive">{msg.error}</span>
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive hover:bg-destructive/10"
+                  className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive transition-all hover:bg-destructive/10 active:scale-95"
                 >
                   다시 시도
                 </button>
               </div>
             ) : (
-              <span className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm">
-                {showTyping ? (
-                  <span className="text-muted-foreground">입력 중…</span>
-                ) : (
-                  msg.text
+              <span
+                className={cn(
+                  "max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed",
+                  showTyping && "py-3",
                 )}
+              >
+                {showTyping ? <TypingIndicator /> : msg.text}
               </span>
             )}
           </div>

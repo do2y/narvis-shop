@@ -23,7 +23,7 @@ export function ChatInput({ onSend, disabled, placeholder }: ChatInputProps) {
         e.preventDefault();
         submit();
       }}
-      className="flex items-center gap-2 rounded-full border bg-background px-4 py-2 shadow-sm"
+      className="flex items-center gap-2 rounded-full border bg-background/80 px-4 py-2 shadow-sm backdrop-blur transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-brand/40"
     >
       <input
         type="text"
@@ -36,7 +36,7 @@ export function ChatInput({ onSend, disabled, placeholder }: ChatInputProps) {
         type="submit"
         disabled={disabled || !value.trim()}
         aria-label="전송"
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground transition-all duration-150 hover:opacity-90 active:scale-90 disabled:scale-100 disabled:opacity-40"
       >
         <ArrowUp className="size-4" />
       </button>

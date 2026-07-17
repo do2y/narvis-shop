@@ -9,12 +9,15 @@ import { useChatStore } from "./store";
 import { useChat } from "./useChat";
 import { MessageList } from "./components/MessageList";
 import { ChatInput } from "./components/ChatInput";
+import { ConditionChips } from "./components/ConditionChips";
 import { ProductPanel } from "./components/ProductPanel";
 
 export default function ChatPage() {
   const [params, setParams] = useSearchParams();
   const { send, retry, startNewChat, isStreaming } = useChat();
-  const { messages, productGroups, setProductGroups } = useChatStore();
+  const { messages, productGroups, setProductGroups, conditions } =
+    useChatStore();
+  const hasProducts = productGroups.length > 0;
 
   const q = params.get("q");
   const categoryIdParam = params.get("categoryId");
@@ -36,12 +39,20 @@ export default function ChatPage() {
     ? `${categoryName} 인기 상품`
     : "지금 인기 상품";
 
-  // 대화 시작 전(메시지 없음)에는 인기상품을 초기 표시
+  // 대화 시작 전(메시지 없음)에는 인기상품을 표시.
+  // hasProducts에 의존해야 "새 대화"로 패널이 비워졌을 때도 다시 시딩된다
+  // (messages.length는 새 대화 전후 모두 0이라 deps가 변하지 않음).
   useEffect(() => {
-    if (messages.length === 0 && popularCards && popularCards.length > 0) {
+    if (messages.length === 0 && !hasProducts && popularCards?.length) {
       setProductGroups([{ title: popularTitle, items: popularCards }]);
     }
-  }, [messages.length, popularCards, popularTitle, setProductGroups]);
+  }, [
+    messages.length,
+    hasProducts,
+    popularCards,
+    popularTitle,
+    setProductGroups,
+  ]);
 
   // 홈에서 넘어온 첫 메시지(?q=)는 "새 질문" → 기존 대화 초기화 후 시작.
   useEffect(() => {
@@ -67,7 +78,7 @@ export default function ChatPage() {
           <button
             type="button"
             onClick={startNewChat}
-            className="flex items-center gap-1 border-l pl-4 text-sm font-medium text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 border-l pl-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground active:scale-95"
           >
             <Plus className="size-4" />새 대화
           </button>
@@ -85,7 +96,9 @@ export default function ChatPage() {
             />
           </div>
 
-          <div className="border-t p-4">
+          <div className="flex flex-col gap-3 border-t p-4">
+            {/* AI가 추출한 조건 표시 (표시 전용). 조건 완화는 suggestions가 담당 */}
+            <ConditionChips conditions={conditions} />
             <ChatInput onSend={send} disabled={isStreaming} />
           </div>
         </div>

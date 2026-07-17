@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// 반품·교환 신청 폼 — 사유(select) + 상세 설명(선택).
+// 반품 신청 폼 — 사유(select) + 상세 설명(선택).
 // 사유 목록은 신청 종류(claimType)에 따라 UI에서 주입하되, 값 자체는 자유 문자열.
 export const claimRequestSchema = z.object({
   productId: z.coerce

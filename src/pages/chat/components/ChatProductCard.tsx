@@ -10,20 +10,18 @@ function formatPrice(v: number): string {
 }
 
 export function ChatProductCard({ product }: { product: ProductCard }) {
-  // 찜 상태는 UI만(찜 API 연동은 별도). CLAUDE.md상 찜은 찜 API 직접 호출 예정
   const [wished, setWished] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const hasDiscount = product.originalPrice > product.price;
 
-  // 캐시 승계: 카드 데이터를 상세 캐시에 시딩해 상세 진입 시 즉시 렌더(부족분만 백그라운드 페칭)
   const goToDetail = () => {
     queryClient.setQueryData(["products", product.productId], product);
     navigate(`/products/${product.productId}`);
   };
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-sm border bg-background">
+    <div className="group flex flex-col overflow-hidden rounded-sm border bg-background transition-shadow duration-200 hover:shadow-md">
       <div className="relative aspect-square overflow-hidden bg-muted">
         <button
           type="button"
@@ -43,12 +41,14 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           onClick={() => setWished((w) => !w)}
           aria-label={wished ? "찜 해제" : "찜하기"}
           aria-pressed={wished}
-          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-colors hover:bg-background"
+          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90"
         >
           <Heart
             className={cn(
-              "size-5",
-              wished ? "fill-red-500 text-red-500" : "text-muted-foreground",
+              "size-5 transition-transform",
+              wished
+                ? "scale-110 fill-red-500 text-red-500"
+                : "text-muted-foreground",
             )}
           />
         </button>
@@ -87,7 +87,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           <button
             type="button"
             aria-label="장바구니에 담기"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90"
           >
             <ShoppingCart className="size-4" />
           </button>

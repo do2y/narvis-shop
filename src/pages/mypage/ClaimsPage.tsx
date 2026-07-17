@@ -29,7 +29,7 @@ export default function ClaimsPage() {
 
   return (
     <div>
-      <PageTitle>취소·반품·교환</PageTitle>
+      <PageTitle>취소·반품</PageTitle>
 
       <div className="mt-5">
         {isPending ? (
@@ -42,8 +42,8 @@ export default function ClaimsPage() {
         ) : claims.length === 0 ? (
           <EmptyState
             icon={RefreshCcw}
-            title="취소·반품·교환 내역이 없어요"
-            description="주문 내역에서 취소나 반품·교환을 신청할 수 있어요."
+            title="취소·반품 내역이 없어요"
+            description="주문 내역에서 취소나 반품을 신청할 수 있어요."
             actionLabel="주문 내역 보기"
             actionTo="/mypage/orders"
           />

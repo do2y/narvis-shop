@@ -50,7 +50,7 @@ export default function ReviewWritePage() {
     mutate({ orderId, productId, ...values });
   };
 
-  // 후기 등록 완료 — 피드백 화면. 반품·교환 완료 화면과 동일 톤.
+  // 후기 등록 완료 — 피드백 화면. 반품 완료 화면과 동일 톤.
   if (isSuccess) {
     return (
       <div className="flex flex-col items-center py-10 text-center sm:py-16">

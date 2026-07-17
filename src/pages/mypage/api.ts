@@ -47,7 +47,7 @@ export async function fetchClaims(): Promise<Claim[]> {
   return data.claims;
 }
 
-// 반품·교환 신청 접수 — 성공 시 훅에서 claims 캐시 무효화.
+// 반품 신청 접수 — 성공 시 훅에서 claims 캐시 무효화.
 export async function createClaim(body: CreateClaimRequest): Promise<void> {
   await api.post("/api/mypage/claims", body);
 }

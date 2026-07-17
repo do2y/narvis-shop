@@ -13,7 +13,6 @@ const STATUS_META: Record<ClaimStatus, { label: string; className: string }> = {
 const TYPE_LABEL: Record<ClaimType, string> = {
   CANCEL: "취소",
   RETURN: "환불",
-  EXCHANGE: "교환",
 };
 
 export function ClaimStatusBadge({ status }: { status: ClaimStatus }) {

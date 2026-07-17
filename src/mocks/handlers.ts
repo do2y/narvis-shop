@@ -307,13 +307,13 @@ export const handlers = [
     HttpResponse.json({ claims: MOCK_CLAIMS }),
   ),
 
-  // 반품·교환 신청 접수 — mypage/types.ts CreateClaimRequest 계약.
+  // 반품 신청 접수 — mypage/types.ts CreateClaimRequest 계약.
   // 원 주문에서 상품명을 찾아 Claim으로 만들어 목록 맨 앞(최신순)에 추가.
   http.post(`${BASE}/api/mypage/claims`, async ({ request }) => {
     const body = (await request.json()) as {
       orderId: string;
       productId: number;
-      type: "CANCEL" | "RETURN" | "EXCHANGE";
+      type: "CANCEL" | "RETURN";
       reason: string;
       detail?: string;
     };
@@ -780,7 +780,7 @@ const MOCK_RECENT_PRODUCTS = [
   },
 ];
 
-// 취소·반품·교환 목 — mypage/types.ts Claim 계약. requestedAt 내림차순(최신순).
+// 취소·반품 목 — mypage/types.ts Claim 계약. requestedAt 내림차순(최신순).
 // 원 주문(MOCK_ORDERS)의 상품과 연결. let: 주문 내역에서 신청(POST) 시 추가.
 let nextClaimSeq = 1;
 let MOCK_CLAIMS = [
@@ -799,9 +799,9 @@ let MOCK_CLAIMS = [
     orderId: "ORD-20250428",
     productId: 304,
     productName: "브러시드 플리스 스웨트셔츠 TSCT3301",
-    type: "EXCHANGE",
+    type: "RETURN",
     status: "COMPLETED",
-    reason: "사이즈 불량",
+    reason: "상품이 파손·불량이에요",
     requestedAt: "2025-05-03",
   },
   {
@@ -841,11 +841,11 @@ const MOCK_INQUIRIES = [
   },
   {
     inquiryId: "INQ-20250430",
-    title: "사이즈 교환 방법이 궁금해요",
+    title: "사이즈가 안 맞는데 어떻게 하나요?",
     status: "ANSWERED",
-    content: "구매한 코트가 조금 커서 한 사이즈 작은 걸로 교환하고 싶어요.",
+    content: "구매한 코트가 조금 커서 한 사이즈 작은 걸로 다시 사고 싶어요.",
     answer:
-      "마이페이지 > 주문 내역에서 해당 상품의 [교환 신청]을 눌러 원하는 사이즈를 선택하시면 됩니다. 교환 배송비는 단순 변심의 경우 고객 부담인 점 참고 부탁드립니다.",
+      "마이페이지 > 주문 내역에서 해당 상품의 [반품 신청]을 눌러 환불받으신 뒤 원하는 사이즈로 다시 주문해주세요. 반품 배송비는 단순 변심의 경우 고객 부담인 점 참고 부탁드립니다.",
     createdAt: "2025-04-30",
     answeredAt: "2025-05-02",
   },
