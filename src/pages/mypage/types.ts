@@ -66,11 +66,10 @@ export interface WishlistProduct {
   wishedAt: string; // ISO 일시 — 최신순 정렬 기준
 }
 
-// 취소·반품·교환 신청 종류
+// 취소·반품 신청 종류
 export type ClaimType =
   | "CANCEL" // 취소 (배송 전)
-  | "RETURN" // 반품(환불)
-  | "EXCHANGE"; // 교환
+  | "RETURN"; // 반품(환불)
 
 // 신청 처리 상태 (스크린샷: 처리중 / 완료)
 export type ClaimStatus =
@@ -90,8 +89,8 @@ export interface Claim {
   requestedAt: string; // ISO 날짜 (YYYY-MM-DD) — 최신순 정렬 기준
 }
 
-// 반품·교환 신청 요청 — 주문 내역에서 접수. 백엔드 POST /api/mypage/claims 계약.
-// detail(상세 설명)은 선택. type은 RETURN(반품) | EXCHANGE(교환)만 이 흐름에서 사용.
+// 반품 신청 요청 — 주문 내역에서 접수. 백엔드 POST /api/mypage/claims 계약.
+// detail(상세 설명)은 선택. type은 RETURN(반품)만 이 흐름에서 사용.
 export interface CreateClaimRequest {
   orderId: string;
   productId: number;

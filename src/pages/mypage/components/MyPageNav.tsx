@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const MENU = [
   { to: "/mypage/orders", label: "주문 내역" },
-  { to: "/mypage/claims", label: "취소·반품·교환" },
+  { to: "/mypage/claims", label: "취소·반품" },
   { to: "/mypage/recent", label: "최근 본 상품" },
   { to: "/mypage/wishlist", label: "찜" },
   { to: "/mypage/addresses", label: "배송지 관리" },

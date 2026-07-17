@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "../utils/formatPrice";
-import type { ClaimType, Order, OrderItem } from "../types";
+import type { Order, OrderItem } from "../types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { ClaimRequestModal } from "./ClaimRequestModal";
 
@@ -13,12 +13,10 @@ function canWriteReview(status: Order["status"]): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }
 
-// 반품·교환 신청 가능 상태 — 배송완료 후(구매확정 포함).
+// 반품 신청 가능 상태 — 배송완료 후(구매확정 포함).
 function canClaim(status: Order["status"]): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }
-
-type ClaimAction = Extract<ClaimType, "RETURN" | "EXCHANGE">;
 
 // 액션 버튼 공통 스타일 (칩 형태).
 const actionButtonClass = cn(
@@ -54,8 +52,8 @@ export function OrderCard({ order }: { order: Order }) {
   // 배송중에만 노출되는 준비 중 액션(배송 조회) 클릭 시 하단에 한 줄 안내.
   const showTracking = order.status === "SHIPPING";
   const [notice, setNotice] = useState(false);
-  // 반품·교환 신청 모달 — 열려는 종류(RETURN|EXCHANGE)를 담고, null이면 닫힘.
-  const [claimType, setClaimType] = useState<ClaimAction | null>(null);
+  // 반품 신청 모달 열림 여부.
+  const [claimOpen, setClaimOpen] = useState(false);
 
   // 후기 작성 — 대상 상품(첫 항목) 정보를 상세 캐시에 시딩해 작성 화면에서 즉시 표시.
   const goToReview = () => {
@@ -98,7 +96,7 @@ export function OrderCard({ order }: { order: Order }) {
         ))}
       </div>
 
-      {/* 하단 액션 — 후기 작성·반품·교환은 실제 연결, 배송 조회는 준비 중 안내 */}
+      {/* 하단 액션 — 후기 작성·반품은 실제 연결, 배송 조회는 준비 중 안내 */}
       {(reviewable || claimable || showTracking || notice) && (
         <div className="flex flex-wrap items-center gap-2 border-t px-5 py-4">
           {reviewable && (
@@ -107,22 +105,13 @@ export function OrderCard({ order }: { order: Order }) {
             </button>
           )}
           {claimable && (
-            <>
-              <button
-                type="button"
-                onClick={() => setClaimType("RETURN")}
-                className={actionButtonClass}
-              >
-                반품 신청
-              </button>
-              <button
-                type="button"
-                onClick={() => setClaimType("EXCHANGE")}
-                className={actionButtonClass}
-              >
-                교환 신청
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setClaimOpen(true)}
+              className={actionButtonClass}
+            >
+              반품 신청
+            </button>
           )}
           {showTracking && (
             <button
@@ -141,13 +130,12 @@ export function OrderCard({ order }: { order: Order }) {
         </div>
       )}
 
-      {/* 반품·교환 신청 모달 */}
-      {claimType && (
+      {/* 반품 신청 모달 */}
+      {claimOpen && (
         <ClaimRequestModal
-          open={claimType !== null}
-          onOpenChange={(open) => !open && setClaimType(null)}
+          open={claimOpen}
+          onOpenChange={setClaimOpen}
           order={order}
-          type={claimType}
         />
       )}
     </article>

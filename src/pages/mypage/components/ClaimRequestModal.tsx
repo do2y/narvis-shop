@@ -13,48 +13,26 @@ import {
   type ClaimRequestFormValues,
 } from "../claimSchema";
 import { useCreateClaim } from "../useClaims";
-import type { ClaimType, Order } from "../types";
+import type { Order } from "../types";
 
-// 신청 종류별 제목·명사·사유 목록. RETURN=반품(환불), EXCHANGE=교환.
-const TYPE_META: Record<
-  Extract<ClaimType, "RETURN" | "EXCHANGE">,
-  { title: string; noun: string; reasons: string[] }
-> = {
-  RETURN: {
-    title: "반품 신청",
-    noun: "반품",
-    reasons: [
-      "단순 변심",
-      "사이즈·색상이 기대와 달라요",
-      "상품이 파손·불량이에요",
-      "다른 상품이 배송됐어요",
-      "배송이 너무 늦어요",
-    ],
-  },
-  EXCHANGE: {
-    title: "교환 신청",
-    noun: "교환",
-    reasons: [
-      "사이즈를 변경하고 싶어요",
-      "색상을 변경하고 싶어요",
-      "상품이 파손·불량이에요",
-      "다른 상품이 배송됐어요",
-    ],
-  },
-};
+// 반품(환불) 신청 — 주문 내역에서 접수하는 유일한 신청 종류.
+const RETURN_REASONS = [
+  "단순 변심",
+  "사이즈·색상이 기대와 달라요",
+  "상품이 파손·불량이에요",
+  "다른 상품이 배송됐어요",
+  "배송이 너무 늦어요",
+];
 
 export function ClaimRequestModal({
   open,
   onOpenChange,
   order,
-  type,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   order: Order;
-  type: Extract<ClaimType, "RETURN" | "EXCHANGE">;
 }) {
-  const meta = TYPE_META[type];
   const navigate = useNavigate();
   const { mutate, isPending, isSuccess, isError, reset: resetMutation } =
     useCreateClaim();
@@ -87,7 +65,7 @@ export function ClaimRequestModal({
     mutate({
       orderId: order.orderId,
       productId: values.productId,
-      type,
+      type: "RETURN",
       reason: values.reason,
       detail: values.detail || undefined,
     });
@@ -101,16 +79,14 @@ export function ClaimRequestModal({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
-          <DialogTitle className="sr-only">{meta.title} 완료</DialogTitle>
+          <DialogTitle className="sr-only">반품 신청 완료</DialogTitle>
           <div className="flex flex-col items-center py-4 text-center">
             <span className="flex size-14 items-center justify-center rounded-full bg-green-50 text-green-600">
               <Check className="size-7" />
             </span>
-            <p className="mt-4 text-base font-bold">
-              {meta.noun} 신청이 접수됐어요
-            </p>
+            <p className="mt-4 text-base font-bold">반품 신청이 접수됐어요</p>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              처리 현황은 취소·반품·교환 내역에서 확인할 수 있어요.
+              처리 현황은 취소·반품 내역에서 확인할 수 있어요.
             </p>
             <div className="mt-6 flex w-full gap-3">
               <Button
@@ -141,7 +117,7 @@ export function ClaimRequestModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>{meta.title}</DialogTitle>
+        <DialogTitle>반품 신청</DialogTitle>
 
         <form
           onSubmit={handleSubmit(submit)}
@@ -202,7 +178,7 @@ export function ClaimRequestModal({
               <option value="" disabled>
                 사유를 선택해주세요
               </option>
-              {meta.reasons.map((r) => (
+              {RETURN_REASONS.map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
