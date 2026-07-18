@@ -1,68 +1,60 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, Minus, Plus } from "lucide-react";
-
-// 옵션 그룹 — 제품마다 축(컬러/사이즈/용량...)과 개수가 달라 배열로 받는다.
-// 조합별 재고/가격을 따지지 않는 "독립 옵션" 모델. (SKU 조합형은 계약 확정 후 검토)
-export interface OptionGroup {
-  name: string; // "컬러", "사이즈" ...
-  values: string[];
-}
+import type { ProductOption } from "../types";
 
 export interface OptionSelection {
-  // 그룹명 → 선택값. (예: { 컬러: "아이보리", 사이즈: "S" })
-  options: Record<string, string>;
+  // 선택된 옵션. 옵션 없는 상품은 null (장바구니·주문에 optionId를 보내지 않음)
+  option: ProductOption | null;
   quantity: number;
 }
 
-// options 배열을 그대로 map 렌더하므로 옵션이 몇 개든 자동 대응.
-// 선택 상태는 내부 관리하되, onChange로 상위에 올려 "바로 구매"·"장바구니"에서 사용.
+// 백엔드 옵션 모델은 평면 목록({optionId, name:"화이트/M", extraPrice})이라 단일 선택.
+// 옵션이 없는 상품(options: [])은 수량만 노출한다.
 export function OptionSelector({
   options,
+  basePrice,
   onChange,
 }: {
-  options: OptionGroup[];
+  options: ProductOption[];
+  basePrice: number;
   onChange?: (selection: OptionSelection) => void;
 }) {
-  // 그룹명 → 선택값. 각 그룹 첫 값으로 초기화.
-  const [selected, setSelected] = useState<Record<string, string>>(() =>
-    Object.fromEntries(options.map((g) => [g.name, g.values[0] ?? ""])),
+  const [optionId, setOptionId] = useState<number | null>(
+    () => options[0]?.optionId ?? null,
   );
   const [qty, setQty] = useState(1);
 
+  const selected = options.find((o) => o.optionId === optionId) ?? null;
+
   // 선택/수량 변경을 상위로 전파. (부모의 액션 버튼이 최신 선택을 읽도록)
   useEffect(() => {
-    onChange?.({ options: selected, quantity: qty });
+    onChange?.({ option: selected, quantity: qty });
   }, [selected, qty, onChange]);
-
-  const pick = (name: string, value: string) =>
-    setSelected((prev) => ({ ...prev, [name]: value }));
 
   return (
     <div className="flex flex-col gap-5">
-      {options.map((group) => (
-        <Field
-          key={group.name}
-          label={group.name}
-          // 사이즈 그룹에만 가이드 링크 노출
-          action={
-            group.name === "사이즈" ? (
-              <button
-                type="button"
-                className="text-sm text-muted-foreground hover:underline"
-              >
-                사이즈 가이드
-              </button>
-            ) : undefined
-          }
-        >
-          <SelectBox
-            value={selected[group.name]}
-            onChange={(v) => pick(group.name, v)}
-            options={group.values}
-            ariaLabel={`${group.name} 선택`}
-          />
+      {options.length > 0 && (
+        <Field label="옵션">
+          <div className="relative">
+            <select
+              value={optionId ?? ""}
+              onChange={(e) => setOptionId(Number(e.target.value))}
+              aria-label="옵션 선택"
+              className="h-11 w-full appearance-none rounded-sm border bg-background px-4 pr-10 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {options.map((opt) => (
+                <option key={opt.optionId} value={opt.optionId}>
+                  {/* 추가금이 있는 옵션만 금액을 함께 노출 */}
+                  {opt.extraPrice > 0
+                    ? `${opt.name} (+${opt.extraPrice.toLocaleString("ko-KR")}원)`
+                    : opt.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
         </Field>
-      ))}
+      )}
 
       <Field label="수량">
         <div className="flex w-fit items-center rounded-full border">
@@ -85,58 +77,31 @@ export function OptionSelector({
           </button>
         </div>
       </Field>
+
+      {/* 옵션 추가금이 붙으면 최종 단가가 달라지므로 합계를 명시 */}
+      {selected && selected.extraPrice > 0 && (
+        <p className="text-sm text-muted-foreground">
+          선택 단가{" "}
+          <span className="font-semibold text-foreground">
+            {(basePrice + selected.extraPrice).toLocaleString("ko-KR")}원
+          </span>
+        </p>
+      )}
     </div>
   );
 }
 
 function Field({
   label,
-  action,
   children,
 }: {
   label: string;
-  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">{label}</p>
-        {action}
-      </div>
+      <p className="text-sm font-medium">{label}</p>
       {children}
-    </div>
-  );
-}
-
-// 네이티브 select 기반 드롭다운 — 접근성·모바일 터치 기본 제공.
-// 커스텀 화살표를 위해 기본 appearance 제거 후 아이콘 오버레이.
-function SelectBox({
-  value,
-  onChange,
-  options,
-  ariaLabel,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  ariaLabel: string;
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={ariaLabel}
-        className="h-11 w-full appearance-none rounded-sm border bg-background px-4 pr-10 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
     </div>
   );
 }

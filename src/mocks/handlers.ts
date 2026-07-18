@@ -300,6 +300,41 @@ export const handlers = [
     );
   }),
 
+  // 상품 상세 (P-2) — 인기상품 목에서 기본 정보를 빌려 상세 계약 형태로 조립.
+  // 없는 ID는 404 PRODUCT_NOT_FOUND.
+  http.get(`${BASE}/api/products/:productId`, ({ params }) => {
+    const id = Number(params.productId);
+    const base = POPULAR_PRODUCTS.find((p) => p.productId === id);
+    if (!base) {
+      return HttpResponse.json(
+        fail("PRODUCT_NOT_FOUND", "상품을 찾을 수 없습니다."),
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json(
+      ok({
+        id: base.productId,
+        name: base.name,
+        imageUrl: base.imageUrl,
+        price: base.price,
+        originalPrice: base.originalPrice,
+        stockQuantity: 100,
+        purchasable: base.purchasable,
+        status: "ON_SALE",
+        summary: `${base.name} 상품 요약`,
+        description: "<p>상세 설명</p>",
+        attributes: { 소재: "코튼 100%", 핏: "오버핏" },
+        category: { id: 1, name: "패션" },
+        brand: { id: 1, name: base.brandName, logoUrl: base.imageUrl },
+        options: [
+          { optionId: 10, name: "화이트/M", extraPrice: 0 },
+          { optionId: 11, name: "블랙/L", extraPrice: 2000 },
+        ],
+        rating: { average: base.rating, count: base.reviewCount },
+      }),
+    );
+  }),
+
   // 개인화 추천 (P-5) — 로그인 필수. AT 없으면 401.
   // FastAPI 실패·신규 회원은 백엔드가 인기상품으로 대체하므로 목도 항상 200 + items.
   http.get(`${BASE}/api/products/recommended`, ({ request }) => {

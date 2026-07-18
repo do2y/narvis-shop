@@ -1,12 +1,10 @@
 import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { Heart, Star } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/shared/stores/authStore";
-import type { ProductCard } from "@/shared/types/chat";
 import type { CheckoutState } from "@/pages/checkout/types";
 import { ImageGallery } from "./components/ImageGallery";
 import { OptionSelector, type OptionSelection } from "./components/OptionSelector";
@@ -14,6 +12,7 @@ import { SpecTable } from "./components/SpecTable";
 import { ReviewSummary } from "./components/ReviewSummary";
 import { RecommendRow } from "./components/RecommendRow";
 import { PLACEHOLDER_DETAIL } from "./placeholder";
+import { useProductDetail, useSeededProductCard } from "./useProduct";
 
 function formatPrice(v: number): string {
   return `${v.toLocaleString("ko-KR")}원`;
@@ -25,18 +24,54 @@ export default function ProductPage() {
   const id = Number(productId);
 
   // OptionSelector의 최신 선택값을 담아두는 ref. 렌더 유발이 필요 없어 state 대신 ref 사용.
-  const selectionRef = useRef<OptionSelection>({ options: {}, quantity: 1 });
+  const selectionRef = useRef<OptionSelection>({ option: null, quantity: 1 });
 
-  // 캐시 승계: 챗봇/홈 카드에서 setQueryData(['products', id])로 시딩한 데이터를 즉시 사용.
-  // 상세 API가 붙기 전까지는 시딩 데이터(부분)만 렌더. queryFn 미지정이라 재조회는 하지 않음.
-  const { data: product } = useQuery<ProductCard>({
-    queryKey: ["products", id],
-    enabled: Number.isFinite(id),
-    staleTime: 5 * 60 * 1000,
-  });
+  // 상세 API가 정본. 도착 전에는 카드 시딩 데이터(캐시 승계)로 즉시 렌더한다.
+  const { data: detail, isError } = useProductDetail(id);
+  const { data: seeded } = useSeededProductCard(id);
 
-  // 시딩 데이터가 없으면(직접 URL 진입 등) 상세 API 붙기 전까지는 스켈레톤
-  if (!product) {
+  // 상세·시딩 어느 쪽이든 렌더에 필요한 값만 뽑아 정규화(구조가 달라 여기서 흡수).
+  const view = detail
+    ? {
+        name: detail.name,
+        brandName: detail.brand.name,
+        imageUrl: detail.imageUrl,
+        price: detail.price,
+        originalPrice: detail.originalPrice,
+        rating: detail.rating.average,
+        reviewCount: detail.rating.count,
+      }
+    : seeded
+      ? {
+          name: seeded.name,
+          brandName: seeded.brandName,
+          imageUrl: seeded.imageUrl,
+          price: seeded.price,
+          originalPrice: seeded.originalPrice,
+          rating: seeded.rating,
+          reviewCount: seeded.reviewCount,
+        }
+      : null;
+
+  // 없는 상품(404 PRODUCT_NOT_FOUND) — 시딩 데이터도 없으면 안내 후 종료
+  if (isError && !view) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <AppHeader />
+        <main className="mx-auto flex w-full max-w-5xl flex-col items-center gap-4 p-4 py-24 sm:p-6">
+          <p className="text-sm text-muted-foreground">
+            상품을 찾을 수 없어요.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/")}>
+            홈으로
+          </Button>
+        </main>
+      </div>
+    );
+  }
+
+  // 상세 로딩 중이고 시딩 데이터도 없으면(직접 URL 진입) 스켈레톤
+  if (!view) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <AppHeader />
@@ -54,15 +89,23 @@ export default function ProductPage() {
     );
   }
 
-  const hasDiscount = product.originalPrice > product.price;
+  const hasDiscount = view.originalPrice > view.price;
   const discountRate = hasDiscount
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    ? Math.round((1 - view.price / view.originalPrice) * 100)
     : 0;
 
-  // 계약 전 플레이스홀더 — 갤러리/옵션/스펙/리뷰/추천은 상세 API 확정 후 실데이터로 교체.
-  // 시딩 카드에 있는 값(가격·평점·리뷰수 등)은 product를 그대로 사용.
+  // 리뷰 목록·연관 추천은 아직 계약 전(P-3, related OPEN)이라 플레이스홀더 유지.
+  // 갤러리는 대표 이미지 단일(02 D14)이라 상세 이미지 1장만 사용.
   const d = PLACEHOLDER_DETAIL;
-  const images = [product.imageUrl, ...d.images];
+  const images = [view.imageUrl];
+
+  // attributes({ "소재": "린넨" })를 스펙 표 행으로 변환. 상세 도착 전에는 빈 표.
+  const specRows = detail
+    ? Object.entries(detail.attributes).map(([label, value]) => ({
+        label,
+        value,
+      }))
+    : [];
 
   const user = useAuthStore.getState().user;
 
@@ -74,19 +117,20 @@ export default function ProductPage() {
       navigate(`/login?returnUrl=${returnUrl}`);
       return;
     }
-    const { options, quantity } = selectionRef.current;
+    const { option, quantity } = selectionRef.current;
     const state: CheckoutState = {
       items: [
         {
           product: {
-            productId: product.productId,
-            name: product.name,
-            brandName: product.brandName,
-            price: product.price,
-            originalPrice: product.originalPrice,
-            imageUrl: product.imageUrl,
+            productId: id,
+            name: view.name,
+            brandName: view.brandName,
+            // 옵션 추가금이 있으면 단가에 반영(주문 시 스냅샷되는 값과 일치시킴)
+            price: view.price + (option?.extraPrice ?? 0),
+            originalPrice: view.originalPrice,
+            imageUrl: view.imageUrl,
           },
-          options,
+          optionName: option?.name ?? null,
           quantity,
         },
       ],
@@ -101,34 +145,34 @@ export default function ProductPage() {
         {/* 상단: 갤러리 | 정보·옵션 */}
         <div className="flex flex-col gap-8 lg:flex-row">
           <div className="lg:w-1/2">
-            <ImageGallery images={images} alt={product.name} />
+            <ImageGallery images={images} alt={view.name} />
           </div>
 
           <div className="flex flex-1 flex-col gap-6">
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium text-muted-foreground">
-                {product.brandName}
+                {view.brandName}
               </p>
               <h1 className="text-xl font-bold leading-snug sm:text-2xl">
-                {product.name}
+                {view.name}
               </h1>
               <div className="flex items-center gap-1.5 text-sm">
                 <Star className="size-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-semibold">{product.rating.toFixed(1)}</span>
+                <span className="font-semibold">{view.rating.toFixed(1)}</span>
                 <span className="text-muted-foreground">
-                  ({product.reviewCount.toLocaleString("ko-KR")}개 리뷰)
+                  ({view.reviewCount.toLocaleString("ko-KR")}개 리뷰)
                 </span>
               </div>
             </div>
 
             <div className="flex flex-wrap items-baseline gap-x-2.5">
               <span className="text-2xl font-bold">
-                {formatPrice(product.price)}
+                {formatPrice(view.price)}
               </span>
               {hasDiscount && (
                 <>
                   <span className="text-base text-muted-foreground line-through">
-                    {formatPrice(product.originalPrice)}
+                    {formatPrice(view.originalPrice)}
                   </span>
                   <span className="text-base font-bold text-red-500">
                     {discountRate}%
@@ -138,7 +182,9 @@ export default function ProductPage() {
             </div>
 
             <OptionSelector
-              options={d.options}
+              // 상세 도착 전에는 옵션 목록을 알 수 없어 수량만 노출
+              options={detail?.options ?? []}
+              basePrice={view.price}
               onChange={(sel) => {
                 selectionRef.current = sel;
               }}
@@ -159,11 +205,11 @@ export default function ProductPage() {
           </div>
         </div>
 
-        <SpecTable rows={d.specs} />
+        {specRows.length > 0 && <SpecTable rows={specRows} />}
 
         <ReviewSummary
-          average={product.rating}
-          total={product.reviewCount}
+          average={view.rating}
+          total={view.reviewCount}
           distribution={d.reviewDistribution}
           reviews={d.reviews}
         />
@@ -185,10 +231,10 @@ export default function ProductPage() {
         <section className="flex items-center justify-between rounded-sm border bg-muted/30 p-5">
           <div className="flex items-center gap-3">
             <span className="flex size-11 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-              {product.brandName.slice(0, 1)}
+              {view.brandName.slice(0, 1)}
             </span>
             <div className="flex flex-col">
-              <p className="text-sm font-bold">{product.brandName}</p>
+              <p className="text-sm font-bold">{view.brandName}</p>
               <p className="text-xs text-muted-foreground">
                 컨템포러리 패션 브랜드
               </p>
