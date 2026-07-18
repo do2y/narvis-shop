@@ -162,28 +162,28 @@ const MOCK_PRODUCT_REVIEWS = [
     rating: 5,
     content: "재질이 좋고 마감도 깔끔해요. 사이즈는 평소대로 골랐습니다.",
     authorNickname: "지영",
-    createdAt: "2026-07-01T12:00:00",
+    createdAt: "2026-07-01T12:00:00+09:00",
   },
   {
     reviewId: 6,
     rating: 4,
     content: "색상은 사진과 거의 비슷해요. 배송이 조금 느린 게 아쉬웠어요.",
     authorNickname: "소현",
-    createdAt: "2026-06-24T09:12:00",
+    createdAt: "2026-06-24T09:12:00+09:00",
   },
   {
     reviewId: 5,
     rating: 5,
     content: "가격 대비 만족스러워요. 재구매 의사 있습니다.",
     authorNickname: "라서",
-    createdAt: "2026-06-18T18:40:00",
+    createdAt: "2026-06-18T18:40:00+09:00",
   },
   {
     reviewId: 4,
     rating: 3,
     content: "무난합니다. 특별히 좋지도 나쁘지도 않아요.",
     authorNickname: "수아",
-    createdAt: "2026-06-02T11:05:00",
+    createdAt: "2026-06-02T11:05:00+09:00",
   },
 ];
 
