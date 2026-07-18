@@ -3,7 +3,10 @@ import type { PopularProduct } from "../types";
 import { formatPrice } from "../utils/formatPrice";
 
 export function ProductCard({ product }: { product: PopularProduct }) {
-  const hasDiscount = product.discountRate > 0;
+  const hasDiscount = product.originalPrice > product.price;
+  const discountRate = hasDiscount
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    : 0;
 
   return (
     // TODO: 클릭 시 상품 상세로 이동 + 카드 데이터를 setQueryData(['products', id])로 시딩
@@ -21,11 +24,9 @@ export function ProductCard({ product }: { product: PopularProduct }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
-        {product.badge && (
-          <span className="w-fit rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {product.badge}
-          </span>
-        )}
+        <span className="text-xs font-medium text-muted-foreground">
+          {product.brandName}
+        </span>
 
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
           {product.name}
@@ -44,18 +45,15 @@ export function ProductCard({ product }: { product: PopularProduct }) {
           {hasDiscount && (
             <>
               <span className="text-sm text-muted-foreground line-through">
-                {formatPrice(product.listPrice)}
+                {formatPrice(product.originalPrice)}
               </span>
               <span className="text-sm font-bold text-red-500">
-                {product.discountRate}%
+                {discountRate}%
               </span>
             </>
           )}
         </div>
 
-        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-          {product.reason}
-        </p>
       </div>
     </button>
   );

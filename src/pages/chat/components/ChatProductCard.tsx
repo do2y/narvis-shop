@@ -67,9 +67,12 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             {product.name}
           </button>
         </h3>
-        <p className="line-clamp-2 text-sm text-muted-foreground">
-          {product.reason}
-        </p>
+        {/* 인기상품(단순 집계) 카드는 추천 이유가 없어 영역 자체를 그리지 않음 */}
+        {product.reason && (
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {product.reason}
+          </p>
+        )}
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-wrap items-baseline gap-x-2">

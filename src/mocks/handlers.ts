@@ -230,28 +230,68 @@ export const handlers = [
     HttpResponse.json(ok(null)),
   ),
 
+  // 카테고리 2단 트리 — API 명세: { success, data: { categories: [...] } }.
+  // emoji는 백엔드 미제공 → 프론트 categoryEmoji 매핑.
   http.get(`${BASE}/api/categories`, () =>
-    HttpResponse.json({
-      categories: [
-        { categoryId: 1, name: "디지털", emoji: "⌨️", productCount: 132 },
-        { categoryId: 2, name: "생활용품", emoji: "🏠", productCount: 210 },
-        { categoryId: 3, name: "주방용품", emoji: "🍳", productCount: 84 },
-        { categoryId: 4, name: "패션", emoji: "👗", productCount: 156 },
-        { categoryId: 5, name: "여행", emoji: "✈️", productCount: 63 },
-        { categoryId: 6, name: "자취", emoji: "🛏️", productCount: 98 },
-        { categoryId: 7, name: "선물", emoji: "🎁", productCount: 74 },
-        { categoryId: 8, name: "뷰티", emoji: "💄", productCount: 121 },
-      ],
-    }),
+    HttpResponse.json(
+      ok({
+        categories: [
+          {
+            id: 1,
+            name: "패션",
+            children: [
+              { id: 11, name: "남성 상의" },
+              { id: 12, name: "여성 상의" },
+              { id: 13, name: "신발" },
+            ],
+          },
+          {
+            id: 2,
+            name: "뷰티",
+            children: [
+              { id: 14, name: "스킨케어" },
+              { id: 15, name: "메이크업" },
+              { id: 16, name: "헤어케어" },
+            ],
+          },
+          {
+            id: 3,
+            name: "식품",
+            children: [
+              { id: 17, name: "건강식품" },
+              { id: 18, name: "간편식" },
+              { id: 19, name: "음료" },
+            ],
+          },
+          {
+            id: 4,
+            name: "가전",
+            children: [
+              { id: 20, name: "주방가전" },
+              { id: 21, name: "생활가전" },
+              { id: 22, name: "음향기기" },
+            ],
+          },
+        ],
+      }),
+    ),
   ),
 
   http.get(`${BASE}/api/products/popular`, ({ request }) => {
+    const params = new URL(request.url).searchParams;
     // categoryId 있으면 해당 카테고리만 필터 (채팅 초기 인기상품 등)
-    const categoryId = new URL(request.url).searchParams.get("categoryId");
-    const products = categoryId
-      ? POPULAR_PRODUCTS.filter((p) => p.categoryId === Number(categoryId))
-      : POPULAR_PRODUCTS;
-    return HttpResponse.json({ products });
+    const categoryId = params.get("categoryId");
+    // size 기본 12 (API 명세 P-4)
+    const size = Number(params.get("size")) || 12;
+    const products = (
+      categoryId
+        ? POPULAR_PRODUCTS.filter((p) => p.categoryId === Number(categoryId))
+        : POPULAR_PRODUCTS
+    ).slice(0, size);
+    // API 명세: { success, data: { items: [...] } }. categoryId는 목 필터용 내부 필드라 제외.
+    return HttpResponse.json(
+      ok({ items: products.map(({ categoryId: _categoryId, ...p }) => p) }),
+    );
   }),
 
   http.post(`${BASE}/api/chat`, async ({ request }) => {
@@ -481,91 +521,79 @@ const POPULAR_PRODUCTS = [
     productId: 101,
     categoryId: 1,
     name: "Logitech MX Keys Mini 무선 키보드",
-    brand: "Logitech",
+    brandName: "Logitech",
     imageUrl:
       "https://img.29cm.co.kr/item/202601/11f0ed21bafcaaeca540f7b64137d1e5.jpg?width=1440&format=webp",
     price: 119000,
-    listPrice: 149000,
-    discountRate: 20,
+    originalPrice: 149000,
     rating: 4.8,
     reviewCount: 2847,
-    badge: "추천",
-    reason: "재택근무 관련 관심과 잘 맞는 상품이에요.",
+    purchasable: true,
   },
   {
     productId: 102,
     categoryId: 1,
     name: "Sony WH-1000XM5 노이즈캔슬링 헤드폰",
-    brand: "Sony",
+    brandName: "Sony",
     imageUrl:
       "https://img.29cm.co.kr/item/202604/11f137b51654a49dbc92213193f65993.jpg?width=1440&format=webp",
     price: 389000,
-    listPrice: 449000,
-    discountRate: 13,
+    originalPrice: 449000,
     rating: 4.9,
     reviewCount: 5210,
-    badge: "인기",
-    reason: "집중력이 필요한 분들이 가장 많이 구매해요.",
+    purchasable: true,
   },
   {
     productId: 103,
     categoryId: 6,
     name: "아이리스오야마 수납박스 6P 세트",
-    brand: "아이리스오야마",
+    brandName: "아이리스오야마",
     imageUrl:
       "https://img.29cm.co.kr/item/202606/11f1687874f0acbd9090abe3de51eb89.png?width=400&format=webp",
     price: 42900,
-    listPrice: 55000,
-    discountRate: 22,
+    originalPrice: 55000,
     rating: 4.7,
     reviewCount: 5621,
-    badge: null,
-    reason: "자취 시작 시 가장 많이 찾는 아이템이에요.",
+    purchasable: true,
   },
   {
     productId: 104,
     categoryId: 2,
     name: "브리타 마렐라 정수 물병 1.4L",
-    brand: "브리타",
+    brandName: "브리타",
     imageUrl:
       "https://img.29cm.co.kr/item/202602/11f10618d50592d0a3c0c51b729aeb9e.jpg?width=1440&format=webp",
     price: 34000,
-    listPrice: 34000,
-    discountRate: 0,
+    originalPrice: 34000,
     rating: 4.5,
     reviewCount: 3401,
-    badge: null,
-    reason: "함께 구매율이 높은 생활필수품이에요.",
+    purchasable: true,
   },
   {
     productId: 105,
     categoryId: 4,
     name: "베이직 오버핏 코튼 셔츠",
-    brand: "데일리로브",
+    brandName: "데일리로브",
     imageUrl:
       "https://img.29cm.co.kr/next-product/2026/07/02/fb5e5f5674454a2e81c81b5d1b0e830a_20260702163831.jpg?width=400&format=webp",
     price: 39000,
-    listPrice: 59000,
-    discountRate: 34,
+    originalPrice: 59000,
     rating: 4.6,
     reviewCount: 1820,
-    badge: "인기",
-    reason: "어디에나 무난하게 매치하기 좋은 기본템이에요.",
+    purchasable: true,
   },
   {
     productId: 106,
     categoryId: 8,
     name: "센텔라 수분 진정 토너 300ml",
-    brand: "라운드랩",
+    brandName: "라운드랩",
     imageUrl:
       "https://img.29cm.co.kr/item/202605/11f15b279fa6d9659f7f97288c3b29a9.jpg?width=400&format=webp",
     price: 18900,
-    listPrice: 25000,
-    discountRate: 24,
+    originalPrice: 25000,
     rating: 4.8,
     reviewCount: 9210,
-    badge: "추천",
-    reason: "민감한 피부도 부담 없이 쓰기 좋은 스테디셀러예요.",
+    purchasable: true,
   },
 ];
 

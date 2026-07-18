@@ -33,7 +33,7 @@ export default function ChatPage() {
   // 카테고리 진입 시 제목에 카테고리명 반영 ("패션 인기 상품")
   const { data: categories } = useCategories();
   const categoryName = categoryId
-    ? categories?.find((c) => c.categoryId === categoryId)?.name
+    ? categories?.find((c) => c.id === categoryId)?.name
     : undefined;
   const popularTitle = categoryName
     ? `${categoryName} 인기 상품`
