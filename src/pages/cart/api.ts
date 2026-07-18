@@ -1,17 +1,30 @@
 import { api } from "@/shared/api/client";
-import type { Cart, CartRecommendation } from "./types";
+import type { CartRecommendation } from "./types";
 
-// 게스트도 조회 가능(guest_id 쿠키). client의 withCredentials로 쿠키가 동봉된다.
-export async function fetchCart(): Promise<Cart> {
-  const { data } = await api.get<Cart>("/api/cart");
-  return data;
-}
+// fetchCart는 헤더 뱃지도 쓰므로 shared/api/cart.ts로 승격됨(경로 유지를 위해 재수출).
+export { fetchCart } from "@/shared/api/cart";
 
-export async function fetchCartRecommendations(): Promise<CartRecommendation[]> {
+export async function fetchCartRecommendations(): Promise<
+  CartRecommendation[]
+> {
   const { data } = await api.get<{ products: CartRecommendation[] }>(
     "/api/cart/recommendations",
   );
   return data.products;
+}
+
+export async function addCartItem(body: {
+  productId: number;
+  optionId?: number | null;
+  quantity: number;
+}): Promise<{ cartItemId: number }> {
+  const { productId, optionId, quantity } = body;
+  const { data } = await api.post<{ cartItemId: number }>("/api/cart/items", {
+    productId,
+    quantity,
+    ...(optionId != null ? { optionId } : {}),
+  });
+  return data;
 }
 
 export async function updateCartQuantity(

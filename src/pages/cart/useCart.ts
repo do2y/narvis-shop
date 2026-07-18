@@ -1,20 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/shared/api/client";
 import {
-  fetchCart,
+  addCartItem,
   fetchCartRecommendations,
   removeCartItem,
   updateCartQuantity,
 } from "./api";
 import type { Cart } from "./types";
 
-// 장바구니 — 서버 원본. 수량·구성이 자주 바뀌어 staleTime 0 (CLAUDE.md 규칙).
-export function useCart() {
-  return useQuery({
-    queryKey: ["cart"],
-    queryFn: fetchCart,
-    staleTime: 0,
-  });
-}
+export { useCart, useCartItemCount } from "@/shared/hooks/useCart";
 
 export function useCartRecommendations() {
   return useQuery({
@@ -24,13 +18,35 @@ export function useCartRecommendations() {
   });
 }
 
-// 수량·삭제 뮤테이션 — 낙관적 반영 후 실패 시 롤백. 성공/실패 후 ['cart'] 재동기화.
-// (헤더 뱃지 전역 동기화도 같은 키로 이뤄짐)
+function toAddCartMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.message) return error.message;
+    if (error.code === "CART_OPTION_REQUIRED") return "옵션을 선택해주세요.";
+    if (error.code === "CART_OPTION_INVALID")
+      return "선택한 옵션을 찾을 수 없어요.";
+    if (error.code === "PRODUCT_NOT_FOUND") return "상품을 찾을 수 없어요.";
+  }
+  return "장바구니에 담지 못했어요. 잠시 후 다시 시도해주세요.";
+}
+
+export function useAddCartItem() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: addCartItem,
+    retry: false,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+  });
+
+  return {
+    ...mutation,
+    errorMessage: mutation.error ? toAddCartMessage(mutation.error) : null,
+  };
+}
+
 export function useCartMutations() {
   const queryClient = useQueryClient();
 
-  // 낙관적 반영은 items만 건드린다. 합계는 서버 계산값이라 FE가 다시 셈하지 않고,
-  // onSettled의 invalidate로 갱신된 합계를 받는다(그 사이 짧게 이전 합계가 보임).
   const setQuantity = useMutation({
     mutationFn: (args: { cartItemId: number; quantity: number }) =>
       updateCartQuantity(args.cartItemId, args.quantity),

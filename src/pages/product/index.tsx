@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/shared/stores/authStore";
 import type { CheckoutState } from "@/pages/checkout/types";
+import { useAddCartItem } from "@/pages/cart/useCart";
 import { ImageGallery } from "./components/ImageGallery";
 import { OptionSelector, type OptionSelection } from "./components/OptionSelector";
 import { SpecTable } from "./components/SpecTable";
@@ -34,6 +35,8 @@ export default function ProductPage() {
   // 상세 API가 정본. 도착 전에는 카드 시딩 데이터(캐시 승계)로 즉시 렌더한다.
   const { data: detail, isError } = useProductDetail(id);
   const { data: seeded } = useSeededProductCard(id);
+
+  const addCart = useAddCartItem();
 
   // 리뷰는 정렬만 전환(페이지네이션은 계약 확정 후). 첫 페이지 10개.
   const [reviewSort, setReviewSort] = useState<ReviewSort>("latest");
@@ -120,6 +123,19 @@ export default function ProductPage() {
 
   const user = useAuthStore.getState().user;
 
+  // 장바구니 담기 — 게스트도 가능(CLAUDE.md). 옵션 있는 상품은 선택 필수라
+  // 서버 400(CART_OPTION_REQUIRED) 전에 프론트에서 먼저 막는다.
+  const needsOption = (detail?.options.length ?? 0) > 0;
+  const addToCart = () => {
+    const { option, quantity } = selectionRef.current;
+    if (needsOption && !option) return;
+    addCart.mutate({
+      productId: id,
+      optionId: option?.optionId,
+      quantity,
+    });
+  };
+
   const buyNow = () => {
     // 구매는 로그인 필요(CLAUDE.md). 게스트면 현재 상세로 복귀하도록 returnUrl 걸어 로그인 유도.
     // (state는 리다이렉트로 유실되므로 로그인 후 상세에서 다시 "바로 구매"하게 한다.)
@@ -201,18 +217,43 @@ export default function ProductPage() {
               }}
             />
 
-            {/* 액션 — 찜/장바구니/바로구매. TODO: 찜·장바구니 API·훅 연결 */}
+            {/* 액션 — 찜/장바구니/바로구매. TODO: 찜 API·훅 연결 */}
             <div className="mt-2 flex items-center gap-3">
               <Button variant="outline" size="icon" aria-label="찜하기" className="size-11 shrink-0">
                 <Heart className="size-5" />
               </Button>
-              <Button variant="outline" className="h-11 flex-1">
-                장바구니
+              <Button
+                variant="outline"
+                className="h-11 flex-1"
+                onClick={addToCart}
+                disabled={addCart.isPending}
+              >
+                {addCart.isPending ? "담는 중…" : "장바구니"}
               </Button>
               <Button className="h-11 flex-1" onClick={buyNow}>
                 바로 구매
               </Button>
             </div>
+
+            {/* 담기 결과 — 토스트가 없어 액션 하단에 인라인으로 노출.
+                실패는 자동 재시도하지 않고(중복 담기 방지) 버튼을 다시 누르게 한다. */}
+            {addCart.isSuccess && (
+              <p className="text-sm text-muted-foreground" role="status">
+                장바구니에 담았어요.{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate("/cart")}
+                  className="font-semibold text-foreground hover:underline"
+                >
+                  장바구니 보기
+                </button>
+              </p>
+            )}
+            {addCart.errorMessage && (
+              <p className="text-sm text-destructive" role="alert">
+                {addCart.errorMessage}
+              </p>
+            )}
           </div>
         </div>
 
