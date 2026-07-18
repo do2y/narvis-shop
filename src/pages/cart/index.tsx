@@ -29,16 +29,20 @@ function CartSkeleton() {
 }
 
 export default function CartPage() {
-  const { data: items, isPending, isError, refetch } = useCart();
+  const { data: cart, isPending, isError, refetch } = useCart();
   const { setQuantity, remove } = useCartMutations();
   const navigate = useNavigate();
 
+  const items = cart?.items;
+
   // 선택 상태는 클라이언트 UI 상태(어떤 라인을 주문할지). 목록 로드 후 기본 전체 선택.
   // 해제한 항목만 기억해 새 항목은 자동 선택되게 한다(제외 집합 방식).
-  const [deselected, setDeselected] = useState<Set<string>>(new Set());
+  const [deselected, setDeselected] = useState<Set<number>>(new Set());
 
-  const isSelected = (id: string) => !deselected.has(id);
-  const toggle = (id: string) =>
+  // 구매 불가(HIDDEN) 상품은 서버 합계에서도 빠지므로 선택 대상에서 제외한다.
+  const isSelected = (item: CartItem) =>
+    item.purchasable && !deselected.has(item.cartItemId);
+  const toggle = (id: number) =>
     setDeselected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -46,22 +50,33 @@ export default function CartPage() {
       return next;
     });
 
-  const selectedItems = useMemo(
-    () => (items ?? []).filter((it) => !deselected.has(it.cartItemId)),
-    [items, deselected],
+  const selectableItems = useMemo(
+    () => (items ?? []).filter((it) => it.purchasable),
+    [items],
   );
-  const allSelected = (items?.length ?? 0) > 0 && selectedItems.length === items!.length;
+  const selectedItems = useMemo(
+    () => selectableItems.filter((it) => !deselected.has(it.cartItemId)),
+    [selectableItems, deselected],
+  );
+  const allSelected =
+    selectableItems.length > 0 && selectedItems.length === selectableItems.length;
 
   const toggleAll = () => {
-    if (!items) return;
-    setDeselected(allSelected ? new Set(items.map((it) => it.cartItemId)) : new Set());
+    setDeselected(
+      allSelected ? new Set(selectableItems.map((it) => it.cartItemId)) : new Set(),
+    );
   };
 
   const removeSelected = () => {
     selectedItems.forEach((it) => remove.mutate(it.cartItemId));
   };
 
+  // 전체 선택이면 서버 계산 합계를 그대로 쓴다(합계의 진실은 서버).
+  // 부분 선택일 때만 FE가 선택분을 합산 — 최종 금액은 주문 시 서버가 재계산.
   const { itemsTotal, discount } = useMemo(() => {
+    if (allSelected && cart) {
+      return { itemsTotal: cart.totalOriginal, discount: cart.discount };
+    }
     const total = selectedItems.reduce(
       (sum, it) => sum + it.originalPrice * it.quantity,
       0,
@@ -71,7 +86,7 @@ export default function CartPage() {
       0,
     );
     return { itemsTotal: total, discount: total - paid };
-  }, [selectedItems]);
+  }, [allSelected, cart, selectedItems]);
 
   // 선택 상품을 결제 화면 계약(CheckoutState)에 맞춰 넘긴다.
   const goToCheckout = () => {
@@ -80,12 +95,12 @@ export default function CartPage() {
       product: {
         productId: it.productId,
         name: it.name,
-        brandName: it.brand,
         price: it.price,
         originalPrice: it.originalPrice,
         imageUrl: it.imageUrl,
       },
-      options: it.options,
+      optionId: it.optionId,
+      optionName: it.optionName,
       quantity: it.quantity,
     }));
     navigate("/checkout", { state: { items: checkoutItems } });
@@ -117,7 +132,7 @@ export default function CartPage() {
               다시 시도
             </button>
           </div>
-        ) : items.length === 0 ? (
+        ) : !cart || cart.items.length === 0 ? (
           <div className="mt-6 flex flex-col items-center gap-3 rounded-sm border border-dashed bg-background py-16 text-center">
             <p className="text-sm font-medium">장바구니가 비어 있어요</p>
             <p className="text-sm text-muted-foreground">
@@ -151,7 +166,7 @@ export default function CartPage() {
                       <Check className="size-4 text-primary-foreground" />
                     )}
                   </span>
-                  전체 선택 ({selectedItems.length}/{items.length})
+                  전체 선택 ({selectedItems.length}/{selectableItems.length})
                 </button>
                 <button
                   type="button"
@@ -164,11 +179,11 @@ export default function CartPage() {
               </div>
 
               <div className="mt-4 flex flex-col gap-4">
-                {items.map((item) => (
+                {cart.items.map((item) => (
                   <CartItemCard
                     key={item.cartItemId}
                     item={item}
-                    selected={isSelected(item.cartItemId)}
+                    selected={isSelected(item)}
                     onToggle={() => toggle(item.cartItemId)}
                     onQuantityChange={(quantity) =>
                       setQuantity.mutate({ cartItemId: item.cartItemId, quantity })

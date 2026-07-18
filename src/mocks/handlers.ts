@@ -112,40 +112,44 @@ let nextAddressSeq = 3;
 // 핸들러가 참조하므로 배열 위에 선언.
 let mockCart = [
   {
-    cartItemId: "CART-1",
+    cartItemId: 55,
     productId: 301,
     name: "가먼트 다잉 오버핏 반팔 티셔츠 TSOP1180",
-    brand: "더센트",
     imageUrl:
       "https://image.msscdn.net/thumbnails/images/goods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200",
+    optionId: 10,
+    optionName: "차콜/L",
+    quantity: 1,
     price: 92000,
     originalPrice: 230000,
-    options: { 컬러: "차콜", 사이즈: "L" },
-    quantity: 1,
+    purchasable: true,
   },
   {
-    cartItemId: "CART-2",
+    cartItemId: 56,
     productId: 306,
     name: "소프트 코튼 크루넥 반팔 티셔츠 LB-D221",
-    brand: "르블랑",
     imageUrl:
       "https://image.msscdn.net/thumbnails/images/goods_img/20250722/5262448/5262448_17561780734495_big.jpg?w=1200",
+    optionId: 11,
+    optionName: "그레이/M",
+    quantity: 1,
     price: 89000,
     originalPrice: 89000,
-    options: { 컬러: "그레이", 사이즈: "M" },
-    quantity: 1,
+    purchasable: true,
   },
+  // 구매 불가(HIDDEN) 케이스 — 목록에는 남고 합계에서만 빠지는 동작 확인용
   {
-    cartItemId: "CART-3",
+    cartItemId: 57,
     productId: 303,
     name: "헤비웨이트 오버핏 티셔츠 TSKN1801",
-    brand: "더센트",
     imageUrl:
       "https://image.msscdn.net/thumbnails/images/goods_img/20260618/6694104/6694104_17817540562281_big.jpg?w=1200",
+    optionId: 12,
+    optionName: "카키/L",
+    quantity: 2,
     price: 89000,
     originalPrice: 112000,
-    options: { 컬러: "카키", 사이즈: "L" },
-    quantity: 2,
+    purchasable: false,
   },
 ];
 
@@ -292,6 +296,31 @@ export const handlers = [
     return HttpResponse.json(
       ok({ items: products.map(({ categoryId: _categoryId, ...p }) => p) }),
     );
+  }),
+
+  // 개인화 추천 (P-5) — 로그인 필수. AT 없으면 401.
+  // FastAPI 실패·신규 회원은 백엔드가 인기상품으로 대체하므로 목도 항상 200 + items.
+  http.get(`${BASE}/api/products/recommended`, ({ request }) => {
+    if (!request.headers.get("Authorization")) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: "AUTH_TOKEN_EXPIRED",
+            message: "로그인이 필요합니다.",
+          },
+        },
+        { status: 401 },
+      );
+    }
+    // 인기상품과 다른 셋임을 눈으로 구분하려고 뒤에서부터 4개.
+    // categoryId는 목 필터용 내부 필드라 응답에서 제외.
+    const items = POPULAR_PRODUCTS.slice(-4).map((p) => {
+      const rest = { ...p };
+      delete (rest as { categoryId?: number }).categoryId;
+      return rest;
+    });
+    return HttpResponse.json(ok({ items }));
   }),
 
   http.post(`${BASE}/api/chat`, async ({ request }) => {
@@ -482,14 +511,33 @@ export const handlers = [
   }),
 
   // ── 장바구니 ──
-  http.get(`${BASE}/api/cart`, () => HttpResponse.json({ items: mockCart })),
+  // 합계는 서버 계산 — purchasable:false 아이템은 합계에서 제외한다.
+  http.get(`${BASE}/api/cart`, () => {
+    const payable = mockCart.filter((it) => it.purchasable);
+    const totalOriginal = payable.reduce(
+      (sum, it) => sum + it.originalPrice * it.quantity,
+      0,
+    );
+    const totalSale = payable.reduce(
+      (sum, it) => sum + it.price * it.quantity,
+      0,
+    );
+    return HttpResponse.json(
+      ok({
+        items: mockCart,
+        totalOriginal,
+        totalSale,
+        discount: totalOriginal - totalSale,
+      }),
+    );
+  }),
 
   http.get(`${BASE}/api/cart/recommendations`, () =>
-    HttpResponse.json({ products: MOCK_CART_RECOMMENDATIONS }),
+    HttpResponse.json(ok({ products: MOCK_CART_RECOMMENDATIONS })),
   ),
 
-  http.patch(`${BASE}/api/cart/:cartItemId`, async ({ params, request }) => {
-    const id = String(params.cartItemId);
+  http.patch(`${BASE}/api/cart/items/:cartItemId`, async ({ params, request }) => {
+    const id = Number(params.cartItemId);
     const { quantity } = (await request.json()) as { quantity: number };
     mockCart = mockCart.map((it) =>
       it.cartItemId === id ? { ...it, quantity } : it,
@@ -497,8 +545,8 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.delete(`${BASE}/api/cart/:cartItemId`, ({ params }) => {
-    const id = String(params.cartItemId);
+  http.delete(`${BASE}/api/cart/items/:cartItemId`, ({ params }) => {
+    const id = Number(params.cartItemId);
     mockCart = mockCart.filter((it) => it.cartItemId !== id);
     return new HttpResponse(null, { status: 204 });
   }),

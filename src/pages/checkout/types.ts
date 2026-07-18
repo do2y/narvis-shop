@@ -5,10 +5,14 @@ import type { ProductCard } from "@/shared/types/chat";
 export interface CheckoutItem {
   product: Pick<
     ProductCard,
-    "productId" | "name" | "brandName" | "price" | "originalPrice" | "imageUrl"
-  >;
-  // 옵션은 제품마다 축이 달라 그룹명→선택값 맵. (예: { 컬러: "아이보리", 사이즈: "S" })
-  options: Record<string, string>;
+    "productId" | "name" | "price" | "originalPrice" | "imageUrl"
+  > &
+    // 장바구니 경유 주문에는 브랜드가 없다(GET /api/cart 응답에 brand 필드 없음).
+    Partial<Pick<ProductCard, "brandName">>;
+  // 옵션 표기는 진입 경로에 따라 다르다:
+  // 상세 "바로 구매"는 그룹명→선택값 맵, 장바구니 경유는 서버가 준 optionName 문자열.
+  options?: Record<string, string>;
+  optionName?: string | null;
   quantity: number;
 }
 

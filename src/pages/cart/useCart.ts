@@ -5,7 +5,7 @@ import {
   removeCartItem,
   updateCartQuantity,
 } from "./api";
-import type { CartItem } from "./types";
+import type { Cart } from "./types";
 
 // 장바구니 — 서버 원본. 수량·구성이 자주 바뀌어 staleTime 0 (CLAUDE.md 규칙).
 export function useCart() {
@@ -29,22 +29,24 @@ export function useCartRecommendations() {
 export function useCartMutations() {
   const queryClient = useQueryClient();
 
+  // 낙관적 반영은 items만 건드린다. 합계는 서버 계산값이라 FE가 다시 셈하지 않고,
+  // onSettled의 invalidate로 갱신된 합계를 받는다(그 사이 짧게 이전 합계가 보임).
   const setQuantity = useMutation({
-    mutationFn: (args: { cartItemId: string; quantity: number }) =>
+    mutationFn: (args: { cartItemId: number; quantity: number }) =>
       updateCartQuantity(args.cartItemId, args.quantity),
     retry: false,
     onMutate: async (args) => {
       await queryClient.cancelQueries({ queryKey: ["cart"] });
-      const previous = queryClient.getQueryData<CartItem[]>(["cart"]);
+      const previous = queryClient.getQueryData<Cart>(["cart"]);
       if (previous) {
-        queryClient.setQueryData<CartItem[]>(
-          ["cart"],
-          previous.map((it) =>
+        queryClient.setQueryData<Cart>(["cart"], {
+          ...previous,
+          items: previous.items.map((it) =>
             it.cartItemId === args.cartItemId
               ? { ...it, quantity: args.quantity }
               : it,
           ),
-        );
+        });
       }
       return { previous };
     },
@@ -55,16 +57,16 @@ export function useCartMutations() {
   });
 
   const remove = useMutation({
-    mutationFn: (cartItemId: string) => removeCartItem(cartItemId),
+    mutationFn: (cartItemId: number) => removeCartItem(cartItemId),
     retry: false,
     onMutate: async (cartItemId) => {
       await queryClient.cancelQueries({ queryKey: ["cart"] });
-      const previous = queryClient.getQueryData<CartItem[]>(["cart"]);
+      const previous = queryClient.getQueryData<Cart>(["cart"]);
       if (previous) {
-        queryClient.setQueryData<CartItem[]>(
-          ["cart"],
-          previous.filter((it) => it.cartItemId !== cartItemId),
-        );
+        queryClient.setQueryData<Cart>(["cart"], {
+          ...previous,
+          items: previous.items.filter((it) => it.cartItemId !== cartItemId),
+        });
       }
       return { previous };
     },
