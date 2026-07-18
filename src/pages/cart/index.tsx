@@ -107,10 +107,14 @@ export default function CartPage() {
       product: {
         productId: it.productId,
         name: it.name,
+        brandName: it.brandName,
         price: it.price,
         originalPrice: it.originalPrice,
         imageUrl: it.imageUrl,
       },
+      // 주문 생성 시 cartItemIds[]로 보내 장바구니 경유임을 알린다
+      // (이 값이 없으면 items[] 경로가 되어 장바구니가 차감되지 않는다).
+      cartItemId: it.cartItemId,
       optionId: it.optionId,
       optionName: it.optionName,
       quantity: it.quantity,

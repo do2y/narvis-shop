@@ -157,6 +157,8 @@ export default function ProductPage() {
             originalPrice: view.originalPrice,
             imageUrl: view.imageUrl,
           },
+          // 주문 생성 시 items[]로 보낼 옵션 식별자(표시용 optionName과 별개)
+          optionId: option?.optionId ?? null,
           optionName: option?.name ?? null,
           quantity,
         },

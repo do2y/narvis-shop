@@ -10,8 +10,8 @@ export function ShippingSection({
   onAddClick,
 }: {
   addresses: Address[];
-  selectedId: string;
-  onSelect: (id: string) => void;
+  selectedId: number | null;
+  onSelect: (id: number) => void;
   onAddClick: () => void;
 }) {
   return (
@@ -20,12 +20,12 @@ export function ShippingSection({
 
       <ul className="mt-4 flex flex-col gap-3">
         {addresses.map((addr) => {
-          const active = addr.id === selectedId;
+          const active = addr.addressId === selectedId;
           return (
-            <li key={addr.id}>
+            <li key={addr.addressId}>
               <button
                 type="button"
-                onClick={() => onSelect(addr.id)}
+                onClick={() => onSelect(addr.addressId)}
                 className={cn(
                   "flex w-full items-start gap-3 rounded-sm border p-4 text-left transition-colors",
                   active ? "border-primary" : "border-input hover:bg-muted/40",
@@ -56,7 +56,8 @@ export function ShippingSection({
                     {addr.recipient} · {addr.phone}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {addr.address}
+                    ({addr.zipCode}) {addr.address1}
+                    {addr.address2 ? ` ${addr.address2}` : ""}
                   </p>
                 </div>
               </button>

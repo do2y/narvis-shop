@@ -64,7 +64,10 @@ export default function OrderCompletePage() {
                 {order.address.recipient} ({order.address.label})
               </p>
               <p className="text-muted-foreground">{order.address.phone}</p>
-              <p className="text-muted-foreground">{order.address.address}</p>
+              <p className="text-muted-foreground">
+                ({order.address.zipCode}) {order.address.address1}
+                {order.address.address2 ? ` ${order.address.address2}` : ""}
+              </p>
             </div>
           </section>
 

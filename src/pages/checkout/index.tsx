@@ -1,19 +1,19 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type {
-  Address,
+  AddressInput,
   CheckoutState,
+  CreateOrderRequest,
   OrderCompleteState,
+  PaymentMethod,
 } from "./types";
-import {
-  MOCK_FAIL_CARD,
-  PAYMENT_METHODS,
-  PLACEHOLDER_ADDRESSES,
-} from "./placeholder";
+import { PAYMENT_METHODS } from "./placeholder";
+import { useCreateOrder } from "./useCreateOrder";
+import { useAddresses, useCreateAddress } from "./useAddresses";
 import { OrderItems } from "./components/OrderItems";
 import { ShippingSection } from "./components/ShippingSection";
 import { AddressFormModal } from "./components/AddressFormModal";
@@ -27,29 +27,34 @@ export default function CheckoutPage() {
   const state = location.state as CheckoutState | null;
   const items = useMemo(() => state?.items ?? [], [state]);
 
-  const defaultAddressId =
-    PLACEHOLDER_ADDRESSES.find((a) => a.isDefault)?.id ??
-    PLACEHOLDER_ADDRESSES[0]?.id ??
-    "";
-  // 배송지 목록은 로컬 소유(추가분 반영). 계약 후 배송지 조회 API로 대체.
-  const [addresses, setAddresses] = useState<Address[]>(PLACEHOLDER_ADDRESSES);
-  const [addressId, setAddressId] = useState(defaultAddressId);
+  const { data: addresses = [] } = useAddresses();
+  const createAddress = useCreateAddress();
+
+  // 선택된 배송지. null이면 기본 배송지(없으면 첫 항목)를 따른다 —
+  // 목록 로딩 전에는 값을 정할 수 없어 사용자가 고르기 전까지 파생값을 쓴다.
+  const [pickedId, setPickedId] = useState<number | null>(null);
+  const addressId =
+    pickedId ??
+    addresses.find((a) => a.isDefault)?.addressId ??
+    addresses[0]?.addressId ??
+    null;
   const [addrModalOpen, setAddrModalOpen] = useState(false);
-  const [method, setMethod] = useState<string>(PAYMENT_METHODS[0]);
-  const [cardNumber, setCardNumber] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>(PAYMENT_METHODS[0].value);
   const [agreed, setAgreed] = useState(false);
 
-  // 모의 결제 처리 상태. paying=승인 대기 중, payError=실패 안내(재시도 유도).
-  const [paying, setPaying] = useState(false);
-  const [payError, setPayError] = useState<string | null>(null);
+  // 결제 실패(PAYMENT_FAILED)는 HTTP 200이라 mutation 에러가 아니다.
+  // 요청 자체가 거부된 경우와 구분해 따로 안내한다.
+  const [paymentFailed, setPaymentFailed] = useState(false);
+  const createOrder = useCreateOrder();
 
-  // 새 배송지 임시 id 카운터 — 서버 id 부여 전 로컬 구분용.
-  const nextIdRef = useRef(1);
-
-  const handleAddAddress = (addr: Omit<Address, "id">) => {
-    const id = `new-${nextIdRef.current++}`;
-    setAddresses((prev) => [...prev, { ...addr, id }]);
-    setAddressId(id); // 방금 추가한 배송지를 선택
+  const handleAddAddress = async (addr: AddressInput) => {
+    try {
+      const { addressId: newId } = await createAddress.mutateAsync(addr);
+      setPickedId(newId); // 방금 추가한 배송지를 선택
+      setAddrModalOpen(false); // 성공했을 때만 닫는다(실패 시 입력값 보존)
+    } catch {
+      // 실패 사유는 createAddress.errorMessage로 모달에 노출된다
+    }
   };
 
   const { itemsTotal, discount } = useMemo(() => {
@@ -85,35 +90,47 @@ export default function CheckoutPage() {
     );
   }
 
-  // 카드 결제인데 "실패 카드"면 승인 실패로 처리. 공백 차이는 무시하고 비교.
-  const isFailCard =
-    method === "신용 · 체크카드" &&
-    cardNumber.replace(/\s/g, "") === MOCK_FAIL_CARD.replace(/\s/g, "");
+  const handleSubmit = async () => {
+    const address = addresses.find((a) => a.addressId === addressId);
+    if (!address || createOrder.isPending) return;
 
-  // 결제대행 계약 전 — 실제 결제는 목. 동의 시에만 활성화.
-  const handleSubmit = () => {
-    const address = addresses.find((a) => a.id === addressId);
-    if (!address || paying) return;
+    setPaymentFailed(false);
 
-    setPayError(null);
-    setPaying(true);
+    // 라인아이템 출처는 정확히 하나만 보낸다(둘 다 보내면 400).
+    // 장바구니에서 넘어온 항목은 cartItemId를 갖고, 상세 "바로 구매"는 없다.
+    const cartItemIds = items
+      .map((it) => it.cartItemId)
+      .filter((id): id is number => id != null);
+    const fromCart = cartItemIds.length === items.length && items.length > 0;
 
-    // 승인 대기를 흉내낸 지연 후 성공/실패 분기.
-    // TODO: 주문 생성 API 연결 → 실제 승인 응답으로 성공/실패·주문번호 교체.
-    setTimeout(() => {
-      setPaying(false);
+    const body: CreateOrderRequest = {
+      ...(fromCart
+        ? { cartItemIds }
+        : {
+            items: items.map((it) => ({
+              productId: it.product.productId,
+              ...(it.optionId != null ? { optionId: it.optionId } : {}),
+              quantity: it.quantity,
+            })),
+          }),
+      // 배송지는 서버 목록에서만 고르므로 항상 addressId로 보낸다
+      // (addressId와 address를 함께 보내면 400).
+      addressId: address.addressId,
+      paymentMethod: method,
+    };
 
-      if (isFailCard) {
-        // 자동 재시도하지 않고 안내만 — 사용자가 카드 수정 후 다시 시도.
-        setPayError(
-          "카드 승인에 실패했어요. 카드 정보를 확인한 뒤 다시 시도해주세요.",
-        );
+    try {
+      const result = await createOrder.mutateAsync(body);
+
+      // 결제 실패도 200 — status로 구분한다. 자동 재시도하지 않고 안내만.
+      if (result.status === "PAYMENT_FAILED") {
+        setPaymentFailed(true);
         return;
       }
 
-      const orderNo = `ORD-${new Date().getFullYear()}${String(Date.now()).slice(-8)}`;
       const order: OrderCompleteState["order"] = {
-        orderNo,
+        orderId: result.orderId,
+        orderNo: result.orderNo,
         items,
         address,
         method,
@@ -124,7 +141,9 @@ export default function CheckoutPage() {
 
       // replace로 이동 — 뒤로가기로 결제 화면에 돌아와 중복 결제하는 것을 막는다.
       navigate("/checkout/complete", { state: { order }, replace: true });
-    }, 800);
+    } catch {
+      // 요청 거부(검증·권한 등)는 createOrder.errorMessage로 안내된다.
+    }
   };
 
   return (
@@ -140,19 +159,15 @@ export default function CheckoutPage() {
             <ShippingSection
               addresses={addresses}
               selectedId={addressId}
-              onSelect={setAddressId}
+              onSelect={setPickedId}
               onAddClick={() => setAddrModalOpen(true)}
             />
             <PaymentSection
               method={method}
               onMethodChange={(m) => {
                 setMethod(m);
-                setPayError(null); // 수단 변경 시 이전 실패 안내 제거
-              }}
-              cardNumber={cardNumber}
-              onCardNumberChange={(v) => {
-                setCardNumber(v);
-                setPayError(null); // 카드 수정 시 이전 실패 안내 제거
+                setPaymentFailed(false); // 수단 변경 시 이전 실패 안내 제거
+                createOrder.reset();
               }}
             />
 
@@ -191,8 +206,13 @@ export default function CheckoutPage() {
               itemsTotal={itemsTotal}
               discount={discount}
               canSubmit={agreed}
-              paying={paying}
-              error={payError}
+              paying={createOrder.isPending}
+              // 결제 승인 실패와 요청 거부를 각각 안내
+              error={
+                paymentFailed
+                  ? "결제에 실패했어요. 결제 수단을 확인한 뒤 다시 시도해주세요."
+                  : createOrder.errorMessage
+              }
               onSubmit={handleSubmit}
             />
           </div>
@@ -201,8 +221,13 @@ export default function CheckoutPage() {
 
       <AddressFormModal
         open={addrModalOpen}
-        onOpenChange={setAddrModalOpen}
+        onOpenChange={(next) => {
+          setAddrModalOpen(next);
+          if (!next) createAddress.reset(); // 닫을 때 이전 실패 안내 제거
+        }}
         onSubmit={handleAddAddress}
+        submitting={createAddress.isPending}
+        error={createAddress.errorMessage}
       />
     </div>
   );
