@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { logout } from "@/shared/api/auth";
 import { useAuthStore, type UserRole } from "@/shared/stores/authStore";
 
 interface AppHeaderProps {
@@ -72,9 +73,15 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
   const pathname = useLocation().pathname;
   const hasChatEntry = pathname === "/" || pathname.startsWith("/chat");
 
-  const handleLogout = () => {
-    clearAuth();
-    navigate("/");
+  const handleLogout = async () => {
+    // 서버 RT 삭제 시도 → 성공/실패 무관하게 로컬 상태는 반드시 비우고 이동.
+    // (네트워크 실패로 서버 호출이 안 돼도 로그인 상태로 남지 않도록)
+    try {
+      await logout();
+    } finally {
+      clearAuth();
+      navigate("/");
+    }
   };
 
   return (

@@ -225,6 +225,11 @@ export const handlers = [
     );
   }),
 
+  // 로그아웃 — 멱등, 항상 성공. 실제 백엔드는 RT 쿠키 만료도 하지만 목은 성공 봉투만.
+  http.post(`${BASE}/api/auth/logout`, () =>
+    HttpResponse.json(ok(null)),
+  ),
+
   http.get(`${BASE}/api/categories`, () =>
     HttpResponse.json({
       categories: [
