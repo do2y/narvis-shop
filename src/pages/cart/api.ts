@@ -27,11 +27,17 @@ export async function addCartItem(body: {
   return data;
 }
 
+// 수량 변경 (C-3) — 게스트 허용(본인 소유 아이템만). quantity 1~99.
+// 남의 아이템이면 403 AUTH_FORBIDDEN, 없는 항목이면 404 CART_ITEM_NOT_FOUND.
 export async function updateCartQuantity(
   cartItemId: number,
   quantity: number,
-): Promise<void> {
-  await api.patch(`/api/cart/items/${cartItemId}`, { quantity });
+): Promise<{ cartItemId: number; quantity: number }> {
+  const { data } = await api.patch<{ cartItemId: number; quantity: number }>(
+    `/api/cart/items/${cartItemId}`,
+    { quantity },
+  );
+  return data;
 }
 
 export async function removeCartItem(cartItemId: number): Promise<void> {

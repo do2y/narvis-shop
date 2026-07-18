@@ -30,7 +30,11 @@ function CartSkeleton() {
 
 export default function CartPage() {
   const { data: cart, isPending, isError, refetch } = useCart();
-  const { setQuantity, remove } = useCartMutations();
+  const {
+    setQuantity,
+    remove,
+    errorMessage: mutationError,
+  } = useCartMutations();
   const navigate = useNavigate();
 
   const items = cart?.items;
@@ -177,6 +181,13 @@ export default function CartPage() {
                   선택 삭제
                 </button>
               </div>
+
+              {/* 수량 변경·삭제 실패 사유 — 낙관적 반영이 롤백되므로 이유를 알려준다 */}
+              {mutationError && (
+                <p className="mt-4 text-sm text-destructive" role="alert">
+                  {mutationError}
+                </p>
+              )}
 
               <div className="mt-4 flex flex-col gap-4">
                 {cart.items.map((item) => (

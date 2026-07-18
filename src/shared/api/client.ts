@@ -9,9 +9,16 @@ export interface ApiEnvelope<T> {
   error?: ApiErrorBody;
 }
 
+// 검증 실패(VALIDATION_ERROR) 시 필드별 사유. 공통 message보다 구체적이라 표시에 우선 쓴다.
+export interface ApiFieldError {
+  field: string;
+  message: string;
+}
+
 export interface ApiErrorBody {
   code: string;
   message: string;
+  fields?: ApiFieldError[];
 }
 
 // 언래핑된 에러. 컴포넌트/훅은 err.code로 분기, err.message는 표시용.
@@ -19,11 +26,18 @@ export interface ApiErrorBody {
 export class ApiError extends Error {
   code: string;
   status?: number;
+  fields?: ApiFieldError[];
   constructor(body: ApiErrorBody, status?: number) {
     super(body.message);
     this.name = "ApiError";
     this.code = body.code;
     this.status = status;
+    this.fields = body.fields;
+  }
+
+  // 검증 실패면 필드 사유("수량은 99 이하여야 합니다.")를, 없으면 공통 message를 반환
+  get displayMessage(): string {
+    return this.fields?.[0]?.message ?? this.message;
   }
 }
 
