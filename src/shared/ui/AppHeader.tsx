@@ -25,7 +25,7 @@ interface AppHeaderProps {
 
 // 역할 한글 라벨 — 드롭다운 계정 헤더의 배지에 사용
 const ROLE_LABEL: Record<UserRole, string> = {
-  MEMBER: "일반 회원",
+  USER: "일반 회원",
   SELLER: "판매자",
   ADMIN: "관리자",
 };

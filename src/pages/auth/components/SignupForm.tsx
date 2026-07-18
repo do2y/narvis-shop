@@ -14,8 +14,8 @@ interface SignupFormProps {
 }
 
 const GENDERS = [
-  { value: "M", label: "남성" },
-  { value: "F", label: "여성" },
+  { value: "MALE", label: "남성" },
+  { value: "FEMALE", label: "여성" },
 ] as const;
 
 export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
@@ -46,6 +46,9 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       nickname: v.nickname,
       gender: v.gender,
       birthDate: v.birthDate,
+      agreeTerms: v.agreeTerms,
+      agreePrivacy: v.agreePrivacy,
+      // guestId는 게스트 승계 로직 붙을 때 연결 (옵셔널)
     }),
   );
 

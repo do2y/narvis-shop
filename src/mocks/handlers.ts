@@ -2,26 +2,36 @@ import { http, HttpResponse } from "msw";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
-function authResponse(user: {
+// 백엔드 공통 응답 봉투 헬퍼 — 실제 API와 동일하게 { success, data } / { success, error }.
+// client.ts 인터셉터가 이 봉투를 언래핑하므로 목도 반드시 이 형태를 지켜야 함.
+function ok<T>(data: T) {
+  return { success: true as const, data };
+}
+function fail(code: string, message: string) {
+  return { success: false as const, error: { code, message } };
+}
+
+// A-1/A-2 성공 응답: AT는 body, RT는 httpOnly 쿠키(목에선 Set-Cookie 생략), user는 member 키
+function authResponse(member: {
   id: number;
+  email: string;
   nickname: string;
-  role: "MEMBER" | "SELLER" | "ADMIN";
+  role: "USER" | "SELLER" | "ADMIN";
 }) {
-  return {
-    accessToken: `mock-access-${user.id}`,
-    refreshToken: `mock-refresh-${user.id}`,
-    user,
-  };
+  return ok({
+    accessToken: `mock-access-${member.id}`,
+    member,
+  });
 }
 
 // 로그인 성공 계정 (비밀번호는 아무 값이나 통과 — 실패 흐름은 미등록 이메일로 테스트)
 const MOCK_ACCOUNTS: Record<
   string,
-  { id: number; nickname: string; role: "MEMBER" | "SELLER" | "ADMIN" }
+  { id: number; email: string; nickname: string; role: "USER" | "SELLER" | "ADMIN" }
 > = {
-  "member@test.com": { id: 1, nickname: "지영", role: "MEMBER" },
-  "seller@test.com": { id: 2, nickname: "판매자스토어", role: "SELLER" },
-  "admin@test.com": { id: 3, nickname: "관리자", role: "ADMIN" },
+  "member@test.com": { id: 1, email: "member@test.com", nickname: "지영", role: "USER" },
+  "seller@test.com": { id: 2, email: "seller@test.com", nickname: "판매자스토어", role: "SELLER" },
+  "admin@test.com": { id: 3, email: "admin@test.com", nickname: "관리자", role: "ADMIN" },
 };
 
 // 찜한 상품 목 — mypage/types.ts WishlistProduct 계약. wishedAt 내림차순(최신순).
@@ -183,9 +193,9 @@ export const handlers = [
     };
     const account = MOCK_ACCOUNTS[email];
     if (!account) {
-      // 계정 존재 여부 비노출 위해 통합 401
+      // 계정 존재 여부 비노출 위해 통합 401 (봉투 형태)
       return HttpResponse.json(
-        { message: "이메일 또는 비밀번호가 올바르지 않습니다" },
+        fail("AUTH_LOGIN_FAILED", "이메일 또는 비밀번호가 올바르지 않습니다"),
         { status: 401 },
       );
     }
@@ -197,18 +207,21 @@ export const handlers = [
       email: string;
       nickname: string;
       password: string;
-      gender: "M" | "F";
+      gender: "MALE" | "FEMALE";
       birthDate: string;
+      agreeTerms: boolean;
+      agreePrivacy: boolean;
+      guestId?: string;
     };
     if (MOCK_ACCOUNTS[email]) {
       return HttpResponse.json(
-        { message: "이미 사용 중인 이메일입니다" },
+        fail("MEMBER_EMAIL_DUPLICATE", "이미 가입된 이메일입니다."),
         { status: 409 },
       );
     }
     // 가입 완료 시 자동 로그인 — 로그인과 동일한 토큰 응답
     return HttpResponse.json(
-      authResponse({ id: 100, nickname, role: "MEMBER" }),
+      authResponse({ id: 100, email, nickname, role: "USER" }),
     );
   }),
 
