@@ -5,9 +5,11 @@ export interface CartItem {
   cartItemId: number; // 장바구니 라인 식별(같은 상품 다른 옵션 구분)
   productId: number;
   name: string;
+  brandId: number;
+  brandName: string;
   imageUrl: string;
-  optionId: number;
-  optionName: string; // "화이트/M" — 슬래시로 구분된 옵션값 조합
+  optionId: number | null; // 옵션 없는 상품은 null
+  optionName: string | null; // "화이트/M" — 슬래시로 구분. 옵션 없는 상품은 null
   quantity: number;
   price: number; // 현재가(담은 시점 가격 아님)
   originalPrice: number; // 정가 — 할인 표시·합산용

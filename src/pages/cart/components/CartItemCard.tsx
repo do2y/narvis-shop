@@ -19,8 +19,9 @@ export function CartItemCard({
   const hasDiscount = item.originalPrice > item.price;
   const lineTotal = item.price * item.quantity;
   const lineOriginal = item.originalPrice * item.quantity;
-  // "화이트/M" 형태로 오므로 슬래시로 나눠 옵션별 칩으로 표시
-  const optionValues = item.optionName
+  // "화이트/M" 형태로 오므로 슬래시로 나눠 옵션별 칩으로 표시.
+  // 옵션 없는 상품은 optionName이 null이라 빈 배열이 되고 칩 영역이 렌더되지 않는다.
+  const optionValues = (item.optionName ?? "")
     .split("/")
     .map((v) => v.trim())
     .filter(Boolean);
