@@ -6,12 +6,16 @@ export function AddressCard({
   onRemove,
   onSetDefault,
   busy,
+  deletable = true,
 }: {
   address: Address;
   onEdit: () => void;
   onRemove: () => void;
   onSetDefault: () => void;
   busy?: boolean;
+  // 서버 규칙: 유일한 배송지만 삭제 불가(ADDRESS_LAST_UNDELETABLE).
+  // 기본 배송지도 다른 게 있으면 삭제되고, 가장 오래된 주소가 자동 승격된다.
+  deletable?: boolean;
 }) {
   return (
     <article className="rounded-sm border bg-background p-5">
@@ -44,7 +48,7 @@ export function AddressCard({
           >
             수정
           </button>
-          {!address.isDefault && (
+          {deletable && (
             <button
               type="button"
               onClick={onRemove}

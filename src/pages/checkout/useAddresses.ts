@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/shared/api/client";
-import { createAddress, fetchAddresses } from "@/shared/api/address";
+import {
+  createAddress,
+  fetchAddresses,
+  updateAddress,
+} from "@/shared/api/address";
+import type { AddressPatch } from "@/shared/types/address";
 import { useAuthStore } from "@/shared/stores/authStore";
 
 // 배송지 — 로그인 필요. 게스트로 호출하면 401이라 enabled로 막는다.
@@ -30,6 +35,24 @@ export function useCreateAddress() {
     mutationFn: createAddress,
     retry: false,
     // 기본 배송지 지정 시 다른 항목의 isDefault도 서버에서 바뀌므로 목록 전체를 갱신
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["addresses"] }),
+  });
+
+  return {
+    ...mutation,
+    errorMessage: mutation.error ? toAddressErrorMessage(mutation.error) : null,
+  };
+}
+
+// 주문서에서 배송지 오타를 바로 고칠 수 있도록 수정도 지원한다.
+// 마이페이지로 나갔다 돌아오지 않게 하려는 것.
+export function useUpdateAddress() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (args: { addressId: number; input: AddressPatch }) =>
+      updateAddress(args.addressId, args.input),
+    retry: false,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["addresses"] }),
   });
 

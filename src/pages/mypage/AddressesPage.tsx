@@ -91,6 +91,7 @@ export default function AddressesPage() {
                 key={address.addressId}
                 address={address}
                 busy={busy}
+                deletable={addresses.length > 1}
                 onEdit={() => openEdit(address)}
                 onRemove={() => handleRemove(address)}
                 onSetDefault={() => setDefault.mutate(address.addressId)}

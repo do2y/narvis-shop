@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
-import type { AddressInput } from "@/shared/types/address";
+import type { Address, AddressInput } from "@/shared/types/address";
 import type {
   CheckoutState,
   CreateOrderRequest,
@@ -13,7 +13,11 @@ import type {
 } from "./types";
 import { PAYMENT_METHODS } from "./placeholder";
 import { useCreateOrder } from "./useCreateOrder";
-import { useAddresses, useCreateAddress } from "./useAddresses";
+import {
+  useAddresses,
+  useCreateAddress,
+  useUpdateAddress,
+} from "./useAddresses";
 import { OrderItems } from "./components/OrderItems";
 import { ShippingSection } from "./components/ShippingSection";
 import { AddressFormModal } from "@/shared/ui/AddressFormModal";
@@ -29,6 +33,7 @@ export default function CheckoutPage() {
 
   const { data: addresses = [] } = useAddresses();
   const createAddress = useCreateAddress();
+  const updateAddress = useUpdateAddress();
 
   // 선택된 배송지. null이면 기본 배송지(없으면 첫 항목)를 따른다 —
   // 목록 로딩 전에는 값을 정할 수 없어 사용자가 고르기 전까지 파생값을 쓴다.
@@ -39,6 +44,10 @@ export default function CheckoutPage() {
     addresses[0]?.addressId ??
     null;
   const [addrModalOpen, setAddrModalOpen] = useState(false);
+  // 수정 대상. null이면 추가 모드.
+  const [editingAddr, setEditingAddr] = useState<Address | null>(null);
+  // 배송 요청사항 — 주문 1회성이라 배송지가 아니라 주문 body로 보낸다.
+  const [deliveryRequest, setDeliveryRequest] = useState("");
   const [method, setMethod] = useState<PaymentMethod>(PAYMENT_METHODS[0].value);
   const [agreed, setAgreed] = useState(false);
 
@@ -47,14 +56,33 @@ export default function CheckoutPage() {
   const [paymentFailed, setPaymentFailed] = useState(false);
   const createOrder = useCreateOrder();
 
-  const handleAddAddress = async (addr: AddressInput) => {
+  // 추가·수정 겸용 — editingAddr 유무로 분기. 성공했을 때만 닫는다(실패 시 입력값 보존).
+  const handleSubmitAddress = async (addr: AddressInput) => {
     try {
-      const { addressId: newId } = await createAddress.mutateAsync(addr);
-      setPickedId(newId); // 방금 추가한 배송지를 선택
-      setAddrModalOpen(false); // 성공했을 때만 닫는다(실패 시 입력값 보존)
+      if (editingAddr) {
+        await updateAddress.mutateAsync({
+          addressId: editingAddr.addressId,
+          input: addr,
+        });
+      } else {
+        const { addressId: newId } = await createAddress.mutateAsync(addr);
+        setPickedId(newId); // 방금 추가한 배송지를 선택
+      }
+      setAddrModalOpen(false);
+      setEditingAddr(null);
     } catch {
-      // 실패 사유는 createAddress.errorMessage로 모달에 노출된다
+      // 실패 사유는 errorMessage로 모달에 노출된다
     }
+  };
+
+  const openAddAddress = () => {
+    setEditingAddr(null);
+    setAddrModalOpen(true);
+  };
+
+  const openEditAddress = (addr: Address) => {
+    setEditingAddr(addr);
+    setAddrModalOpen(true);
   };
 
   const { itemsTotal, discount } = useMemo(() => {
@@ -116,6 +144,10 @@ export default function CheckoutPage() {
       // 배송지는 서버 목록에서만 고르므로 항상 addressId로 보낸다
       // (addressId와 address를 함께 보내면 400).
       addressId: address.addressId,
+      // 빈 값은 보내지 않는다(선택 항목)
+      ...(deliveryRequest.trim()
+        ? { deliveryRequest: deliveryRequest.trim() }
+        : {}),
       paymentMethod: method,
     };
 
@@ -160,7 +192,10 @@ export default function CheckoutPage() {
               addresses={addresses}
               selectedId={addressId}
               onSelect={setPickedId}
-              onAddClick={() => setAddrModalOpen(true)}
+              onAddClick={openAddAddress}
+              onEditClick={openEditAddress}
+              deliveryRequest={deliveryRequest}
+              onDeliveryRequestChange={setDeliveryRequest}
             />
             <PaymentSection
               method={method}
@@ -223,11 +258,17 @@ export default function CheckoutPage() {
         open={addrModalOpen}
         onOpenChange={(next) => {
           setAddrModalOpen(next);
-          if (!next) createAddress.reset(); // 닫을 때 이전 실패 안내 제거
+          if (!next) {
+            // 닫을 때 이전 실패 안내·수정 대상 제거
+            createAddress.reset();
+            updateAddress.reset();
+            setEditingAddr(null);
+          }
         }}
-        onSubmit={handleAddAddress}
-        submitting={createAddress.isPending}
-        error={createAddress.errorMessage}
+        editing={editingAddr}
+        onSubmit={handleSubmitAddress}
+        submitting={createAddress.isPending || updateAddress.isPending}
+        error={createAddress.errorMessage ?? updateAddress.errorMessage}
       />
     </div>
   );
