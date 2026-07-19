@@ -9,7 +9,7 @@ export function useAddresses() {
   const userId = useAuthStore((s) => s.user?.id ?? null);
 
   return useQuery({
-    queryKey: ["addresses", userId],
+    queryKey: ["addresses", "checkout", userId],
     queryFn: fetchAddresses,
     enabled: userId !== null,
     staleTime: 0,
