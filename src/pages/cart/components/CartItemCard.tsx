@@ -1,6 +1,6 @@
 import { Check, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "../utils/formatPrice";
+import { formatPrice } from "@/shared/utils/formatPrice";
 import type { CartItem } from "../types";
 
 export function CartItemCard({

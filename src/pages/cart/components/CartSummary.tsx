@@ -1,4 +1,4 @@
-import { formatPrice } from "../utils/formatPrice";
+import { formatPrice } from "@/shared/utils/formatPrice";
 
 const FREE_SHIPPING_THRESHOLD = 50000;
 

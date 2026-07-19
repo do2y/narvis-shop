@@ -1,10 +1,10 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useOrder } from "./useOrders";
-import { formatPrice } from "./utils/formatPrice";
+import { formatPrice } from "@/shared/utils/formatPrice";
 import { OrderStatusBadge } from "./components/OrderStatusBadge";
 import { PageTitle, ErrorState } from "./components/PageState";
 import type { OrderDetail, OrderItem } from "./types";

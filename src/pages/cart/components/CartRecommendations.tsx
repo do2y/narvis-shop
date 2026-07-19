@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatPrice } from "../utils/formatPrice";
+import { formatPrice } from "@/shared/utils/formatPrice";
 import { useCartRecommendations } from "../useCart";
 
 export function CartRecommendations() {

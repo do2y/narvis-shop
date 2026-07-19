@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import type { PopularProduct } from "../types";
-import { formatPrice } from "../utils/formatPrice";
+import { formatPrice } from "@/shared/utils/formatPrice";
 
 export function ProductCard({ product }: { product: PopularProduct }) {
   const hasDiscount = product.originalPrice > product.price;

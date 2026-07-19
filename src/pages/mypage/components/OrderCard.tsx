@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "../utils/formatPrice";
+import { formatPrice } from "@/shared/utils/formatPrice";
 import type { Order, OrderItem } from "../types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { ClaimRequestModal } from "./ClaimRequestModal";
