@@ -27,11 +27,31 @@ function authResponse(member: {
 // 로그인 성공 계정 (비밀번호는 아무 값이나 통과 — 실패 흐름은 미등록 이메일로 테스트)
 const MOCK_ACCOUNTS: Record<
   string,
-  { id: number; email: string; nickname: string; role: "USER" | "SELLER" | "ADMIN" }
+  {
+    id: number;
+    email: string;
+    nickname: string;
+    role: "USER" | "SELLER" | "ADMIN";
+  }
 > = {
-  "member@test.com": { id: 1, email: "member@test.com", nickname: "지영", role: "USER" },
-  "seller@test.com": { id: 2, email: "seller@test.com", nickname: "판매자스토어", role: "SELLER" },
-  "admin@test.com": { id: 3, email: "admin@test.com", nickname: "관리자", role: "ADMIN" },
+  "member@test.com": {
+    id: 1,
+    email: "member@test.com",
+    nickname: "지영",
+    role: "USER",
+  },
+  "seller@test.com": {
+    id: 2,
+    email: "seller@test.com",
+    nickname: "판매자스토어",
+    role: "SELLER",
+  },
+  "admin@test.com": {
+    id: 3,
+    email: "admin@test.com",
+    nickname: "관리자",
+    role: "ADMIN",
+  },
 };
 
 // 찜한 상품 목 — mypage/types.ts WishlistProduct 계약. wishedAt 내림차순(최신순).
@@ -109,6 +129,45 @@ let mockAddresses = [
   },
 ];
 let nextAddressSeq = 3;
+
+// 주문/결제용 배송지 목 (GET·POST /api/addresses) — checkout/types.ts Address 계약.
+// 위 mockAddresses(/api/mypage/addresses)와 필드가 갈린다: addressId가 number이고
+// 주소가 address1/address2로 분리됨. 백엔드에서 두 계약이 합쳐지면 하나로 통합할 것.
+let mockOrderAddresses: {
+  addressId: number;
+  label: string;
+  recipient: string;
+  phone: string;
+  zipCode: string;
+  address1: string;
+  address2?: string;
+  isDefault?: boolean;
+}[] = [
+  {
+    addressId: 3,
+    label: "집",
+    recipient: "김소이",
+    phone: "010-1234-5678",
+    zipCode: "06292",
+    address1: "서울특별시 강남구 테헤란로 123",
+    address2: "101동 302호",
+    isDefault: true,
+  },
+  {
+    addressId: 4,
+    label: "회사",
+    recipient: "김소이",
+    phone: "010-1234-5678",
+    zipCode: "04799",
+    address1: "서울특별시 성동구 왕십리로 50",
+    address2: "센터포인트빌딩 8층",
+    isDefault: false,
+  },
+];
+let nextOrderAddressSeq = 5;
+
+// 주문 id 목 증가값 — orderNo는 이 값에서 파생한다(ORD-yyyyMMdd-{id}).
+let nextOrderSeq = 1001;
 
 // 장바구니 목 — cart/types.ts CartItem 계약. let: 수량 변경·삭제가 갱신.
 // 핸들러가 참조하므로 배열 위에 선언.
@@ -264,9 +323,7 @@ export const handlers = [
   }),
 
   // 로그아웃 — 멱등, 항상 성공. 실제 백엔드는 RT 쿠키 만료도 하지만 목은 성공 봉투만.
-  http.post(`${BASE}/api/auth/logout`, () =>
-    HttpResponse.json(ok(null)),
-  ),
+  http.post(`${BASE}/api/auth/logout`, () => HttpResponse.json(ok(null))),
 
   // 카테고리 2단 트리 — API 명세: { success, data: { categories: [...] } }.
   // emoji는 백엔드 미제공 → 프론트 categoryEmoji 매핑.
@@ -695,19 +752,182 @@ export const handlers = [
     HttpResponse.json(ok({ products: MOCK_CART_RECOMMENDATIONS })),
   ),
 
-  http.patch(`${BASE}/api/cart/items/:cartItemId`, async ({ params, request }) => {
-    const id = Number(params.cartItemId);
-    const { quantity } = (await request.json()) as { quantity: number };
-    mockCart = mockCart.map((it) =>
-      it.cartItemId === id ? { ...it, quantity } : it,
-    );
-    return new HttpResponse(null, { status: 204 });
-  }),
+  http.patch(
+    `${BASE}/api/cart/items/:cartItemId`,
+    async ({ params, request }) => {
+      const id = Number(params.cartItemId);
+      const { quantity } = (await request.json()) as { quantity: number };
+      mockCart = mockCart.map((it) =>
+        it.cartItemId === id ? { ...it, quantity } : it,
+      );
+      return new HttpResponse(null, { status: 204 });
+    },
+  ),
 
   http.delete(`${BASE}/api/cart/items/:cartItemId`, ({ params }) => {
     const id = Number(params.cartItemId);
     mockCart = mockCart.filter((it) => it.cartItemId !== id);
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ── 배송지 (M-8) — checkout 계약: address1/address2 분리, addressId는 number.
+  // /api/mypage/addresses 목과는 필드·타입이 다른 별개 계약이라 배열도 따로 둔다.
+  http.get(`${BASE}/api/addresses`, () =>
+    HttpResponse.json(ok({ addresses: mockOrderAddresses })),
+  ),
+
+  http.post(`${BASE}/api/addresses`, async ({ request }) => {
+    const input = (await request.json()) as Omit<
+      (typeof mockOrderAddresses)[number],
+      "addressId" | "isDefault"
+    > & { isDefault?: boolean };
+    // address2만 선택, 나머지는 필수
+    const missing = (
+      ["label", "recipient", "phone", "zipCode", "address1"] as const
+    ).filter((f) => !input[f]?.trim());
+    if (missing.length > 0) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "입력값을 확인해주세요.",
+            fields: missing.map((f) => ({
+              field: f,
+              message: "필수 입력 항목입니다.",
+            })),
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const created = {
+      ...input,
+      addressId: nextOrderAddressSeq++,
+      // 첫 배송지는 자동 기본. 명시적 기본 지정 시 기존 기본은 해제된다.
+      isDefault: input.isDefault ?? mockOrderAddresses.length === 0,
+    };
+    if (created.isDefault) {
+      mockOrderAddresses = mockOrderAddresses.map((a) => ({
+        ...a,
+        isDefault: false,
+      }));
+    }
+    mockOrderAddresses = [...mockOrderAddresses, created];
+    // 응답은 addressId만 (200) — 목록은 호출부가 재조회해 갱신한다.
+    return HttpResponse.json(ok({ addressId: created.addressId }));
+  }),
+
+  // ── 주문 생성 + 모의 결제 (O-1) ──
+  // 라인아이템 출처는 cartItemIds / items 중 정확히 하나. 금액은 서버(=목)가 재계산하므로
+  // body의 금액 필드는 아예 받지 않는다. 결제 성공·실패 모두 200이고 status로 구분.
+  http.post(`${BASE}/api/orders`, async ({ request }) => {
+    const body = (await request.json()) as {
+      cartItemIds?: number[];
+      items?: { productId: number; optionId?: number; quantity: number }[];
+      addressId?: number;
+      address?: Record<string, string>;
+      deliveryRequest?: string;
+      paymentMethod: string;
+    };
+
+    const hasCart =
+      Array.isArray(body.cartItemIds) && body.cartItemIds.length > 0;
+    const hasDirect = Array.isArray(body.items) && body.items.length > 0;
+    if (hasCart === hasDirect) {
+      return HttpResponse.json(
+        fail("INVALID_REQUEST", "주문 상품 정보가 올바르지 않습니다."),
+        { status: 400 },
+      );
+    }
+    if (!body.addressId && !body.address) {
+      return HttpResponse.json(
+        fail("INVALID_REQUEST", "배송지를 선택해주세요."),
+        { status: 400 },
+      );
+    }
+
+    // 장바구니 경유: 타인 아이템(존재하지 않는 id) 403, HIDDEN 포함 400
+    const lines = hasCart
+      ? body.cartItemIds!.map((id) =>
+          mockCart.find((it) => it.cartItemId === id),
+        )
+      : [];
+    if (hasCart && lines.some((it) => !it)) {
+      return HttpResponse.json(
+        fail("AUTH_FORBIDDEN", "이 주문을 처리할 권한이 없어요."),
+        { status: 403 },
+      );
+    }
+    if (hasCart && lines.some((it) => it && !it.purchasable)) {
+      return HttpResponse.json(
+        fail(
+          "PRODUCT_NOT_PURCHASABLE",
+          "구매할 수 없는 상품이 포함되어 있습니다.",
+        ),
+        { status: 400 },
+      );
+    }
+
+    // 수량은 아이템당 1~99
+    const quantities = hasCart
+      ? lines.map((it) => it!.quantity)
+      : body.items!.map((it) => it.quantity);
+    if (quantities.some((q) => q < 1 || q > 99)) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "수량이 올바르지 않습니다.",
+            fields: [
+              { field: "quantity", message: "수량은 1~99개여야 합니다." },
+            ],
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    // 옵션이 해당 상품 소속인지 (items[] 경로도 동일 적용)
+    if (
+      hasDirect &&
+      body.items!.some(
+        (it) =>
+          it.optionId != null &&
+          !mockCart.some(
+            (c) => c.productId === it.productId && c.optionId === it.optionId,
+          ) &&
+          // 목 장바구니에 없는 상품은 옵션 검증을 건너뛴다(바로 구매 대상)
+          mockCart.some((c) => c.productId === it.productId),
+      )
+    ) {
+      return HttpResponse.json(
+        fail("CART_OPTION_INVALID", "선택한 옵션을 찾을 수 없습니다."),
+        { status: 400 },
+      );
+    }
+
+    const orderId = nextOrderSeq++;
+    // orderNo는 저장하지 않고 파생: "ORD-" + created_at(yyyyMMdd) + "-" + id
+    const yyyymmdd = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const paid = body.paymentMethod !== "MOCK_FAIL";
+
+    // 결제 성공 시에만 장바구니 경유분 차감 (바로 구매는 장바구니 미접촉)
+    if (paid && hasCart) {
+      mockCart = mockCart.filter(
+        (it) => !body.cartItemIds!.includes(it.cartItemId),
+      );
+    }
+
+    return HttpResponse.json(
+      ok({
+        orderId,
+        orderNo: `ORD-${yyyymmdd}-${orderId}`,
+        status: paid ? "PAID" : "PAYMENT_FAILED",
+      }),
+    );
   }),
 
   http.get(`${BASE}/api/wishlist`, () =>
@@ -1578,7 +1798,7 @@ const MOCK_SELLER_LOW_STOCK = {
       productId: 203,
       name: "벨티드 린넨 원피스",
       imageUrl:
-        "https://image.msscdn.net/thumbnails/images/goods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200",
+        "https://image.msscdn.net/thumbnails/images/1999d@naver.comgoods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200",
       code: "GLT-OP-0412",
       price: 89000,
       stock: 4,
