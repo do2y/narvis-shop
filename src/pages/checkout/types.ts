@@ -1,4 +1,5 @@
 import type { ProductCard } from "@/shared/types/chat";
+import type { Address } from "@/shared/types/address";
 
 // 결제 화면으로 넘어온 주문 항목 — 상세 "바로 구매"에서 선택한 옵션·수량을 담는다.
 // 상품 원본(가격/이미지/브랜드)은 카드 데이터를 그대로 승계해 재조회 없이 렌더.
@@ -62,20 +63,7 @@ export interface CreateOrderResponse {
   status: "PAID" | "PAYMENT_FAILED";
 }
 
-// 배송지 — 백엔드 GET /api/addresses 응답과 1:1 (M-8).
-export interface Address {
-  addressId: number;
-  label: string; // "집", "회사"
-  recipient: string;
-  phone: string;
-  zipCode: string;
-  address1: string;
-  address2?: string;
-  isDefault?: boolean;
-}
-
-// 배송지 생성·수정 입력. addressId·isDefault는 서버가 관리.
-export type AddressInput = Omit<Address, "addressId" | "isDefault">;
+// 배송지 타입은 마이페이지와 공유 — shared/types/address.ts 참조.
 
 // 결제 완료 후 완료 화면으로 넘기는 주문 결과.
 // orderId·orderNo는 서버가 발급한 값. 금액은 화면 표시용(정본은 주문 상세 API).

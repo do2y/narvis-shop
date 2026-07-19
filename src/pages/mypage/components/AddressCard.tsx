@@ -1,4 +1,4 @@
-import type { Address } from "../types";
+import type { Address } from "@/shared/types/address";
 
 export function AddressCard({
   address,
@@ -60,8 +60,11 @@ export function AddressCard({
       <p className="mt-3 text-sm">
         {address.recipient} · {address.phone}
       </p>
+      {/* 상세주소는 선택 — 서버가 null 또는 ""로 주므로 둘 다 빈 값으로 다룬다 */}
       <p className="mt-1 text-sm text-muted-foreground">
-        ({address.zipCode}) {address.address}
+        ({address.zipCode}) {[address.address1, address.address2]
+          .filter(Boolean)
+          .join(" ")}
       </p>
     </article>
   );

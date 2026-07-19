@@ -3,9 +3,10 @@ import { Plus } from "lucide-react";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useAddresses, useAddressMutations } from "./useAddresses";
 import { AddressCard } from "./components/AddressCard";
-import { AddressFormModal } from "./components/AddressFormModal";
+import { AddressFormModal } from "@/shared/ui/AddressFormModal";
+import type { AddressValues } from "@/shared/ui/addressSchema";
 import { PageTitle, ErrorState } from "./components/PageState";
-import type { Address, AddressInput } from "./types";
+import type { Address } from "@/shared/types/address";
 
 function AddressesSkeleton() {
   return (
@@ -26,7 +27,8 @@ function AddressesSkeleton() {
 
 export default function AddressesPage() {
   const { data: addresses, isPending, isError, refetch } = useAddresses();
-  const { add, update, remove, setDefault } = useAddressMutations();
+  const { add, update, remove, setDefault, errorMessage } =
+    useAddressMutations();
 
   // 모달 상태 — editing 있으면 수정, null이면 추가(open으로 구분).
   const [open, setOpen] = useState(false);
@@ -41,10 +43,14 @@ export default function AddressesPage() {
     setOpen(true);
   };
 
-  const handleSubmit = (input: AddressInput) => {
+  // 저장 성공했을 때만 모달을 닫는다(실패 시 입력값 보존).
+  const handleSubmit = (input: AddressValues) => {
     const onDone = () => setOpen(false);
     if (editing) {
-      update.mutate({ addressId: editing.addressId, input }, { onSuccess: onDone });
+      update.mutate(
+        { addressId: editing.addressId, input },
+        { onSuccess: onDone },
+      );
     } else {
       add.mutate(input, { onSuccess: onDone });
     }
@@ -72,6 +78,14 @@ export default function AddressesPage() {
           />
         ) : (
           <div className="flex flex-col gap-4">
+            {/* 삭제·기본 지정 실패는 모달 밖에서 일어나므로 목록 위에 안내한다
+                (유일한 배송지 삭제 등) */}
+            {(remove.error || setDefault.error) && errorMessage && (
+              <p className="text-sm text-destructive" role="alert">
+                {errorMessage}
+              </p>
+            )}
+
             {addresses.map((address) => (
               <AddressCard
                 key={address.addressId}
@@ -99,9 +113,10 @@ export default function AddressesPage() {
       <AddressFormModal
         open={open}
         onOpenChange={setOpen}
-        address={editing ?? undefined}
+        editing={editing}
         onSubmit={handleSubmit}
-        isPending={add.isPending || update.isPending}
+        submitting={add.isPending || update.isPending}
+        error={add.error || update.error ? errorMessage : null}
       />
     </div>
   );

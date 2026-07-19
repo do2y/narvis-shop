@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/shared/api/client";
-import { createAddress, fetchAddresses } from "./addressApi";
+import { createAddress, fetchAddresses } from "@/shared/api/address";
 import { useAuthStore } from "@/shared/stores/authStore";
 
 // 배송지 — 로그인 필요. 게스트로 호출하면 401이라 enabled로 막는다.

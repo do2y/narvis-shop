@@ -1,29 +1,39 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/shared/ui/dialog";
-import { addressSchema, type AddressValues } from "../schema";
-import type { AddressInput } from "../types";
+import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
+import { addressSchema, type AddressValues } from "@/shared/ui/addressSchema";
+import type { Address } from "@/shared/types/address";
 
-// 배송지 추가 모달 — RHF + Zod. 저장 시 상위로 올려 POST /api/addresses로 전송한다.
+const EMPTY: AddressValues = {
+  label: "",
+  recipient: "",
+  phone: "",
+  zipCode: "",
+  address1: "",
+  address2: "",
+};
+
+// 배송지 추가·수정 모달 — RHF + Zod. 결제·마이페이지가 공유한다.
+// 저장 성공 여부는 상위가 판단하므로 여기선 값만 올린다(실패 시 열어둔 채 error 표시).
 export function AddressFormModal({
   open,
   onOpenChange,
   onSubmit,
   submitting,
   error,
+  editing,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (address: AddressInput) => void;
+  onSubmit: (address: AddressValues) => void;
   submitting?: boolean;
   error?: string | null;
+  // 있으면 수정 모드 — 기존 값으로 폼을 채운다. 없으면 추가 모드.
+  editing?: Address | null;
 }) {
   const {
     register,
@@ -32,35 +42,39 @@ export function AddressFormModal({
     formState: { errors },
   } = useForm<AddressValues>({
     resolver: zodResolver(addressSchema),
-    defaultValues: {
-      label: "",
-      recipient: "",
-      phone: "",
-      zipCode: "",
-      address1: "",
-      address2: "",
-    },
+    defaultValues: EMPTY,
   });
 
-  // 저장 성공 여부는 상위가 판단하므로 여기선 값만 올린다.
-  // (실패 시 모달을 열어둔 채 error를 보여주기 위해 여기서 닫지 않는다)
-  const submit = (values: AddressValues) => {
-    onSubmit(values);
-  };
+  // 수정 대상이 바뀌면 폼을 다시 채운다. 열린 뒤에 대상이 정해지는 경우도 있어
+  // open까지 의존성에 넣는다.
+  useEffect(() => {
+    if (!open) return;
+    reset(
+      editing
+        ? {
+            label: editing.label,
+            recipient: editing.recipient,
+            phone: editing.phone,
+            zipCode: editing.zipCode,
+            address1: editing.address1,
+            address2: editing.address2 ?? "",
+          }
+        : EMPTY,
+    );
+  }, [open, editing, reset]);
 
-  // 닫힐 때 입력값 초기화 (다음에 다시 열면 빈 폼)
   const handleOpenChange = (next: boolean) => {
-    if (!next) reset();
+    if (!next) reset(EMPTY);
     onOpenChange(next);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
-        <DialogTitle>새 배송지 추가</DialogTitle>
+        <DialogTitle>{editing ? "배송지 수정" : "새 배송지 추가"}</DialogTitle>
 
         <form
-          onSubmit={handleSubmit(submit)}
+          onSubmit={handleSubmit(onSubmit)}
           className="mt-5 flex flex-col gap-4"
           noValidate
         >
@@ -101,11 +115,7 @@ export function AddressFormModal({
             />
           </Field>
 
-          <Field
-            label="우편번호"
-            htmlFor="addr-zip"
-            error={errors.zipCode?.message}
-          >
+          <Field label="우편번호" htmlFor="addr-zip" error={errors.zipCode?.message}>
             {/* TODO: 우편번호 검색(다음/카카오 우편번호 API) 연동 후 검색 버튼 추가 */}
             <Input
               id="addr-zip"

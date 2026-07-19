@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// 배송지 입력 폼 — 백엔드 POST /api/addresses 필드와 일치.
+// 배송지 입력 폼 — 백엔드 /api/addresses 필드와 일치.
 // address2(상세주소)만 선택, 나머지는 필수.
 export const addressSchema = z.object({
   label: z

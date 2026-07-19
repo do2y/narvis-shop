@@ -1,6 +1,6 @@
 import { Check, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Address } from "../types";
+import type { Address } from "@/shared/types/address";
 
 // 배송지 선택.
 export function ShippingSection({

@@ -4,8 +4,8 @@ import { Check } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
+import type { AddressInput } from "@/shared/types/address";
 import type {
-  AddressInput,
   CheckoutState,
   CreateOrderRequest,
   OrderCompleteState,
@@ -16,7 +16,7 @@ import { useCreateOrder } from "./useCreateOrder";
 import { useAddresses, useCreateAddress } from "./useAddresses";
 import { OrderItems } from "./components/OrderItems";
 import { ShippingSection } from "./components/ShippingSection";
-import { AddressFormModal } from "./components/AddressFormModal";
+import { AddressFormModal } from "@/shared/ui/AddressFormModal";
 import { PaymentSection } from "./components/PaymentSection";
 import { OrderSummary } from "./components/OrderSummary";
 

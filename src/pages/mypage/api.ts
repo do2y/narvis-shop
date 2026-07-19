@@ -1,7 +1,5 @@
 import { api } from "@/shared/api/client";
 import type {
-  Address,
-  AddressInput,
   Claim,
   CreateClaimRequest,
   CreateReviewRequest,
@@ -64,29 +62,5 @@ export async function fetchInquiries(): Promise<Inquiry[]> {
   return data.inquiries;
 }
 
-// ── 배송지 관리 ──
-export async function fetchAddresses(): Promise<Address[]> {
-  const { data } = await api.get<{ addresses: Address[] }>(
-    "/api/mypage/addresses",
-  );
-  return data.addresses;
-}
-
-export async function addAddress(input: AddressInput): Promise<void> {
-  await api.post("/api/mypage/addresses", input);
-}
-
-export async function updateAddress(
-  addressId: string,
-  input: AddressInput,
-): Promise<void> {
-  await api.put(`/api/mypage/addresses/${addressId}`, input);
-}
-
-export async function removeAddress(addressId: string): Promise<void> {
-  await api.delete(`/api/mypage/addresses/${addressId}`);
-}
-
-export async function setDefaultAddress(addressId: string): Promise<void> {
-  await api.patch(`/api/mypage/addresses/${addressId}/default`);
-}
+// 배송지 관리는 결제 화면과 같은 /api/addresses를 쓴다 — shared/api/address.ts 참조.
+// (기존 /api/mypage/addresses는 백엔드에 없는 경로였음)
