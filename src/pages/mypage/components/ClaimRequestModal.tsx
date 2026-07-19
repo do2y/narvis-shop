@@ -63,7 +63,7 @@ export function ClaimRequestModal({
   // zodResolver가 input→output 변환을 마친 값을 넘겨준다(productId: number).
   const submit = (values: ClaimRequestFormValues) => {
     mutate({
-      orderId: order.orderId,
+      orderId: String(order.orderId),
       productId: values.productId,
       type: "RETURN",
       reason: values.reason,
@@ -130,7 +130,7 @@ export function ClaimRequestModal({
             {single ? (
               <>
                 <p className="rounded-sm border bg-muted/40 px-4 py-3 text-sm">
-                  {order.items[0].name}
+                  {order.items[0].productName}
                 </p>
                 <input
                   type="hidden"
@@ -150,7 +150,7 @@ export function ClaimRequestModal({
               >
                 {order.items.map((item) => (
                   <option key={item.productId} value={item.productId}>
-                    {item.name}
+                    {item.productName}
                   </option>
                 ))}
               </select>

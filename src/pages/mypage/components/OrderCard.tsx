@@ -4,17 +4,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/shared/utils/formatPrice";
-import type { Order, OrderItem } from "../types";
+import type { Order, OrderItem, OrderStatus } from "../types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { ClaimRequestModal } from "./ClaimRequestModal";
 
 // 후기 작성 가능 상태(배송완료/구매확정)인지. 후기만 실제 페이지로 연결.
-function canWriteReview(status: Order["status"]): boolean {
+function canWriteReview(status: OrderStatus): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }
 
 // 반품 신청 가능 상태 — 배송완료 후(구매확정 포함).
-function canClaim(status: Order["status"]): boolean {
+function canClaim(status: OrderStatus): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }
 
@@ -33,10 +33,10 @@ function ItemRow({ item }: { item: OrderItem }) {
         className="size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20"
       />
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="text-xs text-muted-foreground">{item.brand}</p>
-        <p className="truncate text-sm font-medium">{item.name}</p>
+        <p className="truncate text-sm font-medium">{item.productName}</p>
         <p className="text-xs text-muted-foreground">
-          {item.option} / {item.quantity}개
+          {item.optionName ? `${item.optionName} / ` : ""}
+          {item.quantity}개
         </p>
         <p className="mt-0.5 text-sm font-bold">{formatPrice(item.price)}</p>
       </div>
@@ -47,10 +47,10 @@ function ItemRow({ item }: { item: OrderItem }) {
 export function OrderCard({ order }: { order: Order }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const reviewable = canWriteReview(order.status);
-  const claimable = canClaim(order.status);
+  const reviewable = canWriteReview(order.representativeStatus);
+  const claimable = canClaim(order.representativeStatus);
   // 배송중에만 노출되는 준비 중 액션(배송 조회) 클릭 시 하단에 한 줄 안내.
-  const showTracking = order.status === "SHIPPING";
+  const showTracking = order.representativeStatus === "SHIPPING";
   const [notice, setNotice] = useState(false);
   // 반품 신청 모달 열림 여부.
   const [claimOpen, setClaimOpen] = useState(false);
@@ -60,8 +60,7 @@ export function OrderCard({ order }: { order: Order }) {
     const target = order.items[0];
     queryClient.setQueryData(["products", target.productId], {
       productId: target.productId,
-      name: target.name,
-      brandName: target.brand,
+      name: target.productName,
       price: target.price,
       imageUrl: target.imageUrl,
     });
@@ -75,9 +74,9 @@ export function OrderCard({ order }: { order: Order }) {
       {/* 헤더: 상태 + 주문일 + 주문번호 / 우측 주문 상세 */}
       <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-5 py-4">
         <div className="flex min-w-0 items-center gap-3">
-          <OrderStatusBadge status={order.status} />
+          <OrderStatusBadge status={order.representativeStatus} />
           <span className="truncate text-sm text-muted-foreground">
-            {order.orderedAt.replace(/-/g, ".")} · {order.orderId}
+            {order.orderedAt.slice(0, 10).replace(/-/g, ".")} · {order.orderNo}
           </span>
         </div>
         <Link
@@ -92,7 +91,7 @@ export function OrderCard({ order }: { order: Order }) {
       {/* 상품 목록 */}
       <div className="divide-y px-5">
         {order.items.map((item) => (
-          <ItemRow key={item.productId} item={item} />
+          <ItemRow key={item.orderItemId} item={item} />
         ))}
       </div>
 

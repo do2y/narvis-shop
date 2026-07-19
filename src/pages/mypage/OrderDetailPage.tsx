@@ -7,12 +7,7 @@ import { useOrder } from "./useOrders";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { OrderStatusBadge } from "./components/OrderStatusBadge";
 import { PageTitle, ErrorState } from "./components/PageState";
-import type { OrderDetail, OrderItem } from "./types";
-
-// 후기 작성 가능 상태(배송완료/구매확정) — OrderCard와 동일 기준.
-function canWriteReview(status: OrderDetail["status"]): boolean {
-  return status === "DELIVERED" || status === "CONFIRMED";
-}
+import type { OrderDetailItem } from "./types";
 
 function InfoRow({
   label,
@@ -38,9 +33,9 @@ function DetailItem({
   reviewable,
   onReview,
 }: {
-  item: OrderItem;
+  item: OrderDetailItem;
   reviewable: boolean;
-  onReview: (item: OrderItem) => void;
+  onReview: (item: OrderDetailItem) => void;
 }) {
   return (
     <div className="flex gap-4 py-4">
@@ -52,15 +47,15 @@ function DetailItem({
         />
       </Link>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="text-xs text-muted-foreground">{item.brand}</p>
         <Link
           to={`/products/${item.productId}`}
           className="truncate text-sm font-medium hover:underline"
         >
-          {item.name}
+          {item.productName}
         </Link>
         <p className="text-xs text-muted-foreground">
-          {item.option} / {item.quantity}개
+          {item.optionName ? `${item.optionName} / ` : ""}
+          {item.quantity}개
         </p>
         <p className="mt-0.5 text-sm font-bold">{formatPrice(item.price)}</p>
       </div>
@@ -104,16 +99,25 @@ function DetailSkeleton() {
 
 export default function OrderDetailPage() {
   const { orderId = "" } = useParams();
+  const numericOrderId = Number(orderId);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: order, isPending, isError, refetch } = useOrder(orderId);
+  const { data: order, isPending, isError, refetch } = useOrder(numericOrderId);
+
+  // 서버가 금액 분해(상품금액/할인)를 주지 않아 아이템 스냅샷으로 계산한다.
+  // 총액은 서버 값(order.totalAmount)을 그대로 쓴다 — 클라이언트 계산을 신뢰하지 않음.
+  const itemsTotal =
+    order?.items.reduce((sum, it) => sum + it.originalPrice * it.quantity, 0) ??
+    0;
+  const paidTotal =
+    order?.items.reduce((sum, it) => sum + it.price * it.quantity, 0) ?? 0;
+  const discount = itemsTotal - paidTotal;
 
   // 후기 작성 — 대상 상품 정보를 상세 캐시에 시딩해 작성 화면에서 즉시 표시.
-  const goToReview = (item: OrderItem) => {
+  const goToReview = (item: OrderDetailItem) => {
     queryClient.setQueryData(["products", item.productId], {
       productId: item.productId,
-      name: item.name,
-      brandName: item.brand,
+      name: item.productName,
       price: item.price,
       imageUrl: item.imageUrl,
     });
@@ -149,13 +153,13 @@ export default function OrderDetailPage() {
             {/* 주문 요약 */}
             <section className="rounded-sm border bg-background px-5 py-4">
               <div className="flex items-center gap-3">
-                <OrderStatusBadge status={order.status} />
+                <OrderStatusBadge status={order.representativeStatus} />
                 <span className="text-sm text-muted-foreground">
-                  {order.orderedAt.replace(/-/g, ".")} 주문
+                  {order.orderedAt.slice(0, 10).replace(/-/g, ".")} 주문
                 </span>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                주문번호 {order.orderId}
+                주문번호 {order.orderNo}
               </p>
             </section>
 
@@ -163,19 +167,17 @@ export default function OrderDetailPage() {
             <Section title="배송지">
               <div className="flex flex-col gap-1 text-sm">
                 <p className="font-medium">
-                  {order.shipping.recipient}
+                  {order.address.recipient}
                   <span className="ml-2 text-muted-foreground">
-                    {order.shipping.phone}
+                    {order.address.phone}
                   </span>
                 </p>
                 <p className="text-muted-foreground">
-                  ({order.shipping.zipCode}) {order.shipping.address}
+                  ({order.address.zipCode}){" "}
+                  {[order.address.address1, order.address.address2]
+                    .filter(Boolean)
+                    .join(" ")}
                 </p>
-                {order.shipping.request && (
-                  <p className="mt-1 text-muted-foreground">
-                    요청사항: {order.shipping.request}
-                  </p>
-                )}
               </div>
             </Section>
 
@@ -184,9 +186,9 @@ export default function OrderDetailPage() {
               <div className="divide-y">
                 {order.items.map((item) => (
                   <DetailItem
-                    key={item.productId}
+                    key={item.orderItemId}
                     item={item}
-                    reviewable={canWriteReview(order.status)}
+                    reviewable={item.canReview}
                     onReview={goToReview}
                   />
                 ))}
@@ -196,28 +198,14 @@ export default function OrderDetailPage() {
             {/* 결제 정보 */}
             <Section title="결제 정보">
               <div className="flex flex-col gap-2">
-                <InfoRow
-                  label="상품 금액"
-                  value={formatPrice(order.itemsTotal)}
-                />
-                {order.discount > 0 && (
-                  <InfoRow
-                    label="할인"
-                    value={`-${formatPrice(order.discount)}`}
-                  />
+                <InfoRow label="상품 금액" value={formatPrice(itemsTotal)} />
+                {discount > 0 && (
+                  <InfoRow label="할인" value={`-${formatPrice(discount)}`} />
                 )}
-                <InfoRow
-                  label="배송비"
-                  value={
-                    order.shippingFee === 0
-                      ? "무료"
-                      : formatPrice(order.shippingFee)
-                  }
-                />
                 <div className="my-1 border-t" />
                 <InfoRow
                   label="총 결제 금액"
-                  value={formatPrice(order.finalTotal)}
+                  value={formatPrice(order.totalAmount)}
                   strong
                 />
                 <p className="mt-1 text-xs text-muted-foreground">

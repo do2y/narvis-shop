@@ -12,7 +12,7 @@ import type {
   PaymentMethod,
 } from "./types";
 import { PAYMENT_METHODS } from "./placeholder";
-import { useCreateOrder } from "./useCreateOrder";
+import { useCreateOrder, useRetryPayment } from "./useCreateOrder";
 import {
   useAddresses,
   useCreateAddress,
@@ -54,7 +54,11 @@ export default function CheckoutPage() {
   // 결제 실패(PAYMENT_FAILED)는 HTTP 200이라 mutation 에러가 아니다.
   // 요청 자체가 거부된 경우와 구분해 따로 안내한다.
   const [paymentFailed, setPaymentFailed] = useState(false);
+  // 결제만 실패한 주문(PAYMENT_FAILED)의 id. 주문 자체는 서버에 남아 있으므로
+  // 다시 시도할 때는 새 주문을 만들지 않고 이 주문의 결제만 재시도한다.
+  const [failedOrderId, setFailedOrderId] = useState<number | null>(null);
   const createOrder = useCreateOrder();
+  const retryPayment = useRetryPayment();
 
   // 추가·수정 겸용 — editingAddr 유무로 분기. 성공했을 때만 닫는다(실패 시 입력값 보존).
   const handleSubmitAddress = async (addr: AddressInput) => {
@@ -120,9 +124,42 @@ export default function CheckoutPage() {
 
   const handleSubmit = async () => {
     const address = addresses.find((a) => a.addressId === addressId);
-    if (!address || createOrder.isPending) return;
+    if (!address || createOrder.isPending || retryPayment.isPending) return;
 
     setPaymentFailed(false);
+
+    // 이미 만들어진 주문의 결제만 실패한 경우 — 새 주문을 만들면 실패 주문이 쌓이므로
+    // 결제 수단만 바꿔 이 주문을 다시 결제한다.
+    if (failedOrderId !== null) {
+      try {
+        const retried = await retryPayment.mutateAsync({
+          orderId: failedOrderId,
+          paymentMethod: method,
+        });
+        if (retried.status === "PAYMENT_FAILED") {
+          setPaymentFailed(true);
+          return;
+        }
+        navigate("/checkout/complete", {
+          state: {
+            order: {
+              orderId: retried.orderId,
+              orderNo: retried.orderNo,
+              items,
+              address,
+              method,
+              itemsTotal,
+              discount,
+              finalTotal: itemsTotal - discount,
+            },
+          },
+          replace: true,
+        });
+      } catch {
+        // 요청 거부(상태 전이 불가 등)는 retryPayment.errorMessage로 안내된다
+      }
+      return;
+    }
 
     // 라인아이템 출처는 정확히 하나만 보낸다(둘 다 보내면 400).
     // 장바구니에서 넘어온 항목은 cartItemId를 갖고, 상세 "바로 구매"는 없다.
@@ -157,6 +194,7 @@ export default function CheckoutPage() {
       // 결제 실패도 200 — status로 구분한다. 자동 재시도하지 않고 안내만.
       if (result.status === "PAYMENT_FAILED") {
         setPaymentFailed(true);
+        setFailedOrderId(result.orderId);
         return;
       }
 
@@ -241,7 +279,7 @@ export default function CheckoutPage() {
               itemsTotal={itemsTotal}
               discount={discount}
               canSubmit={agreed}
-              paying={createOrder.isPending}
+              paying={createOrder.isPending || retryPayment.isPending}
               // 결제 승인 실패와 요청 거부를 각각 안내
               error={
                 paymentFailed

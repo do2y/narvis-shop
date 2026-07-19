@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { PackageOpen } from "lucide-react";
 import { useOrders } from "./useOrders";
@@ -28,7 +29,9 @@ function OrdersSkeleton() {
 }
 
 export default function OrdersPage() {
-  const { data: orders, isPending, isError, refetch } = useOrders();
+  const [page, setPage] = useState(0);
+  const { data, isPending, isError, refetch } = useOrders(page);
+  const orders = data?.content ?? [];
 
   return (
     <div>
@@ -55,6 +58,32 @@ export default function OrdersPage() {
             {orders.map((order) => (
               <OrderCard key={order.orderId} order={order} />
             ))}
+            {/* 페이지네이션 — 1페이지뿐이면 숨긴다 */}
+            {data && data.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="h-11 rounded-full border px-5 text-sm font-medium disabled:opacity-40"
+                >
+                  이전
+                </button>
+                <span className="text-sm text-muted-foreground">
+                  {page + 1} / {data.totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((p) => Math.min(data.totalPages - 1, p + 1))
+                  }
+                  disabled={page >= data.totalPages - 1}
+                  className="h-11 rounded-full border px-5 text-sm font-medium disabled:opacity-40"
+                >
+                  다음
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

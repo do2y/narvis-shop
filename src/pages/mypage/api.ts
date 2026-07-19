@@ -4,21 +4,22 @@ import type {
   CreateClaimRequest,
   CreateReviewRequest,
   Inquiry,
-  Order,
   OrderDetail,
+  OrderPage,
   RecentProduct,
   WishlistProduct,
 } from "./types";
 
-export async function fetchOrders(): Promise<Order[]> {
-  const { data } = await api.get<{ orders: Order[] }>("/api/mypage/orders");
-  return data.orders;
+// 주문 목록 — 페이지네이션. 응답이 { content, page, ... } 형태라 그대로 반환한다.
+export async function fetchOrders(page = 0, size = 10): Promise<OrderPage> {
+  const { data } = await api.get<OrderPage>("/api/orders", {
+    params: { page, size },
+  });
+  return data;
 }
 
-export async function fetchOrder(orderId: string): Promise<OrderDetail> {
-  const { data } = await api.get<OrderDetail>(
-    `/api/mypage/orders/${orderId}`,
-  );
+export async function fetchOrder(orderId: number): Promise<OrderDetail> {
+  const { data } = await api.get<OrderDetail>(`/api/orders/${orderId}`);
   return data;
 }
 
