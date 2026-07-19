@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { Clock } from "lucide-react";
 import { useRecentProducts } from "./useRecentProducts";
 import { RecentProductCard } from "./components/RecentProductCard";

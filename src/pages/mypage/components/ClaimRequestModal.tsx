@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/shared/ui/button";
+import { Label } from "@/shared/ui/label";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import {

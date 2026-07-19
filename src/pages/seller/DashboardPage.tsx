@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AlertTriangle, TrendingUp } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { fetchSellerDashboard } from "./api";
 import { SellerHero } from "./components/SellerHero";

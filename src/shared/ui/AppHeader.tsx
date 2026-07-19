@@ -7,14 +7,14 @@ import {
   ShoppingCart,
   User,
 } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { logout } from "@/shared/api/auth";
 import { useCartItemCount } from "@/shared/hooks/useCart";

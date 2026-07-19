@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { RefreshCcw } from "lucide-react";
 import { useClaims } from "./useClaims";
 import { ClaimCard } from "./components/ClaimCard";

@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { MessageSquareText } from "lucide-react";
 import { useInquiries } from "./useInquiries";
 import { InquiryCard } from "./components/InquiryCard";

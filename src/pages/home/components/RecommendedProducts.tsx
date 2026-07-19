@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { useAuthStore } from "@/shared/stores/authStore";
 import { useRecommendedProducts } from "../useHomeData";
 import { ProductCard } from "./ProductCard";

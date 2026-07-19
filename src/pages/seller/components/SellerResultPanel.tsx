@@ -1,5 +1,5 @@
 import { BarChart3 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import type { ChatResult } from "@/shared/types/chat";
 import { MetricCards } from "./MetricCards";
 import { AnalysisChart } from "./AnalysisChart";

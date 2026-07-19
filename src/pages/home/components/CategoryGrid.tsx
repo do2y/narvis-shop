@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { categoryEmoji } from "../categoryEmoji";
 import { useCategories } from "../useHomeData";
 import { SectionHeading } from "./SectionHeading";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { useAddresses, useAddressMutations } from "./useAddresses";
 import { AddressCard } from "./components/AddressCard";
 import { AddressFormModal } from "./components/AddressFormModal";

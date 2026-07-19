@@ -1,13 +1,13 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { ChevronDown, LogOut, MessageSquare } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/shared/stores/authStore";
 

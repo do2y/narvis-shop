@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { usePopularProducts } from "../useHomeData";
 import { ProductCard } from "./ProductCard";
 import { SectionHeading } from "./SectionHeading";

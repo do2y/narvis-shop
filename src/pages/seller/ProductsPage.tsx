@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { fetchSellerProducts } from "./api";
 import type { SellerProductTab } from "./types";

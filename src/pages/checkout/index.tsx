@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
 import type {
   AddressInput,

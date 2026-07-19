@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
 
 export function PageTitle({ children }: { children: React.ReactNode }) {

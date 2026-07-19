@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { PackageOpen } from "lucide-react";
 import { useOrders } from "./useOrders";
 import { OrderCard } from "./components/OrderCard";
