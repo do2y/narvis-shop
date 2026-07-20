@@ -1376,7 +1376,7 @@ export const handlers = [
     }
     // 최신순이므로 맨 앞에 추가
     mockWishlist = [base, ...mockWishlist];
-    return HttpResponse.json(ok(null));
+    return HttpResponse.json(ok({ productId }));
   }),
 
   // 찜 해제 (W-3) — 목에서도 반영되도록 모듈 배열에서 제거
