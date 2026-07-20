@@ -1,6 +1,6 @@
 import { api } from "@/shared/api/client";
 import type {
-  Claim,
+  ClaimPage,
   CreateClaimRequest,
   CreateClaimResponse,
   CreateReviewRequest,
@@ -31,9 +31,12 @@ export async function fetchRecentProducts(): Promise<RecentProduct[]> {
 }
 
 
-export async function fetchClaims(): Promise<Claim[]> {
-  const { data } = await api.get<{ claims: Claim[] }>("/api/mypage/claims");
-  return data.claims;
+// 취소·반품 내역 — 페이지네이션. 응답이 { content, page, ... } 형태라 그대로 반환한다.
+export async function fetchClaims(page = 0, size = 10): Promise<ClaimPage> {
+  const { data } = await api.get<ClaimPage>("/api/claims", {
+    params: { page, size },
+  });
+  return data;
 }
 
 // 취소·반품 신청 접수 — 대상은 orderItemId(path). 성공 시 훅에서 claims 캐시 무효화.

@@ -115,16 +115,30 @@ export type ClaimStatus =
   | "COMPLETED" // 완료
   | "REJECTED"; // 반려
 
+// 취소·반품 내역 항목 — GET /api/claims 계약.
+// 상품 식별은 orderItemId(주문 줄)이며 productId는 내려오지 않는다.
 export interface Claim {
-  claimId: string; // "CLM-20250520"
-  orderItemId: number; // 신청 대상 주문 줄(API 키). 중복 접수 판정 기준
-  orderId: string; // 원 주문번호 "ORD-20250515"
-  productId: number;
-  productName: string;
+  claimId: number;
+  orderNo: string; // 원 주문번호 "ORD-20260713-1001"
   type: ClaimType;
   status: ClaimStatus;
   reason: string; // 사유 표시값 "단순 변심"
-  requestedAt: string; // ISO 날짜 (YYYY-MM-DD) — 최신순 정렬 기준
+  requestedAt: string; // ISO 일시(+09:00) — 최신순 정렬 기준
+  processedAt: string | null; // 미처리 시 null
+  orderItemId: number;
+  productName: string;
+  optionName: string | null;
+  quantity: number;
+  refundAmount: number; // price × quantity
+}
+
+// 페이지네이션 응답 — GET /api/claims는 { content, page, size, ... } 형태.
+export interface ClaimPage {
+  content: Claim[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }
 
 // 취소·반품 신청 요청 — POST /api/order-items/{orderItemId}/claims 계약.

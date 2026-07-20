@@ -4,10 +4,11 @@ import { createClaim, fetchClaims } from "./api";
 import type { CreateClaimRequest } from "./types";
 
 // 취소·반품 신청 내역 — 서버 원본, 처리 상태가 바뀔 수 있어 staleTime 0.
-export function useClaims() {
+// page/size가 키에 들어가 페이지 전환 시 각각 캐시된다(주문 목록과 동일).
+export function useClaims(page = 0, size = 10) {
   return useQuery({
-    queryKey: ["claims"],
-    queryFn: fetchClaims,
+    queryKey: ["claims", { page, size }],
+    queryFn: () => fetchClaims(page, size),
     staleTime: 0,
   });
 }
