@@ -1,4 +1,4 @@
-import { http, HttpResponse } from "msw";
+﻿import { http, HttpResponse } from "msw";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -383,21 +383,19 @@ export const handlers = [
     ),
   ),
 
+  // 인기상품 (P-4) — 파라미터는 size(기본 12, 1~50)뿐. 범위 밖은 400 VALIDATION_ERROR.
   http.get(`${BASE}/api/products/popular`, ({ request }) => {
     const params = new URL(request.url).searchParams;
-    // categoryId 있으면 해당 카테고리만 필터 (채팅 초기 인기상품 등)
-    const categoryId = params.get("categoryId");
-    // size 기본 12 (API 명세 P-4)
-    const size = Number(params.get("size")) || 12;
-    const products = (
-      categoryId
-        ? POPULAR_PRODUCTS.filter((p) => p.categoryId === Number(categoryId))
-        : POPULAR_PRODUCTS
-    ).slice(0, size);
-    // API 명세: { success, data: { items: [...] } }. categoryId는 목 필터용 내부 필드라 제외.
-    return HttpResponse.json(
-      ok({ items: products.map(({ categoryId: _categoryId, ...p }) => p) }),
-    );
+    const sizeParam = params.get("size");
+    const size = sizeParam === null ? 12 : Number(sizeParam);
+    if (!Number.isInteger(size) || size < 1 || size > 50) {
+      return HttpResponse.json(
+        fail("VALIDATION_ERROR", "size는 1~50 사이여야 합니다."),
+        { status: 400 },
+      );
+    }
+    // API 명세: { success, data: { items: [...] } }
+    return HttpResponse.json(ok({ items: POPULAR_PRODUCTS.slice(0, size) }));
   }),
 
   // 상품 후기 (P-3) — distribution은 페이지와 무관한 전체 별점 분포.
@@ -458,14 +456,8 @@ export const handlers = [
         status: 401,
       });
     }
-    // 인기상품과 다른 셋임을 눈으로 구분하려고 뒤에서부터 4개.
-    // categoryId는 목 필터용 내부 필드라 응답에서 제외.
-    const items = POPULAR_PRODUCTS.slice(-4).map((p) => {
-      const rest = { ...p };
-      delete (rest as { categoryId?: number }).categoryId;
-      return rest;
-    });
-    return HttpResponse.json(ok({ items }));
+    // 인기상품과 다른 셋임을 눈으로 구분하려고 뒤에서부터 4개
+    return HttpResponse.json(ok({ items: POPULAR_PRODUCTS.slice(-4) }));
   }),
 
   // 상품 상세 (P-2) — 인기상품 목에서 기본 정보를 빌려 상세 계약 형태로 조립.
@@ -1015,11 +1007,10 @@ export const handlers = [
   }),
 ];
 
-// 인기상품 목 — categoryId로 카테고리별 필터 가능. home PopularProduct 계약 + categoryId
+// 인기상품 목 — home PopularProduct 계약과 동일(P-4 응답 필드 그대로).
 const POPULAR_PRODUCTS = [
   {
     productId: 101,
-    categoryId: 1,
     name: "Logitech MX Keys Mini 무선 키보드",
     brandName: "Logitech",
     imageUrl:
@@ -1032,7 +1023,6 @@ const POPULAR_PRODUCTS = [
   },
   {
     productId: 102,
-    categoryId: 1,
     name: "Sony WH-1000XM5 노이즈캔슬링 헤드폰",
     brandName: "Sony",
     imageUrl:
@@ -1045,7 +1035,6 @@ const POPULAR_PRODUCTS = [
   },
   {
     productId: 103,
-    categoryId: 6,
     name: "아이리스오야마 수납박스 6P 세트",
     brandName: "아이리스오야마",
     imageUrl:
@@ -1058,7 +1047,6 @@ const POPULAR_PRODUCTS = [
   },
   {
     productId: 104,
-    categoryId: 2,
     name: "브리타 마렐라 정수 물병 1.4L",
     brandName: "브리타",
     imageUrl:
@@ -1071,7 +1059,6 @@ const POPULAR_PRODUCTS = [
   },
   {
     productId: 105,
-    categoryId: 4,
     name: "베이직 오버핏 코튼 셔츠",
     brandName: "데일리로브",
     imageUrl:
@@ -1084,7 +1071,6 @@ const POPULAR_PRODUCTS = [
   },
   {
     productId: 106,
-    categoryId: 8,
     name: "센텔라 수분 진정 토너 300ml",
     brandName: "라운드랩",
     imageUrl:

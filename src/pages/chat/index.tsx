@@ -6,7 +6,6 @@ import { ChatLayout } from "@/shared/chat/ChatLayout";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { AppHeader } from "@/shared/ui/AppHeader";
-import { useCategories } from "@/pages/home/useHomeData";
 import { fetchPopularAsCards } from "./api";
 import { ConditionChips } from "./components/ConditionChips";
 import { ProductPanel } from "./components/ProductPanel";
@@ -29,24 +28,16 @@ export default function ChatPage() {
   const hasResults = results.length > 0;
 
   const q = params.get("q");
-  const categoryIdParam = params.get("categoryId");
-  const categoryId = categoryIdParam ? Number(categoryIdParam) : undefined;
 
-  // 초기 인기상품 — 카테고리 있으면 해당 카테고리, 없으면 전체
+  // 초기 인기상품 — 명세(P-4)에 카테고리 필터가 없어 항상 전체 인기상품이다.
+  // (카테고리별로 보여주려면 백엔드에 categoryId 파라미터 추가가 선행되어야 함)
   const { data: popularCards } = useQuery({
-    queryKey: ["chat", "popular", categoryId ?? null],
-    queryFn: () => fetchPopularAsCards(categoryId),
+    queryKey: ["chat", "popular"],
+    queryFn: () => fetchPopularAsCards(),
     staleTime: 30 * 60 * 1000,
   });
 
-  // 카테고리 진입 시 제목에 카테고리명 반영 ("패션 인기 상품")
-  const { data: categories } = useCategories();
-  const categoryName = categoryId
-    ? categories?.find((c) => c.id === categoryId)?.name
-    : undefined;
-  const popularTitle = categoryName
-    ? `${categoryName} 인기 상품`
-    : "지금 인기 상품";
+  const popularTitle = "지금 인기 상품";
 
   // 대화 시작 전(메시지 없음)에는 인기상품을 표시.
   // hasResults에 의존해야 "새 대화"로 패널이 비워졌을 때도 다시 시딩된다

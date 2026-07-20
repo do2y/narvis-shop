@@ -31,20 +31,12 @@ function toProductCard(p: PopularProductRaw): ProductCard {
 }
 
 // 채팅 초기 표시용 인기상품.
-// categoryId는 API 명세(P-4)에 없는 파라미터 — 카테고리 진입 시 해당 분야만 보여주려 전달하나
-// 백엔드 지원 여부 미확인. 미지원이면 전체 인기상품이 내려온다. TODO: 백엔드에 지원 여부 확인
-export async function fetchPopularAsCards(
-  categoryId?: number,
-  size?: number,
-): Promise<ProductCard[]> {
+// 명세(P-4)의 파라미터는 size뿐이라 categoryId는 보내지 않는다.
+// 카테고리별 인기상품이 필요하면 백엔드에 파라미터 추가를 요청해야 한다.
+export async function fetchPopularAsCards(size?: number): Promise<ProductCard[]> {
   const { data } = await api.get<{ items: PopularProductRaw[] }>(
     "/api/products/popular",
-    {
-      params: {
-        ...(categoryId ? { categoryId } : {}),
-        ...(size ? { size } : {}),
-      },
-    },
+    { params: size ? { size } : undefined },
   );
   return data.items.map(toProductCard);
 }
