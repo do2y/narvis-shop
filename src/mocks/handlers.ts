@@ -129,33 +129,9 @@ let mockWishlist: WishlistProduct[] = [
   },
 ];
 
-// 배송지 목 — mypage/types.ts Address 계약. let: CRUD/기본설정 DELETE·PATCH가 갱신.
-// 핸들러가 참조하므로 배열 위에 선언.
-let mockAddresses = [
-  {
-    addressId: "ADDR-1",
-    label: "집",
-    recipient: "김소이",
-    phone: "010-1234-5678",
-    zipCode: "06292",
-    address: "서울특별시 강남구 테헤란로 123 101동 302호",
-    isDefault: true,
-  },
-  {
-    addressId: "ADDR-2",
-    label: "회사",
-    recipient: "김소이",
-    phone: "010-1234-5678",
-    zipCode: "04799",
-    address: "서울특별시 성동구 왕십리로 50 센터포인트빌딩 8층",
-    isDefault: false,
-  },
-];
-let nextAddressSeq = 3;
-
-// 주문/결제용 배송지 목 (GET·POST /api/addresses) — checkout/types.ts Address 계약.
-// 위 mockAddresses(/api/mypage/addresses)와 필드가 갈린다: addressId가 number이고
-// 주소가 address1/address2로 분리됨. 백엔드에서 두 계약이 합쳐지면 하나로 통합할 것.
+// 배송지 목 (M-8) — shared/types/address.ts Address 계약.
+// 결제·마이페이지가 같은 /api/addresses를 쓰므로 배열도 하나만 둔다.
+// let: 추가·수정·삭제·기본설정이 갱신. 핸들러가 참조하므로 배열 위에 선언.
 let mockOrderAddresses: {
   addressId: number;
   label: string;
@@ -785,69 +761,6 @@ export const handlers = [
     HttpResponse.json({ inquiries: MOCK_INQUIRIES }),
   ),
 
-  // ── 배송지 관리 (CRUD + 기본 설정) — mypage/types.ts Address 계약 ──
-  http.get(`${BASE}/api/mypage/addresses`, () =>
-    HttpResponse.json({ addresses: mockAddresses }),
-  ),
-
-  http.post(`${BASE}/api/mypage/addresses`, async ({ request }) => {
-    const input = (await request.json()) as Omit<
-      (typeof mockAddresses)[number],
-      "addressId" | "isDefault"
-    >;
-    // 첫 배송지는 자동 기본. addressId는 목 증가값.
-    const created = {
-      ...input,
-      addressId: `ADDR-${nextAddressSeq++}`,
-      isDefault: mockAddresses.length === 0,
-    };
-    mockAddresses = [...mockAddresses, created];
-    return HttpResponse.json(created, { status: 201 });
-  }),
-
-  http.put(
-    `${BASE}/api/mypage/addresses/:addressId`,
-    async ({ params, request }) => {
-      const id = String(params.addressId);
-      const input = (await request.json()) as Partial<
-        (typeof mockAddresses)[number]
-      >;
-      mockAddresses = mockAddresses.map((a) =>
-        a.addressId === id ? { ...a, ...input, addressId: id } : a,
-      );
-      const updated = mockAddresses.find((a) => a.addressId === id);
-      return updated
-        ? HttpResponse.json(updated)
-        : new HttpResponse(null, { status: 404 });
-    },
-  ),
-
-  http.delete(`${BASE}/api/mypage/addresses/:addressId`, ({ params }) => {
-    const id = String(params.addressId);
-    const removed = mockAddresses.find((a) => a.addressId === id);
-    mockAddresses = mockAddresses.filter((a) => a.addressId !== id);
-    // 기본 배송지를 지우면 남은 첫 항목을 기본으로 승격
-    if (removed?.isDefault && mockAddresses.length > 0) {
-      mockAddresses = mockAddresses.map((a, i) => ({
-        ...a,
-        isDefault: i === 0,
-      }));
-    }
-    return new HttpResponse(null, { status: 204 });
-  }),
-
-  http.patch(
-    `${BASE}/api/mypage/addresses/:addressId/default`,
-    ({ params }) => {
-      const id = String(params.addressId);
-      mockAddresses = mockAddresses.map((a) => ({
-        ...a,
-        isDefault: a.addressId === id,
-      }));
-      return new HttpResponse(null, { status: 204 });
-    },
-  ),
-
   // 후기 등록 (R-1) — 대상은 orderItemId. 자격(배송완료·미작성)은 서버(=목)가 판정한다.
   // 등록만 지원하며 수정·삭제 API는 없다(02 D29).
   http.post(`${BASE}/api/reviews`, async ({ request }) => {
@@ -1110,11 +1023,15 @@ export const handlers = [
     return HttpResponse.json(ok(null));
   }),
 
-  // ── 배송지 (M-8) — checkout 계약: address1/address2 분리, addressId는 number.
-  // /api/mypage/addresses 목과는 필드·타입이 다른 별개 계약이라 배열도 따로 둔다.
-  http.get(`${BASE}/api/addresses`, () =>
-    HttpResponse.json(ok({ addresses: mockOrderAddresses })),
-  ),
+  // ── 배송지 (M-8) — 결제·마이페이지가 공유하는 단일 계약. 로그인 필요.
+  http.get(`${BASE}/api/addresses`, ({ request }) => {
+    if (!request.headers.get("Authorization")) {
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
+    }
+    return HttpResponse.json(ok({ addresses: mockOrderAddresses }));
+  }),
 
   http.post(`${BASE}/api/addresses`, async ({ request }) => {
     const input = (await request.json()) as Omit<
