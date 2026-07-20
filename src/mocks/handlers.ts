@@ -1,4 +1,5 @@
 ﻿import { http, HttpResponse } from "msw";
+import type { CartItem } from "@/shared/types/cart";
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -169,9 +170,20 @@ let nextOrderAddressSeq = 5;
 // 주문 id 목 증가값 — orderNo는 이 값에서 파생한다(ORD-yyyyMMdd-{id}).
 let nextOrderSeq = 1001;
 
-// 장바구니 목 — cart/types.ts CartItem 계약. let: 수량 변경·삭제가 갱신.
-// 핸들러가 참조하므로 배열 위에 선언.
-let mockCart = [
+// 모든 목 상품이 같은 옵션 셋을 갖는다. 상세(P-2)와 담기(C-2)가 같은 값을 봐야
+// "옵션 필수/유효하지 않은 옵션" 검증이 일관되므로 상수로 공유한다.
+const MOCK_PRODUCT_OPTIONS = [
+  { optionId: 10, name: "화이트/M", extraPrice: 0 },
+  { optionId: 11, name: "블랙/L", extraPrice: 2000 },
+];
+
+// 장바구니 담기로 새로 생기는 아이템의 id 증가값(기존 픽스처가 55~57을 씀).
+let nextCartItemSeq = 58;
+
+// 장바구니 목 — cart/types.ts CartItem 계약. let: 수량 변경·삭제·담기가 갱신.
+// 핸들러가 참조하므로 배열 위에 선언. 타입을 명시하는 이유: 픽스처만으로 추론하면
+// optionId/optionName이 non-null로 좁혀져 옵션 없는 상품을 담을 수 없다.
+let mockCart: CartItem[] = [
   {
     cartItemId: 55,
     productId: 301,
@@ -492,10 +504,7 @@ export const handlers = [
         attributes: { 소재: "코튼 100%", 핏: "오버핏" },
         category: { id: 1, name: "패션" },
         brand: { id: 1, name: base.brandName, logoUrl: base.imageUrl },
-        options: [
-          { optionId: 10, name: "화이트/M", extraPrice: 0 },
-          { optionId: 11, name: "블랙/L", extraPrice: 2000 },
-        ],
+        options: MOCK_PRODUCT_OPTIONS,
         rating: { average: base.rating, count: base.reviewCount },
       }),
     );
@@ -763,6 +772,111 @@ export const handlers = [
   http.get(`${BASE}/api/cart/recommendations`, () =>
     HttpResponse.json(ok({ products: MOCK_CART_RECOMMENDATIONS })),
   ),
+
+  // 장바구니 담기 (C-2) — 동일 상품+옵션이면 수량 합산, 합산 결과도 1~99.
+  // 응답은 { cartItemId, quantity } (quantity는 합산 결과).
+  http.post(`${BASE}/api/cart/items`, async ({ request }) => {
+    const body = (await request.json()) as {
+      productId: number;
+      optionId?: number | null;
+      quantity: number;
+    };
+
+    const product = POPULAR_PRODUCTS.find(
+      (p) => p.productId === body.productId,
+    );
+    if (!product) {
+      return HttpResponse.json(
+        fail("PRODUCT_NOT_FOUND", "상품을 찾을 수 없습니다."),
+        { status: 404 },
+      );
+    }
+
+    // 목 상품은 모두 옵션이 있으므로 optionId 누락은 항상 400.
+    // 실패 응답에 옵션 목록을 실어 FE가 옵션 선택 UI를 띄울 수 있게 한다(명세 detail).
+    if (body.optionId == null) {
+      return HttpResponse.json(
+        {
+          success: false as const,
+          error: {
+            code: "CART_OPTION_REQUIRED",
+            message: "옵션을 선택해 주세요.",
+            detail: { options: MOCK_PRODUCT_OPTIONS },
+          },
+        },
+        { status: 400 },
+      );
+    }
+    if (!MOCK_PRODUCT_OPTIONS.some((o) => o.optionId === body.optionId)) {
+      return HttpResponse.json(
+        fail("CART_OPTION_INVALID", "선택한 옵션을 찾을 수 없습니다."),
+        { status: 400 },
+      );
+    }
+
+    if (!Number.isInteger(body.quantity) || body.quantity < 1) {
+      return HttpResponse.json(
+        {
+          success: false as const,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "입력값이 올바르지 않습니다.",
+            fields: [{ field: "quantity", message: "수량은 1 이상이어야 합니다." }],
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const existing = mockCart.find(
+      (it) => it.productId === body.productId && it.optionId === body.optionId,
+    );
+    const merged = (existing?.quantity ?? 0) + body.quantity;
+    if (merged > 99) {
+      return HttpResponse.json(
+        {
+          success: false as const,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "입력값이 올바르지 않습니다.",
+            fields: [
+              { field: "quantity", message: "수량은 99 이하여야 합니다." },
+            ],
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    if (existing) {
+      existing.quantity = merged;
+      return HttpResponse.json(
+        ok({ cartItemId: existing.cartItemId, quantity: merged }),
+      );
+    }
+
+    const option = MOCK_PRODUCT_OPTIONS.find(
+      (o) => o.optionId === body.optionId,
+    );
+    const created = {
+      cartItemId: nextCartItemSeq++,
+      productId: product.productId,
+      name: product.name,
+      brandId: 1,
+      brandName: product.brandName,
+      imageUrl: product.imageUrl,
+      optionId: body.optionId,
+      optionName: option?.name ?? null,
+      quantity: body.quantity,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      purchasable: product.purchasable,
+    };
+    mockCart = [...mockCart, created];
+    return HttpResponse.json(
+      ok({ cartItemId: created.cartItemId, quantity: created.quantity }),
+    );
+  }),
 
   http.patch(
     `${BASE}/api/cart/items/:cartItemId`,

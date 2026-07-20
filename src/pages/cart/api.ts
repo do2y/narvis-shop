@@ -13,17 +13,22 @@ export async function fetchCartRecommendations(): Promise<
   return data.products;
 }
 
+// 담기 (C-2) — 동일 상품+옵션이 이미 있으면 서버가 수량을 합산한다.
+// 응답 quantity는 합산 결과라 요청 수량과 다를 수 있다.
 export async function addCartItem(body: {
   productId: number;
   optionId?: number | null;
   quantity: number;
-}): Promise<{ cartItemId: number }> {
+}): Promise<{ cartItemId: number; quantity: number }> {
   const { productId, optionId, quantity } = body;
-  const { data } = await api.post<{ cartItemId: number }>("/api/cart/items", {
-    productId,
-    quantity,
-    ...(optionId != null ? { optionId } : {}),
-  });
+  const { data } = await api.post<{ cartItemId: number; quantity: number }>(
+    "/api/cart/items",
+    {
+      productId,
+      quantity,
+      ...(optionId != null ? { optionId } : {}),
+    },
+  );
   return data;
 }
 
