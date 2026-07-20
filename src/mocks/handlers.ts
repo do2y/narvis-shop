@@ -1082,6 +1082,72 @@ export const handlers = [
     return HttpResponse.json(ok(created));
   }),
 
+  // 배송지 수정 (M-8b) — 보낸 필드만 부분 반영. { isDefault: true }로 기본 지정도 겸한다.
+  // 응답은 수정 반영된 전체 주소 객체. 없는/타인 배송지는 404로 존재 은닉.
+  http.patch(`${BASE}/api/addresses/:addressId`, async ({ params, request }) => {
+    if (!request.headers.get("Authorization")) {
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
+    }
+    const id = Number(params.addressId);
+    if (!mockOrderAddresses.some((a) => a.addressId === id)) {
+      return HttpResponse.json(
+        fail("ADDRESS_NOT_FOUND", "배송지를 찾을 수 없습니다."),
+        { status: 404 },
+      );
+    }
+    const patch = (await request.json()) as Partial<
+      (typeof mockOrderAddresses)[number]
+    >;
+
+    // 기본으로 지정하면 기존 기본은 같은 트랜잭션에서 해제된다
+    if (patch.isDefault) {
+      mockOrderAddresses = mockOrderAddresses.map((a) => ({
+        ...a,
+        isDefault: false,
+      }));
+    }
+    mockOrderAddresses = mockOrderAddresses.map((a) =>
+      a.addressId === id ? { ...a, ...patch, addressId: id } : a,
+    );
+    const updated = mockOrderAddresses.find((a) => a.addressId === id)!;
+    return HttpResponse.json(ok(updated));
+  }),
+
+  // 배송지 삭제 (M-8c) — 유일한 배송지는 삭제 불가.
+  // 기본 배송지를 지우면 가장 오래된 주소가 자동 승격된다.
+  http.delete(`${BASE}/api/addresses/:addressId`, ({ params, request }) => {
+    if (!request.headers.get("Authorization")) {
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
+    }
+    const id = Number(params.addressId);
+    const target = mockOrderAddresses.find((a) => a.addressId === id);
+    if (!target) {
+      return HttpResponse.json(
+        fail("ADDRESS_NOT_FOUND", "배송지를 찾을 수 없습니다."),
+        { status: 404 },
+      );
+    }
+    if (mockOrderAddresses.length <= 1) {
+      return HttpResponse.json(
+        fail("ADDRESS_LAST_UNDELETABLE", "배송지가 1개일 때는 삭제할 수 없습니다."),
+        { status: 400 },
+      );
+    }
+    mockOrderAddresses = mockOrderAddresses.filter((a) => a.addressId !== id);
+    // 기본을 지웠으면 남은 첫 항목(가장 오래된 주소)을 기본으로 승격
+    if (target.isDefault) {
+      mockOrderAddresses = mockOrderAddresses.map((a, i) => ({
+        ...a,
+        isDefault: i === 0,
+      }));
+    }
+    return HttpResponse.json(ok(null));
+  }),
+
   // 주문 목록 (O-3) — page(기본 0)/size(기본 10). 로그인 필요.
   http.get(`${BASE}/api/orders`, ({ request }) => {
     if (!request.headers.get("Authorization")) {
