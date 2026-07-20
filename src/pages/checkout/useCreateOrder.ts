@@ -42,6 +42,9 @@ function toRetryErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "ORDER_INVALID_TRANSITION")
       return "이미 처리된 주문이라 재결제할 수 없어요.";
+    // 타인 주문도 404로 통일해 존재를 숨긴다(IDOR 관례) — 권한 문구를 쓰면
+    // 주문이 존재한다는 사실이 드러나므로 "찾을 수 없다"로 안내한다.
+    if (error.code === "ORDER_NOT_FOUND") return "주문을 찾을 수 없어요.";
     if (error.code === "AUTH_FORBIDDEN") return "이 주문을 처리할 권한이 없어요.";
     if (error.displayMessage) return error.displayMessage;
   }

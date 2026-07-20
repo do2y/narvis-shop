@@ -170,6 +170,13 @@ let nextOrderAddressSeq = 5;
 // 주문 id 목 증가값 — orderNo는 이 값에서 파생한다(ORD-yyyyMMdd-{id}).
 let nextOrderSeq = 1001;
 
+// 생성된 주문의 상태·장바구니 출처 — 재결제(O-2)가 상태 전이와 차감을 판단하는 데 쓴다.
+// 실제 백엔드는 주문 테이블을 보지만 목은 이 맵으로 대신한다.
+const mockOrders = new Map<
+  number,
+  { orderNo: string; status: string; cartItemIds: number[] }
+>();
+
 // 모든 목 상품이 같은 옵션 셋을 갖는다. 상세(P-2)와 담기(C-2)가 같은 값을 봐야
 // "옵션 필수/유효하지 않은 옵션" 검증이 일관되므로 상수로 공유한다.
 const MOCK_PRODUCT_OPTIONS = [
@@ -1071,6 +1078,7 @@ export const handlers = [
     // orderNo는 저장하지 않고 파생: "ORD-" + created_at(yyyyMMdd) + "-" + id
     const yyyymmdd = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const paid = body.paymentMethod !== "MOCK_FAIL";
+    const orderNo = `ORD-${yyyymmdd}-${orderId}`;
 
     // 결제 성공 시에만 장바구니 경유분 차감 (바로 구매는 장바구니 미접촉)
     if (paid && hasCart) {
@@ -1079,14 +1087,58 @@ export const handlers = [
       );
     }
 
+    // 재결제(O-2)가 상태 전이를 판단할 수 있도록 기록.
+    // 실패 주문은 장바구니를 차감하지 않았으므로 출처를 남겨 재결제 성공 시 차감한다.
+    mockOrders.set(orderId, {
+      orderNo,
+      status: paid ? "PAID" : "PAYMENT_FAILED",
+      cartItemIds: hasCart ? body.cartItemIds! : [],
+    });
+
     return HttpResponse.json(
-      ok({
-        orderId,
-        orderNo: `ORD-${yyyymmdd}-${orderId}`,
-        status: paid ? "PAID" : "PAYMENT_FAILED",
-      }),
+      ok({ orderId, orderNo, status: paid ? "PAID" : "PAYMENT_FAILED" }),
     );
   }),
+
+  // ── 재결제 (O-2) ── PENDING/PAYMENT_FAILED 주문만. 성공 부수효과는 O-1의 PAID와 동일.
+  http.post(
+    `${BASE}/api/orders/:orderId/retry-payment`,
+    async ({ params, request }) => {
+      const orderId = Number(params.orderId);
+      const { paymentMethod } = (await request.json()) as {
+        paymentMethod: string;
+      };
+
+      // 없는 주문·타인 주문 모두 404로 통일 — 존재 은닉(IDOR 관례, 2026-07-18 확정)
+      const order = mockOrders.get(orderId);
+      if (!order) {
+        return HttpResponse.json(
+          fail("ORDER_NOT_FOUND", "주문을 찾을 수 없습니다."),
+          { status: 404 },
+        );
+      }
+      if (order.status !== "PENDING" && order.status !== "PAYMENT_FAILED") {
+        return HttpResponse.json(
+          fail("ORDER_INVALID_TRANSITION", "재결제할 수 없는 주문입니다."),
+          { status: 400 },
+        );
+      }
+
+      const paid = paymentMethod !== "MOCK_FAIL";
+      order.status = paid ? "PAID" : "PAYMENT_FAILED";
+
+      // 성공 시에만 장바구니에 남은 같은 행을 삭제(O-1 PAID와 동일한 부수효과)
+      if (paid && order.cartItemIds.length > 0) {
+        mockCart = mockCart.filter(
+          (it) => !order.cartItemIds.includes(it.cartItemId),
+        );
+      }
+
+      return HttpResponse.json(
+        ok({ orderId, orderNo: order.orderNo, status: order.status }),
+      );
+    },
+  ),
 
   http.get(`${BASE}/api/wishlist`, () =>
     HttpResponse.json({ products: mockWishlist }),
