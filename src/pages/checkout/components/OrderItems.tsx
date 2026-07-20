@@ -11,9 +11,15 @@ export function OrderItems({ items }: { items: CheckoutItem[] }) {
       <h2 className="text-lg font-bold">주문 상품</h2>
       <ul className="mt-4 flex flex-col gap-5">
         {items.map((item, i) => {
-          const { product, options, quantity } = item;
+          const { product, options, optionName, quantity } = item;
           const hasDiscount = product.originalPrice > product.price;
-          const optionText = Object.values(options).filter(Boolean);
+          // 상세 경유는 options 맵, 장바구니 경유는 "화이트/M" 문자열
+          const optionText = options
+            ? Object.values(options).filter(Boolean)
+            : (optionName ?? "")
+                .split("/")
+                .map((v) => v.trim())
+                .filter(Boolean);
           return (
             <li key={`${product.productId}-${i}`} className="flex gap-4">
               <img
@@ -22,9 +28,11 @@ export function OrderItems({ items }: { items: CheckoutItem[] }) {
                 className="size-20 shrink-0 rounded-sm border object-cover"
               />
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <p className="text-sm text-muted-foreground">
-                  {product.brandName}
-                </p>
+                {product.brandName && (
+                  <p className="text-sm text-muted-foreground">
+                    {product.brandName}
+                  </p>
+                )}
                 <p className="text-sm font-semibold leading-snug">
                   {product.name}
                 </p>

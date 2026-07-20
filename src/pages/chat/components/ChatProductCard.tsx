@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { Heart, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
 import type { ProductCard } from "@/shared/types/chat";
 
 function formatPrice(v: number): string {
@@ -10,7 +10,9 @@ function formatPrice(v: number): string {
 }
 
 export function ChatProductCard({ product }: { product: ProductCard }) {
-  const [wished, setWished] = useState(false);
+  // 찜 상태는 서버 목록에서 파생 — 로컬 토글이면 새로고침·다른 화면과 어긋난다.
+  const wished = useIsWished(product.productId);
+  const { toggle, isPending } = useToggleWishlist();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const hasDiscount = product.originalPrice > product.price;
@@ -38,10 +40,11 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
         </button>
         <button
           type="button"
-          onClick={() => setWished((w) => !w)}
+          onClick={() => toggle(product.productId, wished)}
+          disabled={isPending}
           aria-label={wished ? "찜 해제" : "찜하기"}
           aria-pressed={wished}
-          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90"
+          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90 disabled:opacity-50"
         >
           <Heart
             className={cn(
@@ -67,9 +70,12 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             {product.name}
           </button>
         </h3>
-        <p className="line-clamp-2 text-sm text-muted-foreground">
-          {product.reason}
-        </p>
+        {/* 인기상품(단순 집계) 카드는 추천 이유가 없어 영역 자체를 그리지 않음 */}
+        {product.reason && (
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {product.reason}
+          </p>
+        )}
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-wrap items-baseline gap-x-2">

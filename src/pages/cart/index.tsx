@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
-import { Skeleton } from "@/components/ui/skeleton";
-import { buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
 import { useCart, useCartMutations } from "./useCart";
 import { CartItemCard } from "./components/CartItemCard";
@@ -29,16 +29,24 @@ function CartSkeleton() {
 }
 
 export default function CartPage() {
-  const { data: items, isPending, isError, refetch } = useCart();
-  const { setQuantity, remove } = useCartMutations();
+  const { data: cart, isPending, isError, refetch } = useCart();
+  const {
+    setQuantity,
+    remove,
+    errorMessage: mutationError,
+  } = useCartMutations();
   const navigate = useNavigate();
+
+  const items = cart?.items;
 
   // 선택 상태는 클라이언트 UI 상태(어떤 라인을 주문할지). 목록 로드 후 기본 전체 선택.
   // 해제한 항목만 기억해 새 항목은 자동 선택되게 한다(제외 집합 방식).
-  const [deselected, setDeselected] = useState<Set<string>>(new Set());
+  const [deselected, setDeselected] = useState<Set<number>>(new Set());
 
-  const isSelected = (id: string) => !deselected.has(id);
-  const toggle = (id: string) =>
+  // 구매 불가(HIDDEN) 상품은 서버 합계에서도 빠지므로 선택 대상에서 제외한다.
+  const isSelected = (item: CartItem) =>
+    item.purchasable && !deselected.has(item.cartItemId);
+  const toggle = (id: number) =>
     setDeselected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -46,32 +54,55 @@ export default function CartPage() {
       return next;
     });
 
-  const selectedItems = useMemo(
-    () => (items ?? []).filter((it) => !deselected.has(it.cartItemId)),
-    [items, deselected],
+  const selectableItems = useMemo(
+    () => (items ?? []).filter((it) => it.purchasable),
+    [items],
   );
-  const allSelected = (items?.length ?? 0) > 0 && selectedItems.length === items!.length;
+  const selectedItems = useMemo(
+    () => selectableItems.filter((it) => !deselected.has(it.cartItemId)),
+    [selectableItems, deselected],
+  );
+  const allSelected =
+    selectableItems.length > 0 && selectedItems.length === selectableItems.length;
 
   const toggleAll = () => {
-    if (!items) return;
-    setDeselected(allSelected ? new Set(items.map((it) => it.cartItemId)) : new Set());
+    setDeselected(
+      allSelected ? new Set(selectableItems.map((it) => it.cartItemId)) : new Set(),
+    );
   };
 
-  const removeSelected = () => {
-    selectedItems.forEach((it) => remove.mutate(it.cartItemId));
+  // bulk 삭제 API가 없어 하나씩 호출한다(스펙: FE 반복 호출).
+  // 동시에 쏘면 각 낙관적 반영이 같은 스냅샷을 기준으로 잡혀 서로를 덮어쓰므로 순차 실행.
+  const removeSelected = async () => {
+    for (const it of selectedItems) {
+      try {
+        await remove.mutateAsync(it.cartItemId);
+      } catch {
+        // 한 건이 실패해도(이미 삭제됨 등) 나머지는 계속 시도. 사유는 errorMessage로 노출됨.
+      }
+    }
   };
 
-  const { itemsTotal, discount } = useMemo(() => {
+  // 전체 선택이면 서버 계산 합계 3종을 그대로 쓴다(합계의 진실은 서버).
+  // 부분 선택일 때만 FE가 선택분을 합산 — 최종 금액은 주문 시 서버가 재계산(명세).
+  const { itemsTotal, discount, paid } = useMemo(() => {
+    if (allSelected && cart) {
+      return {
+        itemsTotal: cart.totalOriginal,
+        discount: cart.discount,
+        paid: cart.totalSale,
+      };
+    }
     const total = selectedItems.reduce(
       (sum, it) => sum + it.originalPrice * it.quantity,
       0,
     );
-    const paid = selectedItems.reduce(
+    const sale = selectedItems.reduce(
       (sum, it) => sum + it.price * it.quantity,
       0,
     );
-    return { itemsTotal: total, discount: total - paid };
-  }, [selectedItems]);
+    return { itemsTotal: total, discount: total - sale, paid: sale };
+  }, [allSelected, cart, selectedItems]);
 
   // 선택 상품을 결제 화면 계약(CheckoutState)에 맞춰 넘긴다.
   const goToCheckout = () => {
@@ -80,12 +111,16 @@ export default function CartPage() {
       product: {
         productId: it.productId,
         name: it.name,
-        brandName: it.brand,
+        brandName: it.brandName,
         price: it.price,
         originalPrice: it.originalPrice,
         imageUrl: it.imageUrl,
       },
-      options: it.options,
+      // 주문 생성 시 cartItemIds[]로 보내 장바구니 경유임을 알린다
+      // (이 값이 없으면 items[] 경로가 되어 장바구니가 차감되지 않는다).
+      cartItemId: it.cartItemId,
+      optionId: it.optionId,
+      optionName: it.optionName,
       quantity: it.quantity,
     }));
     navigate("/checkout", { state: { items: checkoutItems } });
@@ -117,7 +152,7 @@ export default function CartPage() {
               다시 시도
             </button>
           </div>
-        ) : items.length === 0 ? (
+        ) : !cart || cart.items.length === 0 ? (
           <div className="mt-6 flex flex-col items-center gap-3 rounded-sm border border-dashed bg-background py-16 text-center">
             <p className="text-sm font-medium">장바구니가 비어 있어요</p>
             <p className="text-sm text-muted-foreground">
@@ -151,24 +186,32 @@ export default function CartPage() {
                       <Check className="size-4 text-primary-foreground" />
                     )}
                   </span>
-                  전체 선택 ({selectedItems.length}/{items.length})
+                  전체 선택 ({selectedItems.length}/{selectableItems.length})
                 </button>
                 <button
                   type="button"
                   onClick={removeSelected}
-                  disabled={selectedItems.length === 0}
+                  // 순차 삭제 중 재클릭하면 같은 항목에 중복 요청이 나가므로 잠근다
+                  disabled={selectedItems.length === 0 || remove.isPending}
                   className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
                 >
-                  선택 삭제
+                  {remove.isPending ? "삭제 중…" : "선택 삭제"}
                 </button>
               </div>
 
+              {/* 수량 변경·삭제 실패 사유 — 낙관적 반영이 롤백되므로 이유를 알려준다 */}
+              {mutationError && (
+                <p className="mt-4 text-sm text-destructive" role="alert">
+                  {mutationError}
+                </p>
+              )}
+
               <div className="mt-4 flex flex-col gap-4">
-                {items.map((item) => (
+                {cart.items.map((item) => (
                   <CartItemCard
                     key={item.cartItemId}
                     item={item}
-                    selected={isSelected(item.cartItemId)}
+                    selected={isSelected(item)}
                     onToggle={() => toggle(item.cartItemId)}
                     onQuantityChange={(quantity) =>
                       setQuantity.mutate({ cartItemId: item.cartItemId, quantity })
@@ -187,6 +230,7 @@ export default function CartPage() {
                 <CartSummary
                   itemsTotal={itemsTotal}
                   discount={discount}
+                  paid={paid}
                   selectedCount={selectedItems.length}
                   onOrder={goToCheckout}
                 />

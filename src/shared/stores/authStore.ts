@@ -1,10 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type UserRole = "MEMBER" | "SELLER" | "ADMIN";
+// 백엔드 role enum과 일치 (USER/SELLER/ADMIN)
+export type UserRole = "USER" | "SELLER" | "ADMIN";
 
+// 백엔드 member 객체 계약
 export interface AuthUser {
   id: number;
+  email: string;
   nickname: string;
   role: UserRole;
 }
@@ -12,12 +15,8 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
-  refreshToken: string | null;
-  setAuth: (p: {
-    user: AuthUser;
-    accessToken: string;
-    refreshToken: string;
-  }) => void;
+  // RT는 httpOnly 쿠키로 관리 → 클라 상태에 저장하지 않음
+  setAuth: (p: { user: AuthUser; accessToken: string }) => void;
   setAccessToken: (accessToken: string) => void;
   clearAuth: () => void;
 }
@@ -27,11 +26,9 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       setAuth: (p) => set(p),
       setAccessToken: (accessToken) => set({ accessToken }),
-      clearAuth: () =>
-        set({ user: null, accessToken: null, refreshToken: null }),
+      clearAuth: () => set({ user: null, accessToken: null }),
     }),
     { name: "jarvis-auth" },
   ),

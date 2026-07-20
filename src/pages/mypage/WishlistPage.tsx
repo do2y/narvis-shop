@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { Heart } from "lucide-react";
 import { useWishlist } from "./useWishlist";
 import { WishlistCard } from "./components/WishlistCard";

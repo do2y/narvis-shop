@@ -1,7 +1,7 @@
 import { Link, Navigate } from "react-router-dom";
 import { Heart } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/shared/stores/authStore";
 

@@ -1,4 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { useState } from "react";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { RefreshCcw } from "lucide-react";
 import { useClaims } from "./useClaims";
 import { ClaimCard } from "./components/ClaimCard";
@@ -25,7 +26,9 @@ function ClaimsSkeleton() {
 }
 
 export default function ClaimsPage() {
-  const { data: claims, isPending, isError, refetch } = useClaims();
+  const [page, setPage] = useState(0);
+  const { data, isPending, isError, refetch } = useClaims(page);
+  const claims = data?.content ?? [];
 
   return (
     <div>
@@ -52,6 +55,32 @@ export default function ClaimsPage() {
             {claims.map((claim) => (
               <ClaimCard key={claim.claimId} claim={claim} />
             ))}
+            {/* 페이지네이션 — 1페이지뿐이면 숨긴다 */}
+            {data && data.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="h-11 rounded-full border px-5 text-sm font-medium disabled:opacity-40"
+                >
+                  이전
+                </button>
+                <span className="text-sm text-muted-foreground">
+                  {page + 1} / {data.totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((p) => Math.min(data.totalPages - 1, p + 1))
+                  }
+                  disabled={page >= data.totalPages - 1}
+                  className="h-11 rounded-full border px-5 text-sm font-medium disabled:opacity-40"
+                >
+                  다음
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Outlet } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { createBrowserRouter, Outlet, useLocation } from 'react-router-dom';
+import { track } from '@/shared/analytics/track';
 import { RequireAuth, RequireRole } from './guards';
 
 // 페이지 단위 코드 스플리팅 (lazy)
@@ -19,6 +20,14 @@ const AdminPage = lazy(() => import('@/pages/admin'));
 
 function Root() {
   // TODO: 공통 레이아웃(헤더 등)을 여기에 배치
+  const { pathname } = useLocation();
+
+  // 모든 라우트가 이 밑에 중첩되므로 여기 한 곳에서 page_view를 수집한다.
+  // search는 쿼리스트링에 검색어가 실려 개인정보가 될 수 있어 path만 보낸다(명세).
+  useEffect(() => {
+    track('page_view', { properties: { path: pathname } });
+  }, [pathname]);
+
   return (
     <Suspense fallback={null}>
       <Outlet />

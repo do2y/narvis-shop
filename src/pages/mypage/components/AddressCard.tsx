@@ -1,4 +1,4 @@
-import type { Address } from "../types";
+import type { Address } from "@/shared/types/address";
 
 export function AddressCard({
   address,
@@ -6,12 +6,16 @@ export function AddressCard({
   onRemove,
   onSetDefault,
   busy,
+  deletable = true,
 }: {
   address: Address;
   onEdit: () => void;
   onRemove: () => void;
   onSetDefault: () => void;
   busy?: boolean;
+  // 서버 규칙: 유일한 배송지만 삭제 불가(ADDRESS_LAST_UNDELETABLE).
+  // 기본 배송지도 다른 게 있으면 삭제되고, 가장 오래된 주소가 자동 승격된다.
+  deletable?: boolean;
 }) {
   return (
     <article className="rounded-sm border bg-background p-5">
@@ -44,7 +48,7 @@ export function AddressCard({
           >
             수정
           </button>
-          {!address.isDefault && (
+          {deletable && (
             <button
               type="button"
               onClick={onRemove}
@@ -60,8 +64,11 @@ export function AddressCard({
       <p className="mt-3 text-sm">
         {address.recipient} · {address.phone}
       </p>
+      {/* 상세주소는 선택 — 서버가 null 또는 ""로 주므로 둘 다 빈 값으로 다룬다 */}
       <p className="mt-1 text-sm text-muted-foreground">
-        ({address.zipCode}) {address.address}
+        ({address.zipCode}) {[address.address1, address.address2]
+          .filter(Boolean)
+          .join(" ")}
       </p>
     </article>
   );

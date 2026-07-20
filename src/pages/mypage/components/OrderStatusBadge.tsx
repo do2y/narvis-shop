@@ -1,16 +1,23 @@
 import { cn } from "@/lib/utils";
-import type { OrderStatus } from "../types";
+import { ORDER_STATUS_LABEL, type OrderStatus } from "../types";
 
-// 배송 상태별 표시명·색상. 토큰 팔레트(회색/포인트) 범위 내에서 상태만 구분.
-const STATUS_META: Record<OrderStatus, { label: string; className: string }> = {
-  PREPARING: { label: "배송준비중", className: "bg-amber-50 text-amber-700" },
-  SHIPPING: { label: "배송중", className: "bg-blue-50 text-blue-700" },
-  DELIVERED: { label: "배송완료", className: "bg-green-50 text-green-700" },
-  CONFIRMED: { label: "구매확정", className: "bg-muted text-muted-foreground" },
+// 상태별 색상. 토큰 팔레트(회색/포인트) 범위 내에서 상태만 구분.
+// 표시명은 ORDER_STATUS_LABEL과 공유해 한 곳에서 관리한다.
+const STATUS_CLASS: Record<OrderStatus, string> = {
+  PENDING: "bg-muted text-muted-foreground",
+  PAYMENT_FAILED: "bg-red-50 text-red-700",
+  ORDERED: "bg-blue-50 text-blue-700",
+  SHIPPING: "bg-blue-50 text-blue-700",
+  DELIVERED: "bg-green-50 text-green-700",
+  CONFIRMED: "bg-muted text-muted-foreground",
+  CLAIM_IN_PROGRESS: "bg-amber-50 text-amber-700",
+  COMPLETED: "bg-muted text-muted-foreground",
 };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const { label, className } = STATUS_META[status];
+  // 백엔드가 새 상태를 추가해도 화면이 깨지지 않도록 fallback을 둔다.
+  const label = ORDER_STATUS_LABEL[status] ?? status;
+  const className = STATUS_CLASS[status] ?? "bg-muted text-muted-foreground";
   return (
     <span
       className={cn(

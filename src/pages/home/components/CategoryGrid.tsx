@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { categoryEmoji } from "../categoryEmoji";
 import { useCategories } from "../useHomeData";
 import { SectionHeading } from "./SectionHeading";
 
@@ -29,15 +30,18 @@ export function CategoryGrid() {
           )}
 
           {categories?.map((cat) => (
-            // 클릭 시 채팅으로 이동 — 해당 카테고리 인기상품을 초기 표시
+            // 인기상품 API에 카테고리 필터가 없어(P-4), 카테고리명을 질문으로 넘겨
+            // 챗봇이 해당 분야를 추천하게 한다.
             <button
-              key={cat.categoryId}
+              key={cat.id}
               type="button"
-              onClick={() => navigate(`/chat?categoryId=${cat.categoryId}`)}
+              onClick={() =>
+                navigate(`/chat?q=${encodeURIComponent(`${cat.name} 추천해줘`)}`)
+              }
               className="flex flex-col items-center gap-2 rounded-sm border bg-background px-3 py-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:bg-muted hover:shadow-md active:translate-y-0 active:scale-[0.98]"
             >
               <span className="text-2xl" aria-hidden>
-                {cat.emoji}
+                {categoryEmoji(cat.name)}
               </span>
               <span className="text-sm font-medium">#{cat.name}</span>
             </button>

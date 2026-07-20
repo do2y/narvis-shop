@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import { AppHeader } from "@/shared/ui/AppHeader";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
 import type { OrderCompleteState } from "./types";
 import { OrderItems } from "./components/OrderItems";
@@ -64,7 +64,10 @@ export default function OrderCompletePage() {
                 {order.address.recipient} ({order.address.label})
               </p>
               <p className="text-muted-foreground">{order.address.phone}</p>
-              <p className="text-muted-foreground">{order.address.address}</p>
+              <p className="text-muted-foreground">
+                ({order.address.zipCode}) {order.address.address1}
+                {order.address.address2 ? ` ${order.address.address2}` : ""}
+              </p>
             </div>
           </section>
 

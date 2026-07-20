@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { LoginForm } from "./components/LoginForm";
 import { SignupForm } from "./components/SignupForm";

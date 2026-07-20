@@ -5,8 +5,8 @@ import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, ImagePlus, X } from "lucide-react";
 import type { ProductCard } from "@/shared/types/chat";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/shared/ui/button";
+import { Label } from "@/shared/ui/label";
 import { cn } from "@/lib/utils";
 import { reviewSchema, type ReviewValues } from "./reviewSchema";
 import { useCreateReview } from "./useCreateReview";
@@ -14,7 +14,8 @@ import { StarRatingInput } from "./components/StarRatingInput";
 
 export default function ReviewWritePage() {
   const [params] = useSearchParams();
-  const orderId = params.get("orderId");
+  // 후기 대상은 주문 줄(orderItemId). productId는 상품 요약 표시·캐시 조회용.
+  const orderItemId = Number(params.get("orderItemId"));
   const productId = Number(params.get("productId"));
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -41,13 +42,13 @@ export default function ReviewWritePage() {
   const { mutate, isPending, isSuccess, errorMessage } = useCreateReview();
 
   // 필수 파라미터 없이 직접 진입 → 주문 내역으로
-  if (!orderId || !Number.isFinite(productId)) {
+  if (!Number.isFinite(orderItemId)) {
     return <Navigate to="/mypage/orders" replace />;
   }
 
   const onSubmit = (values: ReviewValues) => {
     // 성공 시 즉시 이동하지 않고 완료 화면(isSuccess)으로 전환 — 아래 렌더 분기.
-    mutate({ orderId, productId, ...values });
+    mutate({ orderItemId, ...values });
   };
 
   // 후기 등록 완료 — 피드백 화면. 반품 완료 화면과 동일 톤.

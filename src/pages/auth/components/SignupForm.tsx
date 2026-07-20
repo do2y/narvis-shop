@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import { cn } from "@/lib/utils";
 import { signupSchema, type SignupValues } from "../schema";
 import { useSignup } from "../useAuthForm";
@@ -14,8 +14,8 @@ interface SignupFormProps {
 }
 
 const GENDERS = [
-  { value: "M", label: "남성" },
-  { value: "F", label: "여성" },
+  { value: "MALE", label: "남성" },
+  { value: "FEMALE", label: "여성" },
 ] as const;
 
 export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
@@ -46,6 +46,9 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       nickname: v.nickname,
       gender: v.gender,
       birthDate: v.birthDate,
+      agreeTerms: v.agreeTerms,
+      agreePrivacy: v.agreePrivacy,
+      // guestId는 게스트 승계 로직 붙을 때 연결 (옵셔널)
     }),
   );
 

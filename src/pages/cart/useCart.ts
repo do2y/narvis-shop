@@ -1,20 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/shared/api/client";
 import {
-  fetchCart,
+  addCartItem,
   fetchCartRecommendations,
   removeCartItem,
   updateCartQuantity,
 } from "./api";
-import type { CartItem } from "./types";
+import type { Cart } from "./types";
 
-// 장바구니 — 서버 원본. 수량·구성이 자주 바뀌어 staleTime 0 (CLAUDE.md 규칙).
-export function useCart() {
-  return useQuery({
-    queryKey: ["cart"],
-    queryFn: fetchCart,
-    staleTime: 0,
-  });
-}
+export { useCart, useCartItemCount } from "@/shared/hooks/useCart";
 
 export function useCartRecommendations() {
   return useQuery({
@@ -24,27 +18,65 @@ export function useCartRecommendations() {
   });
 }
 
-// 수량·삭제 뮤테이션 — 낙관적 반영 후 실패 시 롤백. 성공/실패 후 ['cart'] 재동기화.
-// (헤더 뱃지 전역 동기화도 같은 키로 이뤄짐)
+function toAddCartMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === "CART_OPTION_REQUIRED") return "옵션을 선택해주세요.";
+    if (error.code === "CART_OPTION_INVALID")
+      return "선택한 옵션을 찾을 수 없어요.";
+    if (error.code === "PRODUCT_NOT_FOUND") return "상품을 찾을 수 없어요.";
+    // 검증 실패는 필드 사유("수량은 99 이하여야 합니다.")가 더 구체적이라 우선
+    if (error.displayMessage) return error.displayMessage;
+  }
+  return "장바구니에 담지 못했어요. 잠시 후 다시 시도해주세요.";
+}
+
+export function useAddCartItem() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: addCartItem,
+    retry: false,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+  });
+
+  return {
+    ...mutation,
+    errorMessage: mutation.error ? toAddCartMessage(mutation.error) : null,
+  };
+}
+
+// 수량 변경·삭제 실패 메시지. 검증 실패는 필드 사유("수량은 99 이하여야 합니다.")를
+// 그대로 쓰고, 소유권·존재 오류는 상황을 설명하는 문구로 바꾼다.
+function toCartMutationMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === "AUTH_FORBIDDEN")
+      return "이 항목을 변경할 권한이 없어요.";
+    if (error.code === "CART_ITEM_NOT_FOUND")
+      return "이미 삭제된 항목이에요.";
+    if (error.displayMessage) return error.displayMessage;
+  }
+  return "장바구니를 변경하지 못했어요. 잠시 후 다시 시도해주세요.";
+}
+
 export function useCartMutations() {
   const queryClient = useQueryClient();
 
   const setQuantity = useMutation({
-    mutationFn: (args: { cartItemId: string; quantity: number }) =>
+    mutationFn: (args: { cartItemId: number; quantity: number }) =>
       updateCartQuantity(args.cartItemId, args.quantity),
     retry: false,
     onMutate: async (args) => {
       await queryClient.cancelQueries({ queryKey: ["cart"] });
-      const previous = queryClient.getQueryData<CartItem[]>(["cart"]);
+      const previous = queryClient.getQueryData<Cart>(["cart"]);
       if (previous) {
-        queryClient.setQueryData<CartItem[]>(
-          ["cart"],
-          previous.map((it) =>
+        queryClient.setQueryData<Cart>(["cart"], {
+          ...previous,
+          items: previous.items.map((it) =>
             it.cartItemId === args.cartItemId
               ? { ...it, quantity: args.quantity }
               : it,
           ),
-        );
+        });
       }
       return { previous };
     },
@@ -55,16 +87,16 @@ export function useCartMutations() {
   });
 
   const remove = useMutation({
-    mutationFn: (cartItemId: string) => removeCartItem(cartItemId),
+    mutationFn: (cartItemId: number) => removeCartItem(cartItemId),
     retry: false,
     onMutate: async (cartItemId) => {
       await queryClient.cancelQueries({ queryKey: ["cart"] });
-      const previous = queryClient.getQueryData<CartItem[]>(["cart"]);
+      const previous = queryClient.getQueryData<Cart>(["cart"]);
       if (previous) {
-        queryClient.setQueryData<CartItem[]>(
-          ["cart"],
-          previous.filter((it) => it.cartItemId !== cartItemId),
-        );
+        queryClient.setQueryData<Cart>(["cart"], {
+          ...previous,
+          items: previous.items.filter((it) => it.cartItemId !== cartItemId),
+        });
       }
       return { previous };
     },
@@ -74,5 +106,13 @@ export function useCartMutations() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
   });
 
-  return { setQuantity, remove };
+  // 낙관적 반영이 롤백된 이유를 사용자가 알 수 있도록 실패 사유를 함께 노출.
+  // 두 뮤테이션 중 최근 실패한 쪽의 메시지를 보여준다.
+  const error = setQuantity.error ?? remove.error;
+
+  return {
+    setQuantity,
+    remove,
+    errorMessage: error ? toCartMutationMessage(error) : null,
+  };
 }

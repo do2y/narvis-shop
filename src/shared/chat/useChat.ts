@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { track } from "@/shared/analytics/track";
 import { streamChat } from "@/shared/chat/streamChat";
 import { useAuthStore } from "@/shared/stores/authStore";
 import type {
@@ -74,6 +75,15 @@ export function useChat({
     async (message: string) => {
       const trimmed = message.trim();
       if (!trimmed || useChatStore.getState().isStreaming) return;
+
+      // 이 앱의 상품 검색은 챗봇이다. 단 "[조건 제거]"·"[수정 확인]" 같은 제어 메시지는
+      // 사용자의 검색 의도가 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어
+      // 보내지 않고 채널·길이만 싣는다(명세: properties에 개인정보 금지).
+      if (!trimmed.startsWith("[")) {
+        track("search", {
+          properties: { channel, queryLength: trimmed.length },
+        });
+      }
 
       addMessage({ id: newId(), role: "user", text: trimmed });
       // 스트리밍으로 채워질 빈 assistant 메시지 선 추가
@@ -153,6 +163,13 @@ export function useChat({
                   if (pending?.kind === "productDiff") {
                     settleProductDiff(pending.diff.draftId, action);
                   }
+                }
+                // 챗봇 경유 담기도 add_to_cart로 집계. SSE action 계약에 productId·
+                // 수량·가격이 없어 cartItemId·경로만 싣는다(계약 확장 시 보강).
+                if (action.type === "CART_ADDED") {
+                  track("add_to_cart", {
+                    properties: { source: "chat", cartItemId: action.cartItemId },
+                  });
                 }
                 onActionRef.current?.(action);
                 break;

@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   ChevronDown,
   Heart,
@@ -7,15 +7,17 @@ import {
   ShoppingCart,
   User,
 } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useCartItemCount } from "@/shared/hooks/useCart";
+import { useLogout } from "@/shared/hooks/useLogout";
 import { useAuthStore, type UserRole } from "@/shared/stores/authStore";
 
 interface AppHeaderProps {
@@ -25,7 +27,7 @@ interface AppHeaderProps {
 
 // 역할 한글 라벨 — 드롭다운 계정 헤더의 배지에 사용
 const ROLE_LABEL: Record<UserRole, string> = {
-  MEMBER: "일반 회원",
+  USER: "일반 회원",
   SELLER: "판매자",
   ADMIN: "관리자",
 };
@@ -35,35 +37,51 @@ const ROLE_LABEL: Record<UserRole, string> = {
 function NavIconLink({
   to,
   label,
+  badge,
   children,
 }: {
   to: string;
   label: string;
+  badge?: number;
   children: React.ReactNode;
 }) {
+  // 0(빈 장바구니)이면 뱃지를 숨긴다. 99를 넘으면 자릿수가 늘어 아이콘을 가리므로 99+로 절삭.
+  const badgeText = !badge ? undefined : badge > 99 ? "99+" : String(badge);
+
   return (
     <NavLink
       to={to}
-      aria-label={label}
+      // 뱃지 수를 라벨에 포함해 스크린리더에도 개수가 전달되게 한다
+      aria-label={badge ? `${label} (${badge}개)` : label}
       title={label}
       className={({ isActive }) =>
         cn(
           buttonVariants({ variant: "ghost", size: "icon" }),
           // 최소 44px 클릭 영역 (터치 안정성)
-          "size-11 rounded-full",
+          "relative size-11 rounded-full",
           isActive && "bg-muted text-foreground",
         )
       }
     >
-      {children}
+      {/* 뱃지가 있으면 아이콘을 살짝 내려 우상단에 뱃지 자리를 비운다.
+          (아이콘 간격이 gap-0.5로 좁아 뱃지를 버튼 밖으로 빼면 옆 아이콘과 닿는다) */}
+      <span className={cn(badgeText && "translate-y-0.5")}>{children}</span>
+      {badgeText && (
+        <span
+          aria-hidden
+          className="absolute right-0.5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground ring-2 ring-background"
+        >
+          {badgeText}
+        </span>
+      )}
     </NavLink>
   );
 }
 
 export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
   const user = useAuthStore((s) => s.user);
-  const clearAuth = useAuthStore((s) => s.clearAuth);
-  const navigate = useNavigate();
+  // 게스트도 장바구니를 쓰므로 로그인 여부와 무관하게 조회 (CLAUDE.md)
+  const cartCount = useCartItemCount();
 
   // 채팅 진입점이 이미 있는 곳에선 헤더 채팅 버튼을 숨김:
   //  - 홈(/): 히어로에 채팅 입력창이 있음
@@ -72,10 +90,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
   const pathname = useLocation().pathname;
   const hasChatEntry = pathname === "/" || pathname.startsWith("/chat");
 
-  const handleLogout = () => {
-    clearAuth();
-    navigate("/");
-  };
+  const handleLogout = useLogout();
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
@@ -107,7 +122,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
             <NavIconLink to="/wishlist" label="찜 목록">
               <Heart className="size-5" />
             </NavIconLink>
-            <NavIconLink to="/cart" label="장바구니">
+            <NavIconLink to="/cart" label="장바구니" badge={cartCount}>
               <ShoppingCart className="size-5" />
             </NavIconLink>
 

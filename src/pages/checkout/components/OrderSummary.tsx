@@ -1,5 +1,5 @@
 import { AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 
 function formatPrice(v: number): string {
   return `${v.toLocaleString("ko-KR")}원`;

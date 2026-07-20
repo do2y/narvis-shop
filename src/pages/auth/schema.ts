@@ -16,7 +16,7 @@ export const signupSchema = z
       .string()
       .min(2, "닉네임은 2자 이상이어야 합니다")
       .max(20, "닉네임은 20자 이하여야 합니다"),
-    gender: z.enum(["M", "F"], { message: "성별을 선택해주세요" }),
+    gender: z.enum(["MALE", "FEMALE"], { message: "성별을 선택해주세요" }),
     birthDate: z
       .string()
       .min(1, "생년월일을 입력해주세요")
@@ -24,10 +24,13 @@ export const signupSchema = z
         const d = new Date(v);
         return !Number.isNaN(d.getTime()) && d <= new Date();
       }, "올바른 생년월일이 아닙니다"),
+    // 백엔드 정책과 일치: 8~64자, 영문·숫자 각 1자 이상 포함
     password: z
       .string()
       .min(8, "비밀번호는 8자 이상이어야 합니다")
-      .max(64, "비밀번호는 64자 이하여야 합니다"),
+      .max(64, "비밀번호는 64자 이하여야 합니다")
+      .regex(/[A-Za-z]/, "영문을 포함해야 합니다")
+      .regex(/[0-9]/, "숫자를 포함해야 합니다"),
     passwordConfirm: z.string(),
     // boolean으로 받고 refine으로 true 강제 — false 기본값 허용(체크 전 상태) 위해 literal(true) 대신 사용
     agreeTerms: z.boolean().refine((v) => v, "이용약관에 동의해주세요"),
