@@ -176,6 +176,8 @@ let mockCart = [
     cartItemId: 55,
     productId: 301,
     name: "가먼트 다잉 오버핏 반팔 티셔츠 TSOP1180",
+    brandId: 1,
+    brandName: "톤앤보이스",
     imageUrl:
       "https://image.msscdn.net/thumbnails/images/goods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200",
     optionId: 10,
@@ -189,6 +191,8 @@ let mockCart = [
     cartItemId: 56,
     productId: 306,
     name: "소프트 코튼 크루넥 반팔 티셔츠 LB-D221",
+    brandId: 2,
+    brandName: "리버클래시",
     imageUrl:
       "https://image.msscdn.net/thumbnails/images/goods_img/20250722/5262448/5262448_17561780734495_big.jpg?w=1200",
     optionId: 11,
@@ -203,6 +207,8 @@ let mockCart = [
     cartItemId: 57,
     productId: 303,
     name: "헤비웨이트 오버핏 티셔츠 TSKN1801",
+    brandId: 3,
+    brandName: "커스텀에이드",
     imageUrl:
       "https://image.msscdn.net/thumbnails/images/goods_img/20260618/6694104/6694104_17817540562281_big.jpg?w=1200",
     optionId: 12,

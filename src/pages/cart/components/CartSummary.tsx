@@ -1,20 +1,18 @@
 import { formatPrice } from "@/shared/utils/formatPrice";
 
-const FREE_SHIPPING_THRESHOLD = 50000;
-
 export function CartSummary({
   itemsTotal,
   discount,
+  paid,
   selectedCount,
   onOrder,
 }: {
   itemsTotal: number; // 선택 상품 정가 합
   discount: number; // 선택 상품 할인 합
+  paid: number; // 결제 금액 — 전체 선택 시 서버 totalSale, 부분 선택 시 FE 계산
   selectedCount: number;
   onOrder: () => void;
 }) {
-  const paid = itemsTotal - discount;
-  const freeShipping = paid >= FREE_SHIPPING_THRESHOLD || paid === 0;
   const canOrder = selectedCount > 0;
 
   return (
@@ -32,23 +30,14 @@ export function CartSummary({
             {discount > 0 ? `-${formatPrice(discount)}` : formatPrice(0)}
           </dd>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-muted-foreground">배송비</dt>
-          <dd className="font-medium">
-            {freeShipping ? "무료" : formatPrice(3000)}
-          </dd>
-        </div>
       </dl>
 
-      <p className="mt-3 rounded-sm bg-muted px-3 py-2.5 text-xs text-muted-foreground">
-        5만원 이상 구매 시 무료 배송
-      </p>
+      {/* 배송비 정책이 아직 없어 표시하지 않는다. 생기면 서버 계약(Cart)에 필드를
+          추가한 뒤 여기에 노출할 것 — FE가 임의 계산하면 실제 결제액과 어긋난다. */}
 
       <div className="mt-5 flex items-center justify-between border-t pt-5">
         <span className="text-lg font-bold">총 결제 금액</span>
-        <span className="text-xl font-bold">
-          {formatPrice(freeShipping ? paid : paid + 3000)}
-        </span>
+        <span className="text-xl font-bold">{formatPrice(paid)}</span>
       </div>
 
       <button

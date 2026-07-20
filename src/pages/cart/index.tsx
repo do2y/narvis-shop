@@ -83,21 +83,25 @@ export default function CartPage() {
     }
   };
 
-  // 전체 선택이면 서버 계산 합계를 그대로 쓴다(합계의 진실은 서버).
-  // 부분 선택일 때만 FE가 선택분을 합산 — 최종 금액은 주문 시 서버가 재계산.
-  const { itemsTotal, discount } = useMemo(() => {
+  // 전체 선택이면 서버 계산 합계 3종을 그대로 쓴다(합계의 진실은 서버).
+  // 부분 선택일 때만 FE가 선택분을 합산 — 최종 금액은 주문 시 서버가 재계산(명세).
+  const { itemsTotal, discount, paid } = useMemo(() => {
     if (allSelected && cart) {
-      return { itemsTotal: cart.totalOriginal, discount: cart.discount };
+      return {
+        itemsTotal: cart.totalOriginal,
+        discount: cart.discount,
+        paid: cart.totalSale,
+      };
     }
     const total = selectedItems.reduce(
       (sum, it) => sum + it.originalPrice * it.quantity,
       0,
     );
-    const paid = selectedItems.reduce(
+    const sale = selectedItems.reduce(
       (sum, it) => sum + it.price * it.quantity,
       0,
     );
-    return { itemsTotal: total, discount: total - paid };
+    return { itemsTotal: total, discount: total - sale, paid: sale };
   }, [allSelected, cart, selectedItems]);
 
   // 선택 상품을 결제 화면 계약(CheckoutState)에 맞춰 넘긴다.
@@ -226,6 +230,7 @@ export default function CartPage() {
                 <CartSummary
                   itemsTotal={itemsTotal}
                   discount={discount}
+                  paid={paid}
                   selectedCount={selectedItems.length}
                   onOrder={goToCheckout}
                 />
