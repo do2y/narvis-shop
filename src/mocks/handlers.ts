@@ -984,6 +984,29 @@ export const handlers = [
     return HttpResponse.json(ok({ addressId: created.addressId }));
   }),
 
+  // 주문 목록 (O-3) — page(기본 0)/size(기본 10). 로그인 필요.
+  http.get(`${BASE}/api/orders`, ({ request }) => {
+    if (!request.headers.get("Authorization")) {
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
+    }
+    const params = new URL(request.url).searchParams;
+    const page = Number(params.get("page") ?? 0);
+    const size = Number(params.get("size") ?? 10);
+    const start = page * size;
+
+    return HttpResponse.json(
+      ok({
+        content: MOCK_ORDER_PAGE_ITEMS.slice(start, start + size),
+        page,
+        size,
+        totalElements: MOCK_ORDER_PAGE_ITEMS.length,
+        totalPages: Math.ceil(MOCK_ORDER_PAGE_ITEMS.length / size),
+      }),
+    );
+  }),
+
   // ── 주문 생성 + 모의 결제 (O-1) ──
   // 라인아이템 출처는 cartItemIds / items 중 정확히 하나. 금액은 서버(=목)가 재계산하므로
   // body의 금액 필드는 아예 받지 않는다. 결제 성공·실패 모두 200이고 status로 구분.
@@ -1364,6 +1387,92 @@ const MOCK_ORDERS = [
         option: "차콜 / M",
         quantity: 1,
         price: 62000,
+      },
+    ],
+  },
+];
+
+// 주문 목록 (O-3) 목 — mypage/types.ts Order 계약. 위 MOCK_ORDERS는 구 /api/mypage/orders
+// 계약(orderId 문자열·status 필드)이라 별개다. 8종 enum 중 대표 케이스를 담는다.
+const MOCK_ORDER_PAGE_ITEMS = [
+  {
+    orderId: 1001,
+    orderNo: "ORD-20260713-1001",
+    orderedAt: "2026-07-13T14:00:00+09:00",
+    representativeStatus: "SHIPPING" as const,
+    totalAmount: 92000,
+    items: [
+      {
+        orderItemId: 2001,
+        productId: 301,
+        productName: "가먼트 다잉 오버핏 반팔 티셔츠 TSOP1180",
+        optionName: "차콜/L",
+        quantity: 1,
+        price: 92000,
+        imageUrl:
+          "https://image.msscdn.net/thumbnails/images/goods_img/20230724/3421211/3421211_17803608469427_big.jpg?w=1200",
+        status: "SHIPPING" as const,
+      },
+    ],
+  },
+  {
+    orderId: 1002,
+    orderNo: "ORD-20260701-1002",
+    orderedAt: "2026-07-01T10:30:00+09:00",
+    representativeStatus: "DELIVERED" as const,
+    totalAmount: 89000,
+    items: [
+      {
+        orderItemId: 2002,
+        productId: 306,
+        productName: "소프트 코튼 크루넥 반팔 티셔츠 LB-D221",
+        optionName: "그레이/M",
+        quantity: 1,
+        price: 89000,
+        imageUrl:
+          "https://image.msscdn.net/thumbnails/images/goods_img/20250722/5262448/5262448_17561780734495_big.jpg?w=1200",
+        status: "DELIVERED" as const,
+      },
+    ],
+  },
+  // 클레임 진행 중 — 반품 신청 버튼이 뜨지 않아야 하는 케이스
+  {
+    orderId: 1003,
+    orderNo: "ORD-20260620-1003",
+    orderedAt: "2026-06-20T09:15:00+09:00",
+    representativeStatus: "CLAIM_IN_PROGRESS" as const,
+    totalAmount: 62000,
+    items: [
+      {
+        orderItemId: 2003,
+        productId: 305,
+        productName: "릴렉스핏 하프 슬리브 니트 TSSK1402",
+        optionName: "차콜/M",
+        quantity: 1,
+        price: 62000,
+        imageUrl:
+          "https://img.29cm.co.kr/item/202606/11f16f98cff926419090358d89120339.png?width=1440&format=webp",
+        status: "CLAIM_IN_PROGRESS" as const,
+      },
+    ],
+  },
+  {
+    orderId: 1004,
+    orderNo: "ORD-20260605-1004",
+    orderedAt: "2026-06-05T16:40:00+09:00",
+    representativeStatus: "COMPLETED" as const,
+    totalAmount: 198000,
+    items: [
+      {
+        orderItemId: 2004,
+        productId: 304,
+        productName: "브러시드 플리스 스웨트셔츠 TSCT3301",
+        optionName: "그레이/M",
+        quantity: 1,
+        price: 198000,
+        imageUrl:
+          "https://image.msscdn.net/thumbnails/images/goods_img/20251022/5625561/5625561_17610941581236_big.jpg?w=1200",
+        status: "COMPLETED" as const,
       },
     ],
   },

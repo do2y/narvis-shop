@@ -7,11 +7,11 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
   PENDING: "bg-muted text-muted-foreground",
   PAYMENT_FAILED: "bg-red-50 text-red-700",
   ORDERED: "bg-blue-50 text-blue-700",
-  PREPARING: "bg-amber-50 text-amber-700",
   SHIPPING: "bg-blue-50 text-blue-700",
   DELIVERED: "bg-green-50 text-green-700",
   CONFIRMED: "bg-muted text-muted-foreground",
-  CANCELLED: "bg-muted text-muted-foreground",
+  CLAIM_IN_PROGRESS: "bg-amber-50 text-amber-700",
+  COMPLETED: "bg-muted text-muted-foreground",
 };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {

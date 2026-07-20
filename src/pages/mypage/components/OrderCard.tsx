@@ -14,6 +14,8 @@ function canWriteReview(status: OrderStatus): boolean {
 }
 
 // 반품 신청 가능 상태 — 배송완료 후(구매확정 포함).
+// CLAIM_IN_PROGRESS·COMPLETED는 이미 클레임이 걸렸거나 종결된 주문이라 제외한다
+// (중복 신청 방지).
 function canClaim(status: OrderStatus): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }

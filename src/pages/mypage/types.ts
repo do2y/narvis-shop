@@ -3,15 +3,17 @@
 // 주문 상태 — 아이템 단위 상태. 주문 대표 상태(representativeStatus)도 같은 값을 쓴다.
 // 명세에는 한국어 표시 문자열("배송중")로 적혀 있으나 실제 응답은 영문 enum이라
 // 여기에 맞추고 표시 문자열은 프론트에서 매핑한다(ORDER_STATUS_LABEL).
+// 취소·반품은 주문 상태가 아니라 클레임(Claim)으로 관리된다. 주문 쪽은 진행 여부만
+// CLAIM_IN_PROGRESS로 알리고, 취소/반품 구분과 처리 단계는 Claim이 답한다.
 export type OrderStatus =
   | "PENDING" // 결제 대기
   | "PAYMENT_FAILED" // 결제 실패 — 재결제 가능
   | "ORDERED" // 주문 완료
-  | "PREPARING" // 배송 준비중
   | "SHIPPING" // 배송중
   | "DELIVERED" // 배송 완료
   | "CONFIRMED" // 구매확정
-  | "CANCELLED"; // 취소
+  | "CLAIM_IN_PROGRESS" // 취소·반품 처리 중
+  | "COMPLETED"; // 처리 완료(클레임 종결 포함)
 
 // 알 수 없는 상태가 와도 화면이 깨지지 않도록 fallback을 둔다
 // (백엔드가 상태를 추가해도 목록은 계속 뜨게).
@@ -19,11 +21,11 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING: "결제 대기",
   PAYMENT_FAILED: "결제 실패",
   ORDERED: "주문 완료",
-  PREPARING: "배송 준비중",
   SHIPPING: "배송중",
   DELIVERED: "배송 완료",
   CONFIRMED: "구매확정",
-  CANCELLED: "취소",
+  CLAIM_IN_PROGRESS: "취소/반품 처리중",
+  COMPLETED: "처리 완료",
 };
 
 // 주문 항목 — 상세 캐시 시딩을 위해 카드 수준 데이터를 포함(이미지/가격).
