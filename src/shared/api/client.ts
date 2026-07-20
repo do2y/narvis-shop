@@ -55,6 +55,15 @@ api.interceptors.request.use((config) => {
 
 let refreshing: Promise<string> | null = null;
 
+// 인증 복구 불가 → 로컬 상태 정리 후 로그인으로. 복귀를 위해 현재 경로를 returnUrl로 넘긴다.
+function redirectToLogin() {
+  useAuthStore.getState().clearAuth();
+  const returnUrl = encodeURIComponent(
+    window.location.pathname + window.location.search,
+  );
+  window.location.href = `/login?returnUrl=${returnUrl}`;
+}
+
 interface RetriableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
@@ -84,8 +93,16 @@ api.interceptors.response.use(
     const axiosError = error as AxiosError<ApiEnvelope<unknown>>;
     const original = axiosError.config as RetriableConfig | undefined;
     const status = axiosError.response?.status;
+    const code = axiosError.response?.data?.error?.code;
 
-    if (status === 401 && original && !original._retry) {
+    // 401 2종 규약(2026-07-18 확정): AUTH_TOKEN_EXPIRED만 refresh 재시도 대상.
+    // AUTH_REQUIRED(RT 없음/만료)는 재발급 여지가 없으므로 바로 로그인 유도.
+    if (status === 401 && code === "AUTH_REQUIRED") {
+      redirectToLogin();
+      return new Promise(() => {});
+    }
+
+    if (status === 401 && code === "AUTH_TOKEN_EXPIRED" && original && !original._retry) {
       original._retry = true;
       try {
         // refresh는 body 없이 RT 쿠키로 식별 → withCredentials로 쿠키 동봉
@@ -109,11 +126,8 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${token}`;
         return api(original);
       } catch {
-        useAuthStore.getState().clearAuth();
-        const returnUrl = encodeURIComponent(
-          window.location.pathname + window.location.search,
-        );
-        window.location.href = `/login?returnUrl=${returnUrl}`;
+        // refresh도 401(AUTH_REQUIRED) → 재발급 여지 없음, 로그인 유도
+        redirectToLogin();
         // refresh 실패 후속 처리 중단
         return new Promise(() => {});
       }

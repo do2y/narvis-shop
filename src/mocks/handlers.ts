@@ -325,6 +325,13 @@ export const handlers = [
   // 로그아웃 — 멱등, 항상 성공. 실제 백엔드는 RT 쿠키 만료도 하지만 목은 성공 봉투만.
   http.post(`${BASE}/api/auth/logout`, () => HttpResponse.json(ok(null))),
 
+  // AT 재발급 — RT 쿠키로 식별. 실제 백엔드는 RT 회전(새 RT를 Set-Cookie)까지 하지만
+  // 목은 httpOnly 쿠키를 다루지 않으므로 AT만 새로 발급한다.
+  // RT 만료 시나리오를 눈으로 보려면 아래 성공 응답을 401 AUTH_REQUIRED로 바꿔 테스트.
+  http.post(`${BASE}/api/auth/refresh`, () =>
+    HttpResponse.json(ok({ accessToken: `mock-access-refreshed-${Date.now()}` })),
+  ),
+
   // 카테고리 2단 트리 — API 명세: { success, data: { categories: [...] } }.
   // emoji는 백엔드 미제공 → 프론트 categoryEmoji 매핑.
   http.get(`${BASE}/api/categories`, () =>
@@ -468,16 +475,11 @@ export const handlers = [
   // FastAPI 실패·신규 회원은 백엔드가 인기상품으로 대체하므로 목도 항상 200 + items.
   http.get(`${BASE}/api/products/recommended`, ({ request }) => {
     if (!request.headers.get("Authorization")) {
-      return HttpResponse.json(
-        {
-          success: false,
-          error: {
-            code: "AUTH_TOKEN_EXPIRED",
-            message: "로그인이 필요합니다.",
-          },
-        },
-        { status: 401 },
-      );
+      // AT 자체가 없음 → 재발급 대상이 아니므로 AUTH_REQUIRED (401 2종 규약).
+      // AUTH_TOKEN_EXPIRED는 AT가 있으나 만료된 경우에만 쓴다.
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
     }
     // 인기상품과 다른 셋임을 눈으로 구분하려고 뒤에서부터 4개.
     // categoryId는 목 필터용 내부 필드라 응답에서 제외.
