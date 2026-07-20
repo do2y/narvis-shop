@@ -8,13 +8,11 @@ export async function fetchAddresses(): Promise<Address[]> {
   return data.addresses;
 }
 
-// 응답으로 생성된 배송지 객체가 오지만, 목록은 호출부가 재조회해 갱신하므로
-// addressId만 노출한다(명세는 { addressId }만 — 어느 쪽이 와도 호환).
-export async function createAddress(
-  body: AddressInput,
-): Promise<{ addressId: number }> {
-  const { data } = await api.post<{ addressId: number }>("/api/addresses", body);
-  return { addressId: data.addressId };
+// 응답은 저장된 전체 주소 객체(2026-07-18 확정 — 구 { addressId }만 반환 표기 대체).
+// isDefault: true로 보내면 기존 기본은 서버가 같은 트랜잭션에서 해제한다.
+export async function createAddress(body: AddressInput): Promise<Address> {
+  const { data } = await api.post<Address>("/api/addresses", body);
+  return data;
 }
 
 // 부분 수정 — 보낸 필드만 바뀐다. { isDefault: true }로 기본 배송지 지정도 겸한다

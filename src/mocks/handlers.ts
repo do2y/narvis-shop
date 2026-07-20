@@ -1033,7 +1033,13 @@ export const handlers = [
     return HttpResponse.json(ok({ addresses: mockOrderAddresses }));
   }),
 
+  // 배송지 추가 (M-8a) — 응답은 저장된 전체 주소 객체. 로그인 필요.
   http.post(`${BASE}/api/addresses`, async ({ request }) => {
+    if (!request.headers.get("Authorization")) {
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
+    }
     const input = (await request.json()) as Omit<
       (typeof mockOrderAddresses)[number],
       "addressId" | "isDefault"
@@ -1072,8 +1078,8 @@ export const handlers = [
       }));
     }
     mockOrderAddresses = [...mockOrderAddresses, created];
-    // 응답은 addressId만 (200) — 목록은 호출부가 재조회해 갱신한다.
-    return HttpResponse.json(ok({ addressId: created.addressId }));
+    // 응답은 저장된 전체 주소 객체 (2026-07-18 확정)
+    return HttpResponse.json(ok(created));
   }),
 
   // 주문 목록 (O-3) — page(기본 0)/size(기본 10). 로그인 필요.
