@@ -914,7 +914,8 @@ export const handlers = [
     },
   ),
 
-  // 삭제 (C-4) — 없는 항목은 404. 성공은 204 무본문(removeCartItem이 응답을 쓰지 않음).
+  // 삭제 (C-4) — 200 + data: null. 없는 항목은 404.
+  // 복수 삭제는 FE가 이 API를 반복 호출한다(bulk API 없음).
   http.delete(`${BASE}/api/cart/items/:cartItemId`, ({ params }) => {
     const id = Number(params.cartItemId);
     if (!mockCart.some((it) => it.cartItemId === id)) {
@@ -924,7 +925,7 @@ export const handlers = [
       );
     }
     mockCart = mockCart.filter((it) => it.cartItemId !== id);
-    return new HttpResponse(null, { status: 204 });
+    return HttpResponse.json(ok(null));
   }),
 
   // ── 배송지 (M-8) — checkout 계약: address1/address2 분리, addressId는 number.
