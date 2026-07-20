@@ -67,7 +67,7 @@ export function OrderCard({ order }: { order: Order }) {
       imageUrl: target.imageUrl,
     });
     navigate(
-      `/mypage/reviews/new?orderId=${order.orderId}&productId=${target.productId}`,
+      `/mypage/reviews/new?orderItemId=${target.orderItemId}&productId=${target.productId}`,
     );
   };
 

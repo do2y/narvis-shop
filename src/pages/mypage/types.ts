@@ -174,12 +174,22 @@ export interface Inquiry {
   answeredAt: string | null; // 답변 일시 (PENDING이면 null)
 }
 
-// 후기 작성 요청 — 백엔드 POST /api/reviews 계약. 사진은 백엔드 붙을 때 필드 추가.
+// 후기 작성 요청 — POST /api/reviews 계약. 대상은 주문 줄(orderItemId) 기준.
+// 등록만 지원하며 수정·삭제 API는 없다(02 D29). 사진은 백엔드 붙을 때 필드 추가.
 export interface CreateReviewRequest {
-  orderId: string;
+  orderItemId: number;
+  rating: number; // 1~5 정수
+  content: string; // 최대 2000자
+}
+
+// 후기 등록 응답 — 작성 후 상품 리뷰 캐시 무효화에 productId가 필요하다.
+export interface CreateReviewResponse {
+  reviewId: number;
+  orderItemId: number;
   productId: number;
-  rating: number; // 1~5
+  rating: number;
   content: string;
+  createdAt: string; // ISO 일시(+09:00)
 }
 
 // 배송지 타입은 결제 화면과 공유 — shared/types/address.ts 참조.

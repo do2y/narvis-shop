@@ -4,6 +4,7 @@ import type {
   CreateClaimRequest,
   CreateClaimResponse,
   CreateReviewRequest,
+  CreateReviewResponse,
   Inquiry,
   OrderDetail,
   OrderPage,
@@ -52,8 +53,12 @@ export async function createClaim(
   return data;
 }
 
-export async function createReview(body: CreateReviewRequest): Promise<void> {
-  await api.post("/api/reviews", body);
+// 후기 등록 — 자격(배송완료·미작성)은 서버가 판정한다(FE에서 중복 판단하지 않음).
+export async function createReview(
+  body: CreateReviewRequest,
+): Promise<CreateReviewResponse> {
+  const { data } = await api.post<CreateReviewResponse>("/api/reviews", body);
+  return data;
 }
 
 // 문의 내역 — 읽기 전용(문의 챗봇에서 접수). 답변은 관리자가 등록.

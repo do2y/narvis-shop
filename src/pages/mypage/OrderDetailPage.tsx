@@ -122,7 +122,7 @@ export default function OrderDetailPage() {
       imageUrl: item.imageUrl,
     });
     navigate(
-      `/mypage/reviews/new?orderId=${orderId}&productId=${item.productId}`,
+      `/mypage/reviews/new?orderItemId=${item.orderItemId}&productId=${item.productId}`,
     );
   };
 
