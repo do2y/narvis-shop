@@ -878,20 +878,51 @@ export const handlers = [
     );
   }),
 
+  // 수량 변경 (C-3) — 200 + { cartItemId, quantity }. quantity 1~99.
   http.patch(
     `${BASE}/api/cart/items/:cartItemId`,
     async ({ params, request }) => {
       const id = Number(params.cartItemId);
       const { quantity } = (await request.json()) as { quantity: number };
+
+      if (!mockCart.some((it) => it.cartItemId === id)) {
+        return HttpResponse.json(
+          fail("CART_ITEM_NOT_FOUND", "장바구니 항목을 찾을 수 없습니다."),
+          { status: 404 },
+        );
+      }
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+        return HttpResponse.json(
+          {
+            success: false as const,
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "입력값이 올바르지 않습니다.",
+              fields: [
+                { field: "quantity", message: "수량은 1~99 사이여야 합니다." },
+              ],
+            },
+          },
+          { status: 400 },
+        );
+      }
+
       mockCart = mockCart.map((it) =>
         it.cartItemId === id ? { ...it, quantity } : it,
       );
-      return new HttpResponse(null, { status: 204 });
+      return HttpResponse.json(ok({ cartItemId: id, quantity }));
     },
   ),
 
+  // 삭제 (C-4) — 없는 항목은 404. 성공은 204 무본문(removeCartItem이 응답을 쓰지 않음).
   http.delete(`${BASE}/api/cart/items/:cartItemId`, ({ params }) => {
     const id = Number(params.cartItemId);
+    if (!mockCart.some((it) => it.cartItemId === id)) {
+      return HttpResponse.json(
+        fail("CART_ITEM_NOT_FOUND", "장바구니 항목을 찾을 수 없습니다."),
+        { status: 404 },
+      );
+    }
     mockCart = mockCart.filter((it) => it.cartItemId !== id);
     return new HttpResponse(null, { status: 204 });
   }),
