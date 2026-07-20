@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProductCard } from "@/shared/types/chat";
 import { fetchProductDetail, fetchProductReviews } from "./api";
-import type { ReviewSort } from "./types";
+import type { ProductReviewPage, ReviewSort } from "./types";
 
 const FIVE_MIN = 5 * 60 * 1000;
 
@@ -25,13 +25,26 @@ export function useProductReviews(
   params: { page?: number; size?: number; sort?: ReviewSort } = {},
 ) {
   const { page = 0, size = 10, sort = "latest" } = params;
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["products", id, "reviews", { page, size, sort }],
     queryFn: () => fetchProductReviews(id, { page, size, sort }),
     enabled: Number.isFinite(id),
     staleTime: FIVE_MIN,
   });
+
+  // distribution은 page=0 응답에만 온다(명세). 2페이지 이상에서는 0페이지 캐시 값을 재사용해
+  // 분포 막대가 빈 채로 렌더되지 않게 한다. sort는 분포에 영향이 없어 latest 키로 통일한다.
+  const page0 = queryClient.getQueryData<ProductReviewPage>([
+    "products",
+    id,
+    "reviews",
+    { page: 0, size, sort: "latest" },
+  ]);
+  const distribution = query.data?.distribution ?? page0?.distribution;
+
+  return { ...query, distribution };
 }
 
 // 카드 시딩 데이터 — 상세 도착 전 즉시 렌더용(캐시 승계).

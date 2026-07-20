@@ -422,16 +422,23 @@ export const handlers = [
           );
     const start = page * size;
 
+    // distribution은 page=0 응답에만 포함(명세) — FE가 0페이지 값을 재사용하는지
+    // 목에서도 검증되도록 page>=1에서는 생략한다.
+    const distribution =
+      page === 0
+        ? MOCK_PRODUCT_REVIEWS.reduce(
+            (acc, r) => {
+              acc[String(r.rating) as keyof typeof acc] += 1;
+              return acc;
+            },
+            { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 },
+          )
+        : undefined;
+
     return HttpResponse.json(
       ok({
         content: sorted.slice(start, start + size),
-        distribution: MOCK_PRODUCT_REVIEWS.reduce(
-          (acc, r) => {
-            acc[String(r.rating) as keyof typeof acc] += 1;
-            return acc;
-          },
-          { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 },
-        ),
+        ...(distribution ? { distribution } : {}),
         page,
         size,
         totalElements: MOCK_PRODUCT_REVIEWS.length,

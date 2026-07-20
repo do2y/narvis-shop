@@ -7,7 +7,7 @@ export async function fetchProductDetail(id: number): Promise<ProductDetail> {
 }
 
 // 상품 후기 (P-3) — 인증 불필요. 없는 상품이면 404 PRODUCT_NOT_FOUND.
-// distribution은 명세엔 없으나 실제 응답에 포함된다(전체 별점 분포, 페이지와 무관).
+// distribution(전체 별점 분포)은 page=0 응답에만 온다 — 재사용은 useProductReviews가 처리.
 export async function fetchProductReviews(
   id: number,
   params: { page?: number; size?: number; sort?: ReviewSort } = {},

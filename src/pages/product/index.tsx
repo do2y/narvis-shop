@@ -46,9 +46,12 @@ export default function ProductPage() {
 
   // 리뷰는 정렬만 전환(페이지네이션은 계약 확정 후). 첫 페이지 10개.
   const [reviewSort, setReviewSort] = useState<ReviewSort>("latest");
-  const { data: reviewPage, isLoading: reviewsLoading } = useProductReviews(id, {
-    sort: reviewSort,
-  });
+  const {
+    data: reviewPage,
+    isLoading: reviewsLoading,
+    // page>=1에서는 응답에 분포가 없어 훅이 0페이지 캐시 값을 채워준다
+    distribution: reviewDistribution,
+  } = useProductReviews(id, { sort: reviewSort });
 
   // 상세 진입 이벤트 — 서버 적재가 없어져 FE가 보낸다(E-1, 02 D31).
   // 상세 응답 도착 후 1회. 아래 조기 반환들보다 위에 둬야 훅 순서가 깨지지 않는다.
@@ -331,7 +334,7 @@ export default function ProductPage() {
           // 총 개수·분포는 리뷰 API 집계를 우선 사용(상세의 rating.count와 동일 소스)
           total={reviewPage?.totalElements ?? view.reviewCount}
           distribution={
-            reviewPage?.distribution ?? { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 }
+            reviewDistribution ?? { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 }
           }
           reviews={reviewPage?.content ?? []}
           sort={reviewSort}

@@ -39,7 +39,8 @@ export type ReviewDistribution = Record<"1" | "2" | "3" | "4" | "5", number>;
 
 export interface ProductReviewPage {
   content: ProductReview[];
-  distribution: ReviewDistribution;
+  // page=0 응답에만 포함(후기 0개면 0값). page>=1은 생략되므로 FE가 0페이지 값을 재사용한다.
+  distribution?: ReviewDistribution;
   page: number;
   size: number;
   totalElements: number;
