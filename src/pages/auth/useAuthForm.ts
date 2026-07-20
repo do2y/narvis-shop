@@ -38,12 +38,14 @@ function toLoginErrorMessage(error: unknown): string {
 }
 
 // 회원가입 실패는 백엔드 에러 code로 분기. 서버 메시지가 있으면 우선 사용.
+// VALIDATION_ERROR는 사유가 error.fields[]에 담기므로 displayMessage(=fields[0] 우선)로 읽는다.
+// 같은 규칙을 Zod가 먼저 잡으므로 실제로는 프론트 검증 우회·규칙 불일치 시의 2차 방어선.
 function toSignupErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "MEMBER_EMAIL_DUPLICATE") {
       return error.message || "이미 가입된 이메일입니다";
     }
-    if (error.message) return error.message;
+    if (error.displayMessage) return error.displayMessage;
   }
   return "회원가입에 실패했습니다. 잠시 후 다시 시도해주세요";
 }
