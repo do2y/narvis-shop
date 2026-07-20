@@ -332,6 +332,10 @@ export const handlers = [
     HttpResponse.json(ok({ accessToken: `mock-access-refreshed-${Date.now()}` })),
   ),
 
+  // 행동 이벤트 배치 수집 (E-1) — 202 무본문. 인증 선택(익명 허용).
+  // 목에서는 적재하지 않고 수신만 확인한다.
+  http.post(`${BASE}/api/events`, () => new HttpResponse(null, { status: 202 })),
+
   // 카테고리 2단 트리 — API 명세: { success, data: { categories: [...] } }.
   // emoji는 백엔드 미제공 → 프론트 categoryEmoji 매핑.
   http.get(`${BASE}/api/categories`, () =>

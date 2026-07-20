@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { track } from "@/shared/analytics/track";
 import { ApiError } from "@/shared/api/client";
 import { useAuthStore } from "@/shared/stores/authStore";
 import {
@@ -16,7 +17,8 @@ function safeReturnUrl(raw: string | null): string {
   return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 }
 
-function useAuthSuccess() {
+// 로그인·회원가입이 같은 성공 처리를 쓰되, 수집 이벤트에서는 구분해야 해서 인자로 받는다.
+function useAuthSuccess(method: "login" | "signup") {
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -24,6 +26,9 @@ function useAuthSuccess() {
   return (res: AuthResponse) => {
     // 응답 member → authStore user. RT는 쿠키라 저장 안 함.
     setAuth({ user: res.member, accessToken: res.accessToken });
+    // 8종 화이트리스트에 signup이 없어 가입(자동 로그인)도 login으로 보내고
+    // 구분은 properties.method로 남긴다. 개인정보는 싣지 않는다(명세).
+    track("login", { properties: { method, role: res.member.role } });
     navigate(safeReturnUrl(params.get("returnUrl")), { replace: true });
   };
 }
@@ -51,7 +56,7 @@ function toSignupErrorMessage(error: unknown): string {
 }
 
 export function useLogin() {
-  const onSuccess = useAuthSuccess();
+  const onSuccess = useAuthSuccess("login");
   const mutation = useMutation({
     mutationFn: (body: LoginRequest) => login(body),
     onSuccess,
@@ -63,7 +68,7 @@ export function useLogin() {
 }
 
 export function useSignup() {
-  const onSuccess = useAuthSuccess();
+  const onSuccess = useAuthSuccess("signup");
   const mutation = useMutation({
     mutationFn: (body: SignupRequest) => signup(body),
     onSuccess,

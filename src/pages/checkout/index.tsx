@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
+import { track } from "@/shared/analytics/track";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,20 @@ export default function CheckoutPage() {
     return { itemsTotal: total, discount: total - paid };
   }, [items]);
 
+  // 주문서 진입 이벤트. 아래 조기 반환보다 위에 둬야 훅 순서가 깨지지 않는다.
+  // 빈 주문서(직접 진입)는 결제 시작이 아니므로 제외한다.
+  useEffect(() => {
+    if (items.length === 0) return;
+    track("checkout_start", {
+      properties: {
+        itemCount: items.length,
+        amount: itemsTotal - discount,
+      },
+    });
+    // 금액은 items에서 파생되므로 items 변경 시에만 재전송한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
   // 주문 항목 없이 진입 — 상세에서 다시 들어오도록 안내.
   if (items.length === 0) {
     return (
@@ -122,6 +137,19 @@ export default function CheckoutPage() {
     );
   }
 
+  // 결제 성공 경로가 신규 주문·재결제 두 갈래라 양쪽에서 부른다
+  // (한쪽만 넣으면 재결제로 성사된 주문이 집계에서 빠진다).
+  const trackPurchase = (orderId: number) => {
+    track("purchase_complete", {
+      properties: {
+        orderId,
+        amount: itemsTotal - discount,
+        itemCount: items.length,
+        method,
+      },
+    });
+  };
+
   const handleSubmit = async () => {
     const address = addresses.find((a) => a.addressId === addressId);
     if (!address || createOrder.isPending || retryPayment.isPending) return;
@@ -140,6 +168,7 @@ export default function CheckoutPage() {
           setPaymentFailed(true);
           return;
         }
+        trackPurchase(retried.orderId);
         navigate("/checkout/complete", {
           state: {
             order: {
@@ -197,6 +226,8 @@ export default function CheckoutPage() {
         setFailedOrderId(result.orderId);
         return;
       }
+
+      trackPurchase(result.orderId);
 
       const order: OrderCompleteState["order"] = {
         orderId: result.orderId,

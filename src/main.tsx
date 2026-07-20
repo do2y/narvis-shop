@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { initAnalytics } from '@/shared/analytics/track';
 import './index.css';
 
 async function enableMocking() {
@@ -12,6 +13,9 @@ async function enableMocking() {
 }
 
 enableMocking().then(() => {
+  // StrictMode의 이펙트 2회 실행을 피하려고 컴포넌트 밖에서 1회 초기화한다.
+  initAnalytics();
+
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

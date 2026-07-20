@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Heart, Star } from "lucide-react";
+import { track } from "@/shared/analytics/track";
 import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
 import { cn } from "@/lib/utils";
 import { AppHeader } from "@/shared/ui/AppHeader";
@@ -48,6 +49,16 @@ export default function ProductPage() {
   const { data: reviewPage, isLoading: reviewsLoading } = useProductReviews(id, {
     sort: reviewSort,
   });
+
+  // 상세 진입 이벤트 — 서버 적재가 없어져 FE가 보낸다(E-1, 02 D31).
+  // 상세 응답 도착 후 1회. 아래 조기 반환들보다 위에 둬야 훅 순서가 깨지지 않는다.
+  useEffect(() => {
+    if (!detail) return;
+    track("product_view", {
+      productId: detail.id,
+      properties: { price: detail.price, brandId: detail.brand.id },
+    });
+  }, [detail]);
 
   // 상세·시딩 어느 쪽이든 렌더에 필요한 값만 뽑아 정규화(구조가 달라 여기서 흡수).
   const view = detail
@@ -134,11 +145,26 @@ export default function ProductPage() {
   const addToCart = () => {
     const { option, quantity } = selectionRef.current;
     if (needsOption && !option) return;
-    addCart.mutate({
-      productId: id,
-      optionId: option?.optionId,
-      quantity,
-    });
+    addCart.mutate(
+      {
+        productId: id,
+        optionId: option?.optionId,
+        quantity,
+      },
+      {
+        // 담기 성공 후에만 수집한다(명세: 실패 건은 세지 않음).
+        // 단가는 buyNow와 동일한 식(판매가 + 옵션 추가금).
+        onSuccess: () =>
+          track("add_to_cart", {
+            productId: id,
+            properties: {
+              source: "detail",
+              quantity,
+              unitPrice: (view?.price ?? 0) + (option?.extraPrice ?? 0),
+            },
+          }),
+      },
+    );
   };
 
   const buyNow = () => {
