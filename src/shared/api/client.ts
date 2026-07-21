@@ -55,17 +55,9 @@ api.interceptors.request.use((config) => {
 
 let refreshing: Promise<string> | null = null;
 
-// 동시 401이 여러 건일 때 리다이렉트가 중복 실행되는 것을 막는다.
-// (refresh 프라미스를 공유해도 각 요청이 개별적으로 실패 경로를 타므로 필요)
-let redirecting = false;
-
 // 인증 복구 불가 → 로컬 상태 정리 후 로그인으로. 복귀를 위해 현재 경로를 returnUrl로 넘긴다.
 function redirectToLogin() {
-  if (redirecting) return;
-  redirecting = true;
   useAuthStore.getState().clearAuth();
-  // 이미 로그인 화면이면 returnUrl을 덮어써 원래 목적지를 잃지 않도록 이동하지 않는다.
-  if (window.location.pathname === "/login") return;
   const returnUrl = encodeURIComponent(
     window.location.pathname + window.location.search,
   );
