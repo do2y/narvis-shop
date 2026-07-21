@@ -15,9 +15,16 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
+  /**
+   * 부팅 시 세션 복원(refresh → me)이 끝났는지. false인 동안 라우트 가드는
+   * 판정을 보류한다 — 아니면 새로고침 때마다 로그인 화면이 한 번 번쩍인다.
+   */
+  isRestoring: boolean;
   // RT는 httpOnly 쿠키로 관리 → 클라 상태에 저장하지 않음
   setAuth: (p: { user: AuthUser; accessToken: string }) => void;
   setAccessToken: (accessToken: string) => void;
+  setUser: (user: AuthUser) => void;
+  finishRestore: () => void;
   clearAuth: () => void;
 }
 
@@ -26,10 +33,27 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
+      isRestoring: true,
       setAuth: (p) => set(p),
       setAccessToken: (accessToken) => set({ accessToken }),
+      setUser: (user) => set({ user }),
+      finishRestore: () => set({ isRestoring: false }),
       clearAuth: () => set({ user: null, accessToken: null }),
     }),
-    { name: "jarvis-auth" },
+    {
+      name: "jarvis-auth",
+      // AT는 절대 저장하지 않는다(XSS 시 탈취 대상). 새로고침 후 AT는
+      // RT 쿠키 → /api/auth/refresh 로 복원되므로 저장할 이유가 없다.
+      //
+      // user만 남기는 건 헤더 닉네임 등의 초기 깜빡임을 줄이기 위한 캐시일 뿐이며,
+      // 신뢰 경계가 아니다 — 권한 판정은 부팅 시 /api/auth/me 응답으로 덮어쓴다.
+      // (localStorage는 사용자가 편집 가능하므로 role을 그대로 믿으면 안 된다.
+      //  물론 최종 방어선은 백엔드이고, 가드는 UX 차원의 1차 필터다.)
+      partialize: (s) => ({ user: s.user }),
+      // partialize는 앞으로의 저장만 막는다. 이 변경 전에 이미 AT가 저장된 브라우저가
+      // 있으므로 version을 올려 기존 항목을 마이그레이션(=AT 폐기)한다.
+      version: 1,
+      migrate: (persisted) => ({ user: (persisted as { user?: AuthUser }).user ?? null }),
+    },
   ),
 );
