@@ -3,6 +3,7 @@
 //  /api/products/:productId 캐치올보다 앞 — catalog.ts 안에서 보장)
 // 구 /api/mypage/orders 목은 백엔드에 없는 경로라 분할 시 제거함(/api/orders가 정본).
 import { authHandlers } from "./auth";
+import { brandHandlers } from "./brands";
 import { catalogHandlers } from "./catalog";
 import { chatHandlers } from "./chat";
 import { claimHandlers } from "./claims";
@@ -16,6 +17,7 @@ import { sellerHandlers } from "./seller";
 
 export const handlers = [
   ...authHandlers,
+  ...brandHandlers,
   ...catalogHandlers,
   ...chatHandlers,
   ...claimHandlers,
