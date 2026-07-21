@@ -1,5 +1,10 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { createBrowserRouter, Outlet, useLocation } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  Outlet,
+  useLocation,
+  useNavigationType,
+} from 'react-router-dom';
 import { track } from '@/shared/analytics/track';
 import { RequireAuth, RequireRole } from './guards';
 
@@ -21,12 +26,23 @@ const AdminPage = lazy(() => import('@/pages/admin'));
 function Root() {
   // TODO: 공통 레이아웃(헤더 등)을 여기에 배치
   const { pathname } = useLocation();
+  const navigationType = useNavigationType();
 
   // 모든 라우트가 이 밑에 중첩되므로 여기 한 곳에서 page_view를 수집한다.
   // search는 쿼리스트링에 검색어가 실려 개인정보가 될 수 있어 path만 보낸다(명세).
   useEffect(() => {
     track('page_view', { properties: { path: pathname } });
   }, [pathname]);
+
+  // 새 페이지로 이동하면 맨 위에서 시작한다. 이게 없으면 긴 페이지 하단에서 링크를 눌렀을 때
+  // 다음 페이지도 하단부터 보인다(브라우저가 스크롤 위치를 유지하므로).
+  // 단 POP(뒤로/앞으로 가기)은 브라우저의 스크롤 복원에 맡긴다 — 목록으로 돌아왔을 때
+  // 보던 위치가 유지되어야 하므로.
+  useEffect(() => {
+    if (navigationType !== 'POP') {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname, navigationType]);
 
   return (
     <Suspense fallback={null}>
