@@ -89,10 +89,36 @@ export const authHandlers = [
 
   // AT 재발급 — RT 쿠키로 식별. 실제 백엔드는 RT 회전(새 RT를 Set-Cookie)까지 하지만
   // 목은 httpOnly 쿠키를 다루지 않으므로 AT만 새로 발급한다.
-  // RT 만료 시나리오를 눈으로 보려면 아래 성공 응답을 401 AUTH_REQUIRED로 바꿔 테스트.
+  //
+  // 목에는 RT가 없으므로 항상 401(AUTH_REQUIRED)로 응답한다. 성공을 주면 부팅 복원이
+  // 게스트까지 로그인 상태로 만들어 버린다(로그인 없이 /mypage가 열림).
+  // 새로고침 후 로그인 유지를 목으로 확인하려면 아래를 ok({accessToken})로 바꾸고
+  // /api/auth/me의 CURRENT_MEMBER를 원하는 계정으로 지정할 것.
   http.post(`${BASE}/api/auth/refresh`, () =>
-    HttpResponse.json(ok({ accessToken: `mock-access-refreshed-${Date.now()}` })),
+    HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+      status: 401,
+    }),
   ),
+
+  // 현재 사용자 (A-5) — 라우팅 가드의 역할 판정 소스.
+  // 목은 AT를 검증하지 않으므로 Authorization 존재 여부만 보고, 어떤 계정인지는
+  // 토큰에 심긴 id로 되짚는다(로그인 목이 `mock-access-{id}` 형태로 발급).
+  http.get(`${BASE}/api/auth/me`, ({ request }) => {
+    const auth = request.headers.get("Authorization");
+    if (!auth?.startsWith("Bearer ")) {
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
+    }
+    const id = Number(auth.replace("Bearer mock-access-", ""));
+    const account = Object.values(MOCK_ACCOUNTS).find((a) => a.id === id);
+    if (!account) {
+      return HttpResponse.json(fail("AUTH_REQUIRED", "로그인이 필요합니다."), {
+        status: 401,
+      });
+    }
+    return HttpResponse.json(ok(account));
+  }),
 
   // 행동 이벤트 배치 수집 (E-1) — 202 무본문. 인증 선택(익명 허용).
   // 목에서는 적재하지 않고 수신만 확인한다.
