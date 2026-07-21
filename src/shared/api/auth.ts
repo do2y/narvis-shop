@@ -1,14 +1,4 @@
 import axios from "axios";
-import { api } from "@/shared/api/client";
-import type { AuthUser } from "@/shared/stores/authStore";
-
-// 현재 로그인 사용자 (A-5). 라우팅 가드의 로그인 여부·역할 판정 소스.
-// localStorage의 user는 사용자가 편집 가능하므로 role을 신뢰하지 않고 여기서 덮어쓴다.
-// 401 처리(AUTH_REQUIRED → 로그인 / AUTH_TOKEN_EXPIRED → refresh)는 client.ts 인터셉터가 담당.
-export async function fetchMe(): Promise<AuthUser> {
-  const { data } = await api.get<AuthUser>("/api/auth/me");
-  return data;
-}
 
 // 로그아웃: body 없음, RT 쿠키로 대상 식별. 서버에서 RT 삭제 + 쿠키 만료(Max-Age=0).
 // 멱등 — 쿠키가 없어도 항상 성공.
