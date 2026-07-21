@@ -2,7 +2,6 @@ import { Heart, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
 import { useAddCartItem } from "@/shared/hooks/useCart";
-import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import type { ProductCard } from "@/shared/types/chat";
 
@@ -11,18 +10,22 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   const wished = useIsWished(product.productId);
   const { toggle, isPending } = useToggleWishlist();
   const addCart = useAddCartItem();
-  const goToProduct = useGoToProduct();
   const hasDiscount = product.originalPrice > product.price;
 
-  const goToDetail = () => goToProduct(product);
+  // 챗봇 카드만 새 탭으로 연다. 대화 상태는 persist하지 않아(CLAUDE.md) 같은 탭에서
+  // 상세로 나갔다 돌아오면 대화가 사라지기 때문. 새 탭은 캐시를 공유하지 않아
+  // useGoToProduct의 상세 캐시 시딩을 쓸 수 없다(스켈레톤부터 시작) — 대화 보존을 택한 것.
+  // window.open 대신 <a target="_blank">: 팝업 차단을 피하고 Ctrl·가운데 클릭도 그대로 동작한다.
+  const detailHref = `/products/${product.productId}`;
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-sm border bg-background transition-shadow duration-200 hover:shadow-md">
       <div className="relative aspect-square overflow-hidden bg-muted">
-        <button
-          type="button"
-          onClick={goToDetail}
-          aria-label={`${product.name} 상세 보기`}
+        <a
+          href={detailHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${product.name} 상세 보기 (새 탭)`}
           className="block size-full"
         >
           <img
@@ -31,7 +34,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             loading="lazy"
             className="size-full object-cover transition-transform group-hover:scale-105"
           />
-        </button>
+        </a>
         <button
           type="button"
           onClick={() => toggle(product.productId, wished)}
@@ -56,13 +59,14 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           {product.brandName}
         </p>
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
-          <button
-            type="button"
-            onClick={goToDetail}
+          <a
+            href={detailHref}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-left hover:underline"
           >
             {product.name}
-          </button>
+          </a>
         </h3>
         {/* 인기상품(단순 집계) 카드는 추천 이유가 없어 영역 자체를 그리지 않음 */}
         {product.reason && (
