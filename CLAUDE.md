@@ -20,7 +20,8 @@
 - 스택은 코드에서 확인. **새 라이브러리 추가는 먼저 제안하고 승인받을 것**
 
 ## 디렉토리 (응집도 우선)
-- `src/pages/<page>/{components,hooks,utils}` — 그 페이지에서만 쓰는 것. `src/shared/`(ui·chat·api·hooks·stores·types·utils) — **2개 이상 페이지가 쓰는 것만 승격**. `src/mocks/`(MSW) · `src/router/`(index=라우트, guards=권한 가드)
+- `src/pages/<page>/{components,hooks,utils}` — 그 페이지에서만 쓰는 것. `src/shared/`(ui·chat·address·api·hooks·stores·types·utils) — **2개 이상 페이지가 쓰는 것만 승격**. `src/mocks/`(MSW, 도메인별 `handlers/<도메인>.ts` + 교차 픽스처 `data.ts`) · `src/router/`(index=라우트, guards=권한 가드)
+- shared/ui는 도메인을 모르는 순수 UI만. 도메인을 아는 공용 모듈(chat, address 폼 등)은 `shared/<도메인>/`으로 분리
 - **원칙**: 같이 수정될 것들은 같이 둔다. 페이지 전용은 페이지 폴더에, 공용이 된 순간에만 shared로 옮긴다. 미리 shared에 만들지 않는다
 
 ## 컴포넌트 (2계층)
@@ -36,10 +37,11 @@
 - **폼** → React Hook Form + Zod. 검증 규칙은 백엔드 필드 정의와 일치시킬 것
 
 ## React Query 규칙
-- Query Key 배열 컨벤션: `['products', id]` `['cart']` `['orders', {status}]` `['categories']`
+- Query Key 배열 컨벤션(소문자 세그먼트): `['cart']` `['orders', {status}]` `['categories']` `['addresses']` `['products', 'recent']`
+- 상품 키는 2벌: `['products', id]` = 카드 시딩 캐시(SeededProductCard) / `['products', id, 'detail']` = 상세 응답. 구조가 달라(brandName vs brand.name 등) 같은 키를 쓰면 캐시가 섞인다. `['products', id]` 접두 무효화 시 둘 다 갱신됨
 - staleTime: 정적 데이터(카테고리·브랜드) 30분 / 상품 상세 5분 / 장바구니·주문 0
 - 장바구니 변경 성공 시 `invalidateQueries(['cart'])` — **챗봇 CART_ADDED 수신 시에도 동일** (헤더 뱃지 전역 동기화)
-- **캐시 승계**: 챗봇 상품 카드 → 상세 진입 시 카드 데이터를 `setQueryData(['products', id], partial)`로 시딩해 즉시 렌더. 부족분만 백그라운드 페칭
+- **캐시 승계**: 카드 → 상세 진입은 반드시 `useGoToProduct()`(shared/hooks) 경유 — SeededProductCard 완전체를 시딩해 즉시 렌더, 부족분만 백그라운드 페칭. 카드 데이터가 계약을 못 채우면(추천 카드 등) 시딩 없이 navigate만 한다 (불완전 시딩은 상세 렌더를 깨뜨림)
 - 목록/상세/브랜드는 스피너 단독 금지 → 스켈레톤 기본
 
 ## 인증/권한 (구현: src/router/guards.tsx, src/shared/api/client.ts, src/shared/stores/authStore.ts)
@@ -84,7 +86,7 @@
 ## Claude 작업 지침
 - 새 컴포넌트 전, shared/ui와 해당 페이지 components/에 유사한 것이 있는지 먼저 확인
 - 페이지 전용/공용이 애매하면 페이지 폴더에 먼저 만든다 (승격은 나중에)
-- 백엔드 API가 없으면 mocks/handlers.ts에 계약대로 목 추가 후 진행. 계약에 없는 필드를 임의로 만들지 말 것
+- 백엔드 API가 없으면 mocks/handlers/<도메인>.ts에 계약대로 목 추가 후 진행 (도메인 파일이 없으면 새로 만들고 handlers/index.ts에 결합). 계약에 없는 필드를 임의로 만들지 말 것
 - 미정 정책(sessionId 만료 처리, 판매자/관리자 계정 생성 방식 등)은 임의로 정하지 말고 질문
 - 다중 파일·구조 변경(폴더 이동, 라이브러리 교체)은 실행 전 계획부터 제시
 - 결제·인증·배포 관련 코드는 위험을 먼저 설명하고 수정
@@ -93,3 +95,4 @@
 - sessionId 10분 TTL 만료 시 응답/재발급 스펙
 - 판매자/관리자 계정 생성 방식 (별도 가입 vs DB 시드)
 - refresh 엔드포인트·필드, 채팅 엔드포인트 (현재 client.ts / streamChat.ts에 placeholder)
+- 판매자 영역 포인트 색 `--brand`(teal, index.css) — 위 색상 팔레트 규칙 밖. 유지 결정 시 팔레트에 등재, 아니면 제거
