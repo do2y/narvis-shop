@@ -1,3 +1,34 @@
+// 대시보드 요약 카드·그래프용 표현 타입.
+// (판매자 챗 계약 v2에서 metrics/analysis 이벤트가 사라져 챗 타입에서 이리로 옮겼다.
+//  대시보드는 GET /api/seller/summary 응답을 이 형태로 매핑해 MetricCards·AnalysisChart에 넘긴다.)
+
+/** 매출·주문 요약 카드 한 칸 */
+export interface SellerMetric {
+  key: string; // "revenue" | "orders" | "aov" | "conversion" …
+  label: string;
+  value: number;
+  unit: "KRW" | "COUNT" | "PERCENT";
+  // 이전 대비 증감률(%). 3-state로 의미가 다르다:
+  //  number → 정상 증감률(부호로 상승·하락)  ·  null → 비교 데이터 없음(어제 0 등, "—" 표기)
+  //  undefined(필드 없음) → 증감률 개념이 없는 지표(실시간 방문자 등, 줄 자체를 숨김)
+  deltaRate?: number | null;
+  caption?: string; // "어제 대비"
+}
+
+/** 판매 분석 그래프 */
+export interface SellerAnalysis {
+  title: string;
+  chartType: "line" | "bar";
+  unit: "KRW" | "COUNT";
+  series: { label: string; points: { x: string; y: number }[] }[];
+  summary?: string; // AI 한 줄 해석
+}
+
+// ── 챗 워크스페이스 ──
+
+/** 오른쪽 작업 영역 목록 종류. 대상 선택은 채팅 자연어로 처리한다(선택 상태 없음). */
+export type SellerWorkspaceTab = "orders" | "products";
+
 export interface SellerSummaryParams {
   from?: string; // YYYY-MM-DD, 생략 시 서버가 오늘로
   to?: string;
