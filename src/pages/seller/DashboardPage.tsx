@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerDashboard } from "./api";
 import { SellerHero } from "./components/SellerHero";
 import { MetricCards } from "./components/MetricCards";
@@ -10,10 +11,14 @@ import { AnalysisChart } from "./components/AnalysisChart";
 import { formatMetric } from "./utils/formatMetric";
 
 export default function DashboardPage() {
+  // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
+  const isAuthReady = useAuthStore(selectIsAuthReady);
+
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["seller", "dashboard"],
     queryFn: fetchSellerDashboard,
     staleTime: 0, // 오늘 할 일·실시간 지표 — 항상 최신
+    enabled: isAuthReady,
   });
 
   return (
