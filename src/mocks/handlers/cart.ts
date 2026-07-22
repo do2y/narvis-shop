@@ -126,6 +126,23 @@ export const cartHandlers = [
       (it) => it.productId === body.productId && it.optionId === body.optionId,
     );
     const merged = (existing?.quantity ?? 0) + body.quantity;
+
+    // 재고 초과 — 합산 후 수량(장바구니에 이미 담긴 양 + 이번 요청)과 비교(02 D33).
+    // 재고는 상품 단위. FE에 남은 재고를 detail로 실어 문구/제한에 쓸 수 있게 한다.
+    if (merged > product.stock) {
+      return HttpResponse.json(
+        {
+          success: false as const,
+          error: {
+            code: "CART_STOCK_INSUFFICIENT",
+            message: "재고가 부족합니다.",
+            detail: { availableStock: product.stock },
+          },
+        },
+        { status: 400 },
+      );
+    }
+
     if (merged > 99) {
       return HttpResponse.json(
         {
