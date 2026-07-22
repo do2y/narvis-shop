@@ -196,7 +196,8 @@ export const cartHandlers = [
       const id = Number(params.cartItemId);
       const { quantity } = (await request.json()) as { quantity: number };
 
-      if (!cartDb.items.some((it) => it.cartItemId === id)) {
+      const target = cartDb.items.find((it) => it.cartItemId === id);
+      if (!target) {
         return HttpResponse.json(
           fail("CART_ITEM_NOT_FOUND", "장바구니 항목을 찾을 수 없습니다."),
           { status: 404 },
@@ -212,6 +213,26 @@ export const cartHandlers = [
               fields: [
                 { field: "quantity", message: "수량은 1~99 사이여야 합니다." },
               ],
+            },
+          },
+          { status: 400 },
+        );
+      }
+
+      // 재고 초과 — 담기(C-2)의 합산과 달리 변경 후 수량(치환값)과 비교(02 D33).
+      // 재고는 상품 단위. 픽스처 상품(POPULAR_PRODUCTS에 없는 productId)은
+      // 재고 정보가 없어 무제한으로 취급(검사 건너뜀).
+      const product = POPULAR_PRODUCTS.find(
+        (p) => p.productId === target.productId,
+      );
+      if (product && quantity > product.stock) {
+        return HttpResponse.json(
+          {
+            success: false as const,
+            error: {
+              code: "CART_STOCK_INSUFFICIENT",
+              message: "재고가 부족합니다.",
+              detail: { availableStock: product.stock },
             },
           },
           { status: 400 },
