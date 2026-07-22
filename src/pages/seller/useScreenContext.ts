@@ -1,13 +1,17 @@
 import { useLocation, useSearchParams } from "react-router-dom";
 import type { ChatScreenContext } from "@/shared/types/chat";
 
+// 주문 목록 탭 4종(+전체). 대시보드 딥링크나 옛 URL의 개별 상태값도
+// 사용자에게 보일 수 있어 함께 매핑해 둔다(취소·반품 계열은 "취소·반품"으로 접힘).
 const ORDER_STATUS_LABEL: Record<string, string> = {
   ALL: "전체",
-  NEW: "신규주문",
-  PREPARING: "배송준비",
+  ORDERED: "신규주문",
   SHIPPING: "배송중",
   DELIVERED: "배송완료",
+  CONFIRMED: "배송완료",
   CLAIM: "취소·반품",
+  CANCELLED: "취소·반품",
+  RETURNED: "취소·반품",
 };
 
 const PRODUCT_TAB_LABEL: Record<string, string> = {
