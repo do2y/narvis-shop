@@ -28,9 +28,12 @@ export function MessageList({
 }: MessageListProps) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs text-muted-foreground">
-        · 이 대화는 저장되지 않아요 · 자리를 비우면 자동으로 초기화됩니다
-      </p>
+      {/* 비휴지 안내는 대화 시작 전에만 — 대화가 시작되면 공간을 비워 대화에 집중 */}
+      {messages.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          · 이 대화는 저장되지 않아요 · 자리를 비우면 자동으로 초기화됩니다
+        </p>
+      )}
 
       {messages.map((msg, i) => {
         const isLast = i === messages.length - 1;

@@ -86,37 +86,37 @@ export default function SellerChatPage() {
   const started = messages.length > 0;
 
   const conversation = (
-    <ChatConversation
-      onSend={send}
-      onRetry={retry}
-      isStreaming={isStreaming}
-      placeholder="상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
-      headerSlot={
-        // 높이(h-12)를 우측 워크스페이스 탭 바와 맞춰 좌우 하단 구분선을 정렬한다
-        <div className="flex h-12 items-center justify-end border-b px-2">
-          <button
-            type="button"
-            onClick={() => {
-              startNewChat();
-              setShowResults(false);
-            }}
-            className="flex h-9 items-center gap-1 rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
-          >
-            <Plus className="size-4" />새 대화
-          </button>
-        </div>
-      }
-      aboveInput={
-        // 대화 시작 전에만 추천 질문 노출
-        !started ? (
-          <SuggestedQuestions
-            questions={SELLER_QUESTIONS}
-            onSelect={send}
-            disabled={isStreaming}
-          />
-        ) : null
-      }
-    />
+    // 대화 영역과 하나로 보이도록 별도 헤더 바 없이, "새 대화"만 우상단에 floating
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <button
+        type="button"
+        onClick={() => {
+          startNewChat();
+          setShowResults(false);
+        }}
+        aria-label="새 대화"
+        title="새 대화"
+        className="absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-background/70 text-muted-foreground backdrop-blur transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+      >
+        <Plus className="size-4" />
+      </button>
+      <ChatConversation
+        onSend={send}
+        onRetry={retry}
+        isStreaming={isStreaming}
+        placeholder="상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
+        aboveInput={
+          // 대화 시작 전에만 추천 질문 노출
+          !started ? (
+            <SuggestedQuestions
+              questions={SELLER_QUESTIONS}
+              onSelect={send}
+              disabled={isStreaming}
+            />
+          ) : null
+        }
+      />
+    </div>
   );
 
   const workspace = (
@@ -134,7 +134,8 @@ export default function SellerChatPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <SellerHeader />
+      {/* 이 화면은 우측에서 주문·상품을 다루므로 헤더 네비를 숨겨 워크스페이스에 집중시킨다 */}
+      <SellerHeader showNav={false} />
 
       {/* 모바일·태블릿: 세 영역 동시 표시 금지 → 탭 전환 */}
       <div className="flex items-center gap-1 border-b px-3 lg:hidden">
