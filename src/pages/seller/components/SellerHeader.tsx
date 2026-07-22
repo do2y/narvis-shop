@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { ChevronDown, LogOut, MessageSquare } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import {
   DropdownMenu,
@@ -19,17 +19,12 @@ const MENU = [
   { to: "/seller/chat", label: "AI 어시스턴트" },
 ];
 
-interface SellerHeaderProps {
-  /** 사이드 채팅 토글 — 챗봇 전용 화면(/seller/chat)에선 전달하지 않음 */
-  chatOpen?: boolean;
-  onToggleChat?: () => void;
-}
-
 /**
  * 판매자 전용 헤더 — 로고·네비·계정을 한 줄에.
  * AppHeader(찜·장바구니 등 쇼핑 동선)는 판매자 업무와 무관해 쓰지 않는다.
+ * AI 협업은 네비의 "AI 어시스턴트"(/seller/chat)로 진입한다.
  */
-export function SellerHeader({ chatOpen, onToggleChat }: SellerHeaderProps) {
+export function SellerHeader() {
   const user = useAuthStore((s) => s.user);
   const handleLogout = useLogout();
 
@@ -73,26 +68,6 @@ export function SellerHeader({ chatOpen, onToggleChat }: SellerHeaderProps) {
         </nav>
 
         <div className="flex shrink-0 items-center gap-1">
-          {/* 사이드 채팅 토글 — 목록을 보면서 대화하기 위한 진입점 */}
-          {onToggleChat && (
-            <button
-              type="button"
-              onClick={onToggleChat}
-              aria-pressed={chatOpen}
-              aria-label={chatOpen ? "AI 채팅 닫기" : "AI 채팅 열기"}
-              title={chatOpen ? "AI 채팅 닫기" : "AI 채팅 열기"}
-              className={cn(
-                "flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors active:scale-95",
-                chatOpen
-                  ? "bg-brand text-brand-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <MessageSquare className="size-4" />
-              <span className="hidden sm:inline">AI 채팅</span>
-            </button>
-          )}
-
           {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger

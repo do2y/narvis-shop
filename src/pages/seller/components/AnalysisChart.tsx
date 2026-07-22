@@ -1,5 +1,5 @@
 import { useId } from "react";
-import type { SellerAnalysis } from "@/shared/types/chat";
+import type { SellerAnalysis } from "../types";
 import { formatMetric } from "../utils/formatMetric";
 
 // viewBox 좌표계 — 실제 크기는 CSS가 결정(preserveAspectRatio="none" 대신 비율 유지)

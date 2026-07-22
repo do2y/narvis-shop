@@ -1,6 +1,6 @@
 import type { SeededProductCard } from "@/shared/types/product";
 
-/** 채팅 API 계약 타입 — 백엔드/LLM 스키마(07-07 기준)와 1:1. 변경 시 계약 문서와 함께 갱신 */
+/** 채팅 API 계약 타입 — 백엔드/LLM 스키마와 1:1. 변경 시 계약 문서와 함께 갱신 */
 export type ChatChannel = "SHOPPING" | "CS" | "SELLER";
 
 /**
@@ -13,14 +13,24 @@ export interface ChatScreenContext {
   filters?: Record<string, string>; // { status: "신규주문", page: "1" }
 }
 
+/**
+ * 채팅 요청 body.
+ * - 일반/제안: message 를 보낸다.
+ * - 승인(confirm): action:"confirm" + draftId 를 최상위로 보낸다(발화≠동의, message 없음).
+ * 신원(sellerId·brandId)은 판매자 스트림 티켓 클레임에서 추출 — body엔 신원 없음.
+ * 선택 대상(주문/상품)은 계약상 별도 필드가 없다 — message 자연어에 녹여 LLM이 처리한다.
+ */
 export interface ChatRequest {
   sessionId: string;
+  threadId?: string; // 판매자 챗 계약: 대화 스레드 식별자
   userId?: number;
   guestId?: string | null;
   channel: ChatChannel;
-  message: string;
+  message?: string; // confirm 요청에선 생략
   brandId?: number; // SELLER 채널 전용
   screen?: ChatScreenContext; // 사이드 채팅에서만 전송
+  action?: "confirm"; // draft 승인 — message 대신 이 필드로 확정
+  draftId?: string; // action:"confirm" 일 때 대상 draft
 }
 
 // 시딩 계약(SeededProductCard)에 AI 추천 이유만 더한 형태 — 상세 캐시 승계 호환 유지
@@ -34,63 +44,49 @@ export interface ProductGroup {
 }
 
 // ── SELLER 채널 전용 페이로드 ──
-// 판매자 챗봇은 SHOPPING과 동일한 API를 channel만 바꿔 쓰고, 결과 이벤트만 다르다.
+// 판매자 챗은 SHOPPING과 동일 엔드포인트를 channel만 바꿔 쓰지만 이벤트 집합이 다르다.
+// 통계 답변은 차트 카드가 아니라 자연어 token 으로 오고, 쓰기(수정/삭제/등록)는
+// draft(HITL 승인 대기) → confirm 흐름으로 온다. (계약 v2, 2026-07-22)
 
-/** 매출·주문 요약 카드 한 칸 */
-export interface SellerMetric {
-  key: string; // "revenue" | "orders" | "aov" | "visitors" …
-  label: string;
-  value: number;
-  unit: "KRW" | "COUNT" | "PERCENT";
-  // 이전 대비 증감률(%). 3-state로 의미가 다르다:
-  //  number → 정상 증감률(부호로 상승·하락)  ·  null → 비교 데이터 없음(어제 0 등, "—" 표기)
-  //  undefined(필드 없음) → 증감률 개념이 없는 지표(실시간 방문자 등, 줄 자체를 숨김)
-  deltaRate?: number | null;
-  caption?: string; // "어제 대비"
-}
+/** 첫 프레임 — FE가 즉시 레이아웃·로딩을 준비하는 레인 신호 */
+export type SellerLane =
+  | "analysis" // 통계 Q&A (progress 후 token)
+  | "product" // 상품 상세 수정 제안 → draft
+  | "general" // 일반 대화·되묻기
+  | "confirm" // draft 승인 실행 결과
+  | "apply" // "N번 적용해줘" 추천 적용 → draft
+  | "refused"; // 도메인 밖 질문 거절
 
-/** 판매 분석 그래프 */
-export interface SellerAnalysis {
-  title: string;
-  chartType: "line" | "bar";
-  unit: "KRW" | "COUNT";
-  series: { label: string; points: { x: string; y: number }[] }[];
-  summary?: string; // AI 한 줄 해석
-}
+/** 종료 시 우측 패널 조치 — replace(교체) / keep(유지) / refresh(재조회) */
+export type SellerPanel = "replace" | "keep" | "refresh";
 
-export type SellerProductStatus = "ON_SALE" | "SOLD_OUT" | "HIDDEN";
+/** 상품 수정 제안 필드(camelCase 8종) */
+export type SellerDraftField =
+  | "name"
+  | "price"
+  | "originalPrice"
+  | "description"
+  | "category"
+  | "imageUrl"
+  | "status"
+  | "stockQuantity";
 
-/** 상품별 판매 데이터 / 재고 부족 목록의 한 행 */
-export interface SellerProductStat {
-  productId: number;
-  name: string;
-  imageUrl: string;
-  code: string;
-  price: number;
-  stock: number;
-  salesCount: number;
-  status: SellerProductStatus;
-}
-
-export interface SellerProductStats {
-  title: string;
-  kind: "SALES" | "LOW_STOCK";
-  items: SellerProductStat[];
-}
-
-/** 상품 정보 변경 전·후 비교 + 최종 확인 요청 */
-export interface SellerProductDiff {
-  draftId: string; // 확인/취소 후속 메시지에 실어 보낼 키
-  productId: number;
-  productName: string;
-  fields: {
-    field: string;
-    label: string;
+/** 상품 상세 수정/삭제/등록 제안(HITL 승인 대기) */
+export interface SellerDraft {
+  draftId: string; // confirm이 참조(보여준 것 == 실행)
+  op: "update" | "create" | "delete";
+  productId: number | null; // create는 null 일 수 있음
+  changes: {
+    field: SellerDraftField | string;
     before: string | number;
     after: string | number;
   }[];
-  confirmMessage: string;
+  summary: string; // "가격을 27,500원으로 인하"
 }
+
+// ── 이벤트 스트림 ──
+// 와이어 포맷: 각 이벤트는 `data: {"type":..., "data":{...}}` 한 줄(구매자·판매자 공통).
+// event: 라인은 쓰지 않는다 — payload 의 type 으로 구분한다.
 
 export type ChatAction =
   | { type: "CART_ADDED"; message: string; cartItemId: number }
@@ -98,25 +94,28 @@ export type ChatAction =
   | { type: "PRODUCT_UPDATE_FAILED"; message: string; productId: number };
 
 export type ChatEvent =
-  | { event: "token"; data: { text: string } }
-  | { event: "conditions"; data: { items: string[] } }
-  | { event: "products"; data: { groups: ProductGroup[] } }
-  | { event: "action"; data: ChatAction }
-  | { event: "done"; data: { finishReason: string } }
-  | { event: "error"; data: { code: string; message: string } }
+  // ── 공통 ──
+  | { type: "token"; data: { text: string } }
+  | {
+      type: "done";
+      data: { finishReason: string; panel?: SellerPanel };
+    }
+  | { type: "error"; data: { code: string; message: string } }
+  // ── SHOPPING/CS 전용 ──
+  | { type: "conditions"; data: { items: string[] } }
+  | { type: "products"; data: { groups: ProductGroup[] } }
+  | { type: "action"; data: ChatAction }
   // ── SELLER 전용 ──
-  | { event: "metrics"; data: { items: SellerMetric[] } }
-  | { event: "analysis"; data: SellerAnalysis }
-  | { event: "productStats"; data: SellerProductStats }
-  | { event: "productDiff"; data: SellerProductDiff };
+  | { type: "meta"; data: { lane: SellerLane } }
+  | { type: "progress"; data: { text: string } }
+  | { type: "draft"; data: SellerDraft };
 
 /**
  * 채팅 결과 패널에 쌓이는 항목. 채널별로 종류가 다르므로 유니온으로 두고
  * 렌더러는 페이지가 주입한다(공통 모듈은 도메인 UI를 모른다).
+ * - SHOPPING: products (상품 카드)
+ * - SELLER: draft (수정 제안 diff 카드) — 통계 답변은 token 으로만 오므로 결과 카드가 없다
  */
 export type ChatResult =
   | { kind: "products"; groups: ProductGroup[] }
-  | { kind: "metrics"; items: SellerMetric[] }
-  | { kind: "analysis"; analysis: SellerAnalysis }
-  | { kind: "productStats"; stats: SellerProductStats }
-  | { kind: "productDiff"; diff: SellerProductDiff; settled?: ChatAction };
+  | { kind: "draft"; draft: SellerDraft; settled?: ChatAction };

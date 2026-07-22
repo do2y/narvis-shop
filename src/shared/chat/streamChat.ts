@@ -39,13 +39,13 @@ export async function streamChat(
     buffer = chunks.pop() ?? ''; // 미완성 조각 보류
 
     for (const chunk of chunks) {
-      let event = 'message';
+      // 와이어 포맷: `data: {"type":..., "data":{...}}` 한 줄(구매자·판매자 공통).
+      // event: 라인은 없다 — payload 의 type 으로 이벤트를 구분한다.
       let data = '';
       for (const line of chunk.split('\n')) {
-        if (line.startsWith('event:')) event = line.slice(6).trim();
-        else if (line.startsWith('data:')) data += line.slice(5).trim();
+        if (line.startsWith('data:')) data += line.slice(5).trim();
       }
-      if (data) onEvent({ event, data: JSON.parse(data) } as ChatEvent);
+      if (data) onEvent(JSON.parse(data) as ChatEvent);
     }
   }
 }

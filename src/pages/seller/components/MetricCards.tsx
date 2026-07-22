@@ -1,6 +1,6 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SellerMetric } from "@/shared/types/chat";
+import type { SellerMetric } from "../types";
 import { formatMetric } from "../utils/formatMetric";
 
 /** 매출·주문 요약 카드 행 */

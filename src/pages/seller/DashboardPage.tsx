@@ -9,7 +9,7 @@ import type { SellerOrderStatus, SellerSummary } from "./types";
 import { SellerHero } from "./components/SellerHero";
 import { MetricCards } from "./components/MetricCards";
 import { AnalysisChart } from "./components/AnalysisChart";
-import type { SellerMetric } from "@/shared/types/chat";
+import type { SellerMetric } from "./types";
 
 // 오늘 할 일 4칸 — 처리해야 할 순서대로. CANCELLED·RETURNED는 활성 주문이 아니라 제외.
 // (구 "배송 준비" 카드는 order_item.status에 PREPARING이 없어 2026-07-21자로 삭제)

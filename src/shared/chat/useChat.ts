@@ -7,6 +7,7 @@ import type {
   ChatChannel,
   ChatRequest,
   ChatScreenContext,
+  SellerPanel,
 } from "@/shared/types/chat";
 import { useChatStore } from "./store";
 
@@ -31,6 +32,11 @@ interface UseChatOptions {
   /** 채널별 액션 후처리(장바구니 invalidate 등). 안내 문구 표시는 공통 처리. */
   onAction?: (action: ChatAction) => void;
   /**
+   * 스트림 종료 시 우측 패널 조치(판매자 전용). done.panel 을 그대로 전달한다.
+   * replace(패널 교체) / keep(유지) / refresh(목록 재조회). error 로 끝나면 호출되지 않는다.
+   */
+  onDone?: (panel: SellerPanel | undefined) => void;
+  /**
    * 전송 시점의 화면 맥락을 반환하는 함수(사이드 채팅 전용).
    * 값이 아닌 함수로 받는 이유: 사용자가 목록을 이동하며 대화하므로
    * 훅 초기화 시점이 아니라 매 전송 시점의 화면을 실어야 한다.
@@ -42,21 +48,24 @@ export function useChat({
   channel,
   brandId,
   onAction,
+  onDone,
   getScreenContext,
 }: UseChatOptions) {
   const user = useAuthStore((s) => s.user);
   const {
-    sessionId,
     isStreaming,
     addMessage,
     appendToLastAssistant,
     failLastAssistant,
     setResults,
     addResult,
-    settleProductDiff,
+    settleDraft,
     setConditions,
     setSessionId,
+    setThreadId,
     setStreaming,
+    setLane,
+    setProgress,
     reset,
   } = useChatStore();
 
@@ -65,30 +74,36 @@ export function useChat({
 
   // 콜백들은 매 렌더 갱신되도록 ref로 보관(send의 deps를 안정적으로 유지)
   const onActionRef = useRef(onAction);
+  const onDoneRef = useRef(onDone);
   const getScreenContextRef = useRef(getScreenContext);
   useEffect(() => {
     onActionRef.current = onAction;
+    onDoneRef.current = onDone;
     getScreenContextRef.current = getScreenContext;
   });
 
-  const send = useCallback(
-    async (message: string) => {
-      const trimmed = message.trim();
-      if (!trimmed || useChatStore.getState().isStreaming) return;
+  /**
+   * 스트림 실행 공통부 — 일반 발화(send)와 승인(confirm)이 공유한다.
+   * userText 가 있으면 사용자 말풍선을 추가하고(발화), confirm 은 말풍선 없이 실행만 한다.
+   */
+  const run = useCallback(
+    async (
+      buildReq: (base: {
+        sessionId: string;
+        threadId: string;
+      }) => ChatRequest,
+      userText: string | null,
+    ) => {
+      if (useChatStore.getState().isStreaming) return;
 
-      // 이 앱의 상품 검색은 챗봇이다. 단 "[조건 제거]"·"[수정 확인]" 같은 제어 메시지는
-      // 사용자의 검색 의도가 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어
-      // 보내지 않고 채널·길이만 싣는다(명세: properties에 개인정보 금지).
-      if (!trimmed.startsWith("[")) {
-        track("search", {
-          properties: { channel, queryLength: trimmed.length },
-        });
+      if (userText !== null) {
+        addMessage({ id: newId(), role: "user", text: userText });
       }
-
-      addMessage({ id: newId(), role: "user", text: trimmed });
       // 스트리밍으로 채워질 빈 assistant 메시지 선 추가
       addMessage({ id: newId(), role: "assistant", text: "" });
       setStreaming(true);
+      setLane(null);
+      setProgress(null);
 
       // 한 응답 안에서 여러 결과 이벤트가 올 수 있다. 첫 결과가 도착할 때
       // 이전 턴의 결과를 비우고, 그 뒤부터는 누적한다.
@@ -102,17 +117,11 @@ export function useChat({
         addResult(result);
       };
 
-      // 전송 시점의 화면을 싣는다(사이드 채팅에서 목록을 옮겨다니며 대화하므로)
-      const screen = getScreenContextRef.current?.();
-
-      const req: ChatRequest = {
-        sessionId: useChatStore.getState().sessionId ?? "",
-        channel,
-        message: trimmed,
-        ...(brandId !== undefined ? { brandId } : {}),
-        ...(screen ? { screen } : {}),
-        ...(user ? { userId: user.id } : { guestId: getGuestId() }),
-      };
+      const state = useChatStore.getState();
+      const req = buildReq({
+        sessionId: state.sessionId ?? "",
+        threadId: state.threadId ?? "",
+      });
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -121,8 +130,17 @@ export function useChat({
         await streamChat(
           req,
           (e) => {
-            switch (e.event) {
+            switch (e.type) {
+              case "meta":
+                // 첫 프레임 — 레인으로 즉시 레이아웃·로딩 준비
+                setLane(e.data.lane);
+                break;
+              case "progress":
+                // 분석 진행 상태(최종 답변 아님)
+                setProgress(e.data.text);
+                break;
               case "token":
+                setProgress(null); // 실제 답변이 시작되면 진행 표시 제거
                 appendToLastAssistant(e.data.text);
                 break;
               case "conditions":
@@ -131,23 +149,14 @@ export function useChat({
               case "products":
                 pushResult({ kind: "products", groups: e.data.groups });
                 break;
-              case "metrics":
-                pushResult({ kind: "metrics", items: e.data.items });
-                break;
-              case "analysis":
-                pushResult({ kind: "analysis", analysis: e.data });
-                break;
-              case "productStats":
-                pushResult({ kind: "productStats", stats: e.data });
-                break;
-              case "productDiff":
-                pushResult({ kind: "productDiff", diff: e.data });
+              case "draft":
+                pushResult({ kind: "draft", draft: e.data });
                 break;
               case "action": {
                 // CART_ADDED·PRODUCT_UPDATED 등 — 안내 문구를 대화에 덧붙임
                 const action = e.data;
                 appendToLastAssistant(`\n\n${action.message}`);
-                // 수정 결과면 해당 diff 카드를 확정 상태로 잠금
+                // 수정 결과면 해당 draft 카드를 확정 상태로 잠금
                 if (
                   action.type === "PRODUCT_UPDATED" ||
                   action.type === "PRODUCT_UPDATE_FAILED"
@@ -156,16 +165,14 @@ export function useChat({
                     .getState()
                     .results.find(
                       (r) =>
-                        r.kind === "productDiff" &&
+                        r.kind === "draft" &&
                         !r.settled &&
-                        r.diff.productId === action.productId,
+                        r.draft.productId === action.productId,
                     );
-                  if (pending?.kind === "productDiff") {
-                    settleProductDiff(pending.diff.draftId, action);
+                  if (pending?.kind === "draft") {
+                    settleDraft(pending.draft.draftId, action);
                   }
                 }
-                // 챗봇 경유 담기도 add_to_cart로 집계. SSE action 계약에 productId·
-                // 수량·가격이 없어 cartItemId·경로만 싣는다(계약 확장 시 보강).
                 if (action.type === "CART_ADDED") {
                   track("add_to_cart", {
                     properties: { source: "chat", cartItemId: action.cartItemId },
@@ -175,6 +182,8 @@ export function useChat({
                 break;
               }
               case "done":
+                setProgress(null);
+                onDoneRef.current?.(e.data.panel);
                 break;
               case "error":
                 failLastAssistant(e.data.message);
@@ -188,22 +197,74 @@ export function useChat({
         failLastAssistant("응답을 받지 못했어요. 다시 시도해 주세요.");
       } finally {
         setStreaming(false);
+        setProgress(null);
         abortRef.current = null;
       }
     },
     [
-      channel,
-      brandId,
-      user,
       addMessage,
       appendToLastAssistant,
       failLastAssistant,
       setConditions,
       setResults,
       addResult,
-      settleProductDiff,
+      settleDraft,
       setStreaming,
+      setLane,
+      setProgress,
     ],
+  );
+
+  const send = useCallback(
+    (message: string) => {
+      const trimmed = message.trim();
+      if (!trimmed) return;
+
+      // 이 앱의 상품 검색은 챗봇이다. 단 "[조건 제거]"·"[수정 확인]" 같은 제어 메시지는
+      // 사용자의 검색 의도가 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어
+      // 보내지 않고 채널·길이만 싣는다(명세: properties에 개인정보 금지).
+      if (!trimmed.startsWith("[")) {
+        track("search", {
+          properties: { channel, queryLength: trimmed.length },
+        });
+      }
+
+      // 전송 시점의 화면을 싣는다(사이드 채팅에서 목록을 옮겨다니며 대화하므로)
+      const screen = getScreenContextRef.current?.();
+
+      return run(
+        ({ sessionId, threadId }) => ({
+          sessionId,
+          threadId,
+          channel,
+          message: trimmed,
+          ...(brandId !== undefined ? { brandId } : {}),
+          ...(screen ? { screen } : {}),
+          ...(user ? { userId: user.id } : { guestId: getGuestId() }),
+        }),
+        trimmed,
+      );
+    },
+    [channel, brandId, user, run],
+  );
+
+  // draft 승인 — 발화가 아니라 최상위 action/draftId 로 확정한다(발화≠동의, 계약 v2).
+  const confirm = useCallback(
+    (draftId: string) => {
+      return run(
+        ({ sessionId, threadId }) => ({
+          sessionId,
+          threadId,
+          channel,
+          action: "confirm",
+          draftId,
+          ...(brandId !== undefined ? { brandId } : {}),
+          ...(user ? { userId: user.id } : { guestId: getGuestId() }),
+        }),
+        null, // 승인은 사용자 말풍선을 남기지 않는다
+      );
+    },
+    [channel, brandId, user, run],
   );
 
   // 실패한 응답 재시도 — 에러난 (user, assistant) 쌍을 제거하고 같은 메시지로 다시 전송
@@ -224,14 +285,15 @@ export function useChat({
     abortRef.current?.abort();
     reset();
     setSessionId(newId());
-  }, [reset, setSessionId]);
+    setThreadId(newId());
+  }, [reset, setSessionId, setThreadId]);
 
   return {
     send,
+    confirm,
     retry,
     removeCondition,
     startNewChat,
     isStreaming,
-    sessionId,
   };
 }
