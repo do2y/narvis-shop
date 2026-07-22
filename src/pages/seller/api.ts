@@ -1,7 +1,7 @@
 import { api } from "@/shared/api/client";
 import type {
   SellerOrderPage,
-  SellerOrderStatus,
+  SellerOrderTab,
   SellerProductPage,
   SellerProductTab,
   SellerSummary,
@@ -19,12 +19,19 @@ export async function fetchSellerSummary(
   return data;
 }
 
+// 주문 목록(주문 단위). page는 0-base. tab이 ALL이면 status를 보내지 않는다(생략=전체).
 export async function fetchSellerOrders(params: {
-  status: SellerOrderStatus | "ALL";
+  tab: SellerOrderTab;
   page: number;
+  size?: number;
 }): Promise<SellerOrderPage> {
+  const { tab, page, size } = params;
   const { data } = await api.get<SellerOrderPage>("/api/seller/orders", {
-    params,
+    params: {
+      ...(tab !== "ALL" && { status: tab }),
+      page,
+      ...(size && { size }),
+    },
   });
   return data;
 }

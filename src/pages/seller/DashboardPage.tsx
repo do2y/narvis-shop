@@ -32,8 +32,9 @@ function toMetrics(today: SellerSummary["today"]): SellerMetric[] {
       label: "오늘 매출",
       value: today.sales,
       unit: "KRW",
-      // null(어제 매출 0)이면 카드가 증감률 줄을 통째로 숨긴다
-      deltaRate: today.salesChangeRate ?? undefined,
+      // null(어제 매출 0)이면 카드가 "— 어제 대비"로 표기한다. undefined로 바꾸지 말 것 —
+      // undefined는 "증감률 개념 없음"이라 줄이 통째로 사라진다(방문자 카드와 혼동).
+      deltaRate: today.salesChangeRate,
       caption: "어제 대비",
     },
     {
@@ -41,7 +42,7 @@ function toMetrics(today: SellerSummary["today"]): SellerMetric[] {
       label: "주문 건수",
       value: today.orderCount,
       unit: "COUNT",
-      deltaRate: today.orderCountChangeRate ?? undefined,
+      deltaRate: today.orderCountChangeRate,
       caption: "어제 대비",
     },
     {
@@ -49,7 +50,7 @@ function toMetrics(today: SellerSummary["today"]): SellerMetric[] {
       label: "객단가",
       value: today.avgOrderValue,
       unit: "KRW",
-      deltaRate: today.avgOrderValueChangeRate ?? undefined,
+      deltaRate: today.avgOrderValueChangeRate,
       caption: "어제 대비",
     },
     {

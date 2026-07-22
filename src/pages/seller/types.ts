@@ -62,11 +62,11 @@ export interface SellerSummary {
   }[];
 }
 
-// ── 주문 ──
+// ── 주문 (S-2 GET /api/seller/orders, 2026-07-21 개정 · 아이템→주문 단위) ──
 
-// order_item.status 정본 6종 (I-19와 동일 어휘, 교환 없음).
-// PREPARING은 enum에 없어 2026-07-21자로 화면·탭에서 삭제됨 —
-// 운송장 컬럼이 DDL에 없어 "배송 준비/송장 대기"를 산출할 수 없다.
+// 대표 상태 배지에 실려오는 order_item.status 정본 6종 (I-19와 동일 어휘, 교환 없음).
+// 탭 필터(SellerOrderTab)와 다르다 — 탭은 4종으로 접지만 배지는 6종이 다 온다.
+// (예: DELIVERED·CONFIRMED는 "배송완료" 한 탭, CANCELLED·RETURNED는 "취소·반품" 한 탭)
 export type SellerOrderStatus =
   | "ORDERED"
   | "SHIPPING"
@@ -75,23 +75,48 @@ export type SellerOrderStatus =
   | "CANCELLED"
   | "RETURNED";
 
+// 활성 클레임(claim.status=REQUESTED)이 있으면 배지를 이 값으로 덮어쓴다.
+// 없으면 null → status 사용. (PREPARING 탭은 enum에 PREPARING이 없어 2026-07-21 삭제)
+export type SellerClaimStatus = "CANCEL_REQUESTED" | "RETURN_REQUESTED";
+
+// 목록 상단 탭 필터 값 — 서버 status 파라미터로 그대로 전달(ALL은 미전송).
+// 취소·반품은 CLAIM 하나로 접는다(계약 §탭↔상태 매핑).
+export type SellerOrderTab =
+  | "ALL"
+  | "ORDERED"
+  | "SHIPPING"
+  | "DELIVERED"
+  | "CLAIM";
+
+/** 주문의 대표 상품 — 자사 아이템 중 금액 최대 1건 */
+export interface SellerOrderRepProduct {
+  productId: number;
+  name: string;
+  imageUrl: string;
+  optionName: string;
+}
+
 export interface SellerOrder {
-  orderId: string;
-  productName: string;
-  productImageUrl: string;
-  extraItemCount: number; // "외 N건"
-  ordererName: string;
-  amount: number;
-  payMethod: string;
-  orderedAt: string;
+  orderId: number;
+  orderNo: string; // "ORD-20260716-0342" — 화면은 ORD- 접두사를 떼고 표시
+  orderedAt: string; // ISO8601 +09:00
+  recipientName: string; // 배송지 수령인명(마스킹 없음)
+  paymentMethod: string; // MVP: MOCK_CARD / MOCK_FAIL
+  myItemsAmount: number; // 자사 아이템 스냅샷 가격 합(타사 금액 제외)
+  myItemCount: number; // 자사 아이템 수 → "외 (myItemCount-1)건"
+  representativeProduct: SellerOrderRepProduct;
   status: SellerOrderStatus;
+  claimStatus: SellerClaimStatus | null; // 있으면 배지를 취소요청/반품요청으로 덮어씀
 }
 
 export interface SellerOrderPage {
-  orders: SellerOrder[];
-  page: number;
+  content: SellerOrder[];
+  // 필터와 무관하게 항상 전량 기준 — 탭 전환 시 재호출 불필요
+  tabCounts: Record<SellerOrderTab, number>;
+  page: number; // 0-base
+  size: number;
+  totalElements: number;
   totalPages: number;
-  counts: Record<SellerOrderStatus | "ALL", number>;
 }
 
 // ── 상품 ──

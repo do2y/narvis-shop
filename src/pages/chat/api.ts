@@ -33,7 +33,9 @@ function toProductCard(p: PopularProductRaw): ProductCard {
 // 채팅 초기 표시용 인기상품.
 // 명세(P-4)의 파라미터는 size뿐이라 categoryId는 보내지 않는다.
 // 카테고리별 인기상품이 필요하면 백엔드에 파라미터 추가를 요청해야 한다.
-export async function fetchPopularAsCards(size?: number): Promise<ProductCard[]> {
+export async function fetchPopularAsCards(
+  size?: number,
+): Promise<ProductCard[]> {
   const { data } = await api.get<{ items: PopularProductRaw[] }>(
     "/api/products/popular",
     { params: size ? { size } : undefined },

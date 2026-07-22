@@ -42,7 +42,10 @@ export interface SellerMetric {
   label: string;
   value: number;
   unit: "KRW" | "COUNT" | "PERCENT";
-  deltaRate?: number; // 이전 대비 증감률(%), 부호로 상승·하락 표현
+  // 이전 대비 증감률(%). 3-state로 의미가 다르다:
+  //  number → 정상 증감률(부호로 상승·하락)  ·  null → 비교 데이터 없음(어제 0 등, "—" 표기)
+  //  undefined(필드 없음) → 증감률 개념이 없는 지표(실시간 방문자 등, 줄 자체를 숨김)
+  deltaRate?: number | null;
   caption?: string; // "어제 대비"
 }
 

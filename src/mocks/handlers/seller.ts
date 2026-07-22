@@ -1,141 +1,199 @@
 import { http, HttpResponse } from "msw";
 import { BASE, ok } from "../shared";
 import type {
+  SellerOrder,
   SellerOrderStatus,
+  SellerOrderTab,
   SellerSummary,
 } from "@/pages/seller/types";
 
 // ── 판매자 페이지 목 (pages/seller/types.ts 계약) ──
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 7; // 상품 목록 목의 페이지 크기(주문은 아래 ORDER_PAGE_SIZE)
+const ORDER_PAGE_SIZE = 20; // 주문 목록 계약 기본 size
 
 const SELLER_IMG_A =
   "https://image.msscdn.net/thumbnails/images/goods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200";
 const SELLER_IMG_B =
   "https://image.msscdn.net/thumbnails/images/goods_img/20251015/5593843/5593843_17652503983820_big.png?w=1200";
 
-const MOCK_SELLER_ORDERS: {
-  orderId: string;
-  productName: string;
-  productImageUrl: string;
-  extraItemCount: number;
-  ordererName: string;
-  amount: number;
-  payMethod: string;
-  orderedAt: string;
-  status: SellerOrderStatus;
-}[] = [
+// 주문 단위 목(2026-07-21 개정). status는 대표상태(6종), claimStatus 있으면 배지 덮어씀.
+// 금액·건수는 자사 아이템만 집계된 값이라고 가정한다.
+const MOCK_SELLER_ORDERS: SellerOrder[] = [
   {
-    orderId: "20260716-0342",
-    productName: "벨티드 린넨 원피스",
-    productImageUrl: SELLER_IMG_A,
-    extraItemCount: 1,
-    ordererName: "김서연",
-    amount: 89000,
-    payMethod: "카드",
-    orderedAt: "07-16 09:42",
+    orderId: 342,
+    orderNo: "ORD-20260716-0342",
+    orderedAt: "2026-07-16T09:42:00+09:00",
+    recipientName: "김서연",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 89000,
+    myItemCount: 2,
+    representativeProduct: {
+      productId: 301,
+      name: "벨티드 린넨 원피스",
+      imageUrl: SELLER_IMG_A,
+      optionName: "블루/M",
+    },
     status: "ORDERED",
+    claimStatus: null,
   },
   {
-    orderId: "20260716-0339",
-    productName: "오버핏 코튼 블라우스",
-    productImageUrl: SELLER_IMG_B,
-    extraItemCount: 0,
-    ordererName: "박지현",
-    amount: 45000,
-    payMethod: "네이버페이",
-    orderedAt: "07-16 09:15",
+    orderId: 339,
+    orderNo: "ORD-20260716-0339",
+    orderedAt: "2026-07-16T09:15:00+09:00",
+    recipientName: "박지현",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 45000,
+    myItemCount: 1,
+    representativeProduct: {
+      productId: 302,
+      name: "오버핏 코튼 블라우스",
+      imageUrl: SELLER_IMG_B,
+      optionName: "화이트/L",
+    },
     status: "ORDERED",
+    claimStatus: null,
   },
   {
-    orderId: "20260716-0331",
-    productName: "화이트 코튼 셔츠",
-    productImageUrl: SELLER_IMG_A,
-    extraItemCount: 2,
-    ordererName: "이민정",
-    amount: 142000,
-    payMethod: "카드",
-    orderedAt: "07-16 08:57",
+    orderId: 331,
+    orderNo: "ORD-20260716-0331",
+    orderedAt: "2026-07-16T08:57:00+09:00",
+    recipientName: "이민정",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 142000,
+    myItemCount: 3,
+    representativeProduct: {
+      productId: 305,
+      name: "와이드 데님 팬츠",
+      imageUrl: SELLER_IMG_A,
+      optionName: "인디고/28",
+    },
     status: "ORDERED",
+    claimStatus: null,
   },
   {
-    orderId: "20260715-0294",
-    productName: "크롭 트위드 자켓",
-    productImageUrl: SELLER_IMG_A,
-    extraItemCount: 0,
-    ordererName: "정하윤",
-    amount: 128000,
-    payMethod: "카드",
-    orderedAt: "07-15 18:03",
+    orderId: 294,
+    orderNo: "ORD-20260715-0294",
+    orderedAt: "2026-07-15T18:03:00+09:00",
+    recipientName: "정하윤",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 128000,
+    myItemCount: 1,
+    representativeProduct: {
+      productId: 304,
+      name: "크롭 트위드 자켓",
+      imageUrl: SELLER_IMG_A,
+      optionName: "아이보리/S",
+    },
     status: "SHIPPING",
+    claimStatus: null,
   },
   {
-    orderId: "20260713-0233",
-    productName: "베이직 니트 가디건",
-    productImageUrl: SELLER_IMG_B,
-    extraItemCount: 1,
-    ordererName: "임수아",
-    amount: 54000,
-    payMethod: "카드",
-    orderedAt: "07-13 16:31",
+    orderId: 233,
+    orderNo: "ORD-20260713-0233",
+    orderedAt: "2026-07-13T16:31:00+09:00",
+    recipientName: "임수아",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 54000,
+    myItemCount: 2,
+    representativeProduct: {
+      productId: 307,
+      name: "베이직 니트 가디건",
+      imageUrl: SELLER_IMG_B,
+      optionName: "그레이/M",
+    },
     status: "SHIPPING",
+    claimStatus: null,
   },
   {
-    orderId: "20260714-0261",
-    productName: "와이드 데님 팬츠",
-    productImageUrl: SELLER_IMG_B,
-    extraItemCount: 0,
-    ordererName: "한지우",
-    amount: 62000,
-    payMethod: "토스페이",
-    orderedAt: "07-14 15:22",
+    orderId: 261,
+    orderNo: "ORD-20260714-0261",
+    orderedAt: "2026-07-14T15:22:00+09:00",
+    recipientName: "한지우",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 62000,
+    myItemCount: 1,
+    representativeProduct: {
+      productId: 305,
+      name: "와이드 데님 팬츠",
+      imageUrl: SELLER_IMG_A,
+      optionName: "블랙/30",
+    },
     status: "DELIVERED",
+    claimStatus: null,
   },
   {
-    orderId: "20260713-0219",
-    productName: "린넨 셋업 자켓",
-    productImageUrl: SELLER_IMG_A,
-    extraItemCount: 0,
-    ordererName: "오예린",
-    amount: 134000,
-    payMethod: "네이버페이",
-    orderedAt: "07-13 10:12",
-    status: "DELIVERED",
-  },
-  {
-    orderId: "20260712-0198",
-    productName: "플리츠 미디 스커트",
-    productImageUrl: SELLER_IMG_B,
-    extraItemCount: 0,
-    ordererName: "최유진",
-    amount: 58000,
-    payMethod: "카카오페이",
-    orderedAt: "07-12 22:40",
+    orderId: 219,
+    orderNo: "ORD-20260713-0219",
+    orderedAt: "2026-07-13T10:12:00+09:00",
+    recipientName: "오예린",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 134000,
+    myItemCount: 1,
+    representativeProduct: {
+      productId: 308,
+      name: "린넨 셋업 자켓",
+      imageUrl: SELLER_IMG_B,
+      optionName: "베이지/M",
+    },
     status: "CONFIRMED",
+    claimStatus: null,
   },
   {
-    orderId: "20260714-0248",
-    productName: "슬림 핏 원피스",
-    productImageUrl: SELLER_IMG_A,
-    extraItemCount: 0,
-    ordererName: "송민서",
-    amount: 76000,
-    payMethod: "카드",
-    orderedAt: "07-14 11:08",
-    status: "CANCELLED",
+    orderId: 198,
+    orderNo: "ORD-20260712-0198",
+    orderedAt: "2026-07-12T22:40:00+09:00",
+    recipientName: "최유진",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 58000,
+    myItemCount: 1,
+    representativeProduct: {
+      productId: 303,
+      name: "플리츠 미디 스커트",
+      imageUrl: SELLER_IMG_A,
+      optionName: "네이비/M",
+    },
+    // 활성 취소요청 — status는 아직 ORDERED지만 claimStatus가 배지를 덮어쓴다
+    status: "ORDERED",
+    claimStatus: "CANCEL_REQUESTED",
   },
   {
-    orderId: "20260711-0187",
-    productName: "오버핏 코튼 블라우스",
-    productImageUrl: SELLER_IMG_B,
-    extraItemCount: 0,
-    ordererName: "강도현",
-    amount: 45000,
-    payMethod: "카드",
-    orderedAt: "07-11 14:20",
-    status: "RETURNED",
+    orderId: 248,
+    orderNo: "ORD-20260714-0248",
+    orderedAt: "2026-07-14T11:08:00+09:00",
+    recipientName: "송민서",
+    paymentMethod: "MOCK_CARD",
+    myItemsAmount: 76000,
+    myItemCount: 1,
+    representativeProduct: {
+      productId: 306,
+      name: "슬림 핏 원피스",
+      imageUrl: SELLER_IMG_B,
+      optionName: "핑크/S",
+    },
+    // 활성 반품요청 — 배송완료 후 반품 신청
+    status: "DELIVERED",
+    claimStatus: "RETURN_REQUESTED",
   },
 ];
+
+// 대표상태·claim을 탭 하나로 접는 규칙(계약 §탭↔상태 매핑).
+// 활성 claim이 있으면 무조건 CLAIM 탭으로 분류된다.
+function tabOf(o: SellerOrder): Exclude<SellerOrderTab, "ALL"> {
+  if (o.claimStatus) return "CLAIM";
+  switch (o.status) {
+    case "ORDERED":
+      return "ORDERED";
+    case "SHIPPING":
+      return "SHIPPING";
+    case "DELIVERED":
+    case "CONFIRMED":
+      return "DELIVERED";
+    case "CANCELLED":
+    case "RETURNED":
+      return "CLAIM";
+  }
+}
 
 const MOCK_SELLER_PRODUCTS: {
   productId: number;
@@ -308,6 +366,8 @@ function buildSummary(): SellerSummary {
       orderCount: 342,
       avgOrderValue: 36500,
       activeVisitors: 1284,
+      // 어제 데이터가 있으면 number, 없으면(어제 0 등) null → 화면은 "— 어제 대비"로 표기.
+      // null 경로를 눈으로 보려면 아래 값 중 하나를 null로 바꿔 확인.
       salesChangeRate: 8.2,
       orderCountChangeRate: 5.1,
       avgOrderValueChangeRate: 2.9,
@@ -336,38 +396,38 @@ export const sellerHandlers = [
     HttpResponse.json(ok(buildSummary())),
   ),
 
-  // 주문 목록 — 상태 탭 필터 + 페이지네이션 동작(검색·정렬은 UI만, 계약 확정 후 연결)
+  // 주문 목록(주문 단위) — 탭 필터 + 0-base 페이지네이션. tabCounts는 전량 기준.
+  // (검색 keyword는 예약 필드라 값이 와도 무시)
   http.get(`${BASE}/api/seller/orders`, ({ request }) => {
     const url = new URL(request.url);
-    const status = (url.searchParams.get("status") ?? "ALL") as
-      | SellerOrderStatus
-      | "ALL";
-    const page = Number(url.searchParams.get("page") ?? 1);
+    // status 미전송(=ALL) 또는 CLAIM 등 탭 값. 서버는 status 파라미터명을 쓴다.
+    const tab = (url.searchParams.get("status") ?? "ALL") as SellerOrderTab;
+    const page = Number(url.searchParams.get("page") ?? 0); // 0-base
+    const size = Number(url.searchParams.get("size") ?? ORDER_PAGE_SIZE);
 
     const filtered =
-      status === "ALL"
+      tab === "ALL"
         ? MOCK_SELLER_ORDERS
-        : MOCK_SELLER_ORDERS.filter((o) => o.status === status);
+        : MOCK_SELLER_ORDERS.filter((o) => tabOf(o) === tab);
 
-    const counts = { ALL: MOCK_SELLER_ORDERS.length } as Record<string, number>;
-    const STATUSES: SellerOrderStatus[] = [
-      "ORDERED",
-      "SHIPPING",
-      "DELIVERED",
-      "CONFIRMED",
-      "CANCELLED",
-      "RETURNED",
-    ];
-    for (const s of STATUSES) {
-      counts[s] = MOCK_SELLER_ORDERS.filter((o) => o.status === s).length;
-    }
+    // 탭 카운트는 필터와 무관하게 항상 전량 기준
+    const tabCounts: Record<SellerOrderTab, number> = {
+      ALL: MOCK_SELLER_ORDERS.length,
+      ORDERED: 0,
+      SHIPPING: 0,
+      DELIVERED: 0,
+      CLAIM: 0,
+    };
+    for (const o of MOCK_SELLER_ORDERS) tabCounts[tabOf(o)] += 1;
 
     return HttpResponse.json(
       ok({
-        orders: filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        content: filtered.slice(page * size, page * size + size),
+        tabCounts,
         page,
-        totalPages: Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
-        counts,
+        size,
+        totalElements: filtered.length,
+        totalPages: Math.max(1, Math.ceil(filtered.length / size)),
       }),
     );
   }),
