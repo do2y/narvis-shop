@@ -3,11 +3,12 @@ import type { ChatScreenContext } from "@/shared/types/chat";
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
   ALL: "전체",
-  NEW: "신규주문",
-  PREPARING: "배송준비",
+  ORDERED: "신규주문",
   SHIPPING: "배송중",
   DELIVERED: "배송완료",
-  CLAIM: "취소·반품",
+  CONFIRMED: "구매확정",
+  CANCELLED: "취소",
+  RETURNED: "반품",
 };
 
 const PRODUCT_TAB_LABEL: Record<string, string> = {

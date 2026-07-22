@@ -1,16 +1,13 @@
 import { http, HttpResponse } from "msw";
-import { BASE } from "../shared";
+import { BASE, ok } from "../shared";
+import type {
+  SellerOrderStatus,
+  SellerSummary,
+} from "@/pages/seller/types";
 
 // ── 판매자 페이지 목 (pages/seller/types.ts 계약) ──
 
 const PAGE_SIZE = 7;
-
-type SellerOrderStatusMock =
-  | "NEW"
-  | "PREPARING"
-  | "SHIPPING"
-  | "DELIVERED"
-  | "CLAIM";
 
 const SELLER_IMG_A =
   "https://image.msscdn.net/thumbnails/images/goods_img/20260415/6317871/6317871_17811631352969_big.jpg?w=1200";
@@ -26,7 +23,7 @@ const MOCK_SELLER_ORDERS: {
   amount: number;
   payMethod: string;
   orderedAt: string;
-  status: SellerOrderStatusMock;
+  status: SellerOrderStatus;
 }[] = [
   {
     orderId: "20260716-0342",
@@ -37,7 +34,7 @@ const MOCK_SELLER_ORDERS: {
     amount: 89000,
     payMethod: "카드",
     orderedAt: "07-16 09:42",
-    status: "NEW",
+    status: "ORDERED",
   },
   {
     orderId: "20260716-0339",
@@ -48,7 +45,7 @@ const MOCK_SELLER_ORDERS: {
     amount: 45000,
     payMethod: "네이버페이",
     orderedAt: "07-16 09:15",
-    status: "NEW",
+    status: "ORDERED",
   },
   {
     orderId: "20260716-0331",
@@ -59,18 +56,7 @@ const MOCK_SELLER_ORDERS: {
     amount: 142000,
     payMethod: "카드",
     orderedAt: "07-16 08:57",
-    status: "NEW",
-  },
-  {
-    orderId: "20260715-0318",
-    productName: "플리츠 미디 스커트",
-    productImageUrl: SELLER_IMG_B,
-    extraItemCount: 0,
-    ordererName: "최유진",
-    amount: 58000,
-    payMethod: "카카오페이",
-    orderedAt: "07-15 22:40",
-    status: "PREPARING",
+    status: "ORDERED",
   },
   {
     orderId: "20260715-0294",
@@ -81,6 +67,17 @@ const MOCK_SELLER_ORDERS: {
     amount: 128000,
     payMethod: "카드",
     orderedAt: "07-15 18:03",
+    status: "SHIPPING",
+  },
+  {
+    orderId: "20260713-0233",
+    productName: "베이직 니트 가디건",
+    productImageUrl: SELLER_IMG_B,
+    extraItemCount: 1,
+    ordererName: "임수아",
+    amount: 54000,
+    payMethod: "카드",
+    orderedAt: "07-13 16:31",
     status: "SHIPPING",
   },
   {
@@ -95,28 +92,6 @@ const MOCK_SELLER_ORDERS: {
     status: "DELIVERED",
   },
   {
-    orderId: "20260714-0248",
-    productName: "슬림 핏 원피스",
-    productImageUrl: SELLER_IMG_A,
-    extraItemCount: 0,
-    ordererName: "송민서",
-    amount: 76000,
-    payMethod: "카드",
-    orderedAt: "07-14 11:08",
-    status: "CLAIM",
-  },
-  {
-    orderId: "20260713-0233",
-    productName: "베이직 니트 가디건",
-    productImageUrl: SELLER_IMG_B,
-    extraItemCount: 1,
-    ordererName: "임수아",
-    amount: 54000,
-    payMethod: "카드",
-    orderedAt: "07-13 16:31",
-    status: "SHIPPING",
-  },
-  {
     orderId: "20260713-0219",
     productName: "린넨 셋업 자켓",
     productImageUrl: SELLER_IMG_A,
@@ -126,6 +101,39 @@ const MOCK_SELLER_ORDERS: {
     payMethod: "네이버페이",
     orderedAt: "07-13 10:12",
     status: "DELIVERED",
+  },
+  {
+    orderId: "20260712-0198",
+    productName: "플리츠 미디 스커트",
+    productImageUrl: SELLER_IMG_B,
+    extraItemCount: 0,
+    ordererName: "최유진",
+    amount: 58000,
+    payMethod: "카카오페이",
+    orderedAt: "07-12 22:40",
+    status: "CONFIRMED",
+  },
+  {
+    orderId: "20260714-0248",
+    productName: "슬림 핏 원피스",
+    productImageUrl: SELLER_IMG_A,
+    extraItemCount: 0,
+    ordererName: "송민서",
+    amount: 76000,
+    payMethod: "카드",
+    orderedAt: "07-14 11:08",
+    status: "CANCELLED",
+  },
+  {
+    orderId: "20260711-0187",
+    productName: "오버핏 코튼 블라우스",
+    productImageUrl: SELLER_IMG_B,
+    extraItemCount: 0,
+    ordererName: "강도현",
+    amount: 45000,
+    payMethod: "카드",
+    orderedAt: "07-11 14:20",
+    status: "RETURNED",
   },
 ];
 
@@ -239,96 +247,100 @@ const MOCK_SELLER_PRODUCTS: {
   },
 ];
 
-const MOCK_SELLER_DASHBOARD = {
-  todo: {
-    totalCount: 31,
-    orderSummaries: [
-      {
-        status: "NEW",
-        label: "새 주문",
-        count: 28,
-        caption: "오늘 발송 마감 18:00",
-        primary: true,
-      },
-      {
-        status: "PREPARING",
-        label: "배송 준비",
-        count: 46,
-        caption: "송장 입력 대기 12",
-      },
-      {
-        status: "SHIPPING",
-        label: "배송 중",
-        count: 173,
-        caption: "평균 배송 1.8일",
-      },
-      {
-        status: "DELIVERED",
-        label: "배송 완료",
-        count: 95,
-        caption: "오늘 기준",
-      },
-    ],
-    // 재고 부족 = 남아있지만 곧 소진될 것. 재고 0은 '품절'이라 상품 목록이 다루므로 제외
-    lowStock: MOCK_SELLER_PRODUCTS.filter(
-      (p) => p.stock > 0 && p.stock <= 10,
-    ).slice(0, 3),
-  },
-  metrics: [
-    {
-      key: "revenue",
-      label: "오늘 매출",
-      value: 12480000,
-      unit: "KRW",
-      deltaRate: 8.2,
-      caption: "어제 대비",
+// ── 대시보드 (S-1 GET /api/seller/summary, 2026-07-21 개정) ──
+// 진입 1회 호출로 전 블록을 덮는다. 상태 카운트는 주문 목록에서 도출해 정합을 맞춘다.
+const LOW_STOCK_THRESHOLD = 10;
+
+function orderStatusCounts(): Record<SellerOrderStatus, number> {
+  const counts: Record<SellerOrderStatus, number> = {
+    ORDERED: 0,
+    SHIPPING: 0,
+    DELIVERED: 0,
+    CONFIRMED: 0,
+    CANCELLED: 0,
+    RETURNED: 0,
+  };
+  for (const o of MOCK_SELLER_ORDERS) counts[o.status] += 1;
+  // 목 주문은 표본이 적어 화면 수치가 빈약하므로, 활성 상태만 데모용으로 부풀린다.
+  counts.ORDERED += 28;
+  counts.SHIPPING += 173;
+  counts.DELIVERED += 95;
+  counts.CONFIRMED += 12;
+  return counts;
+}
+
+function buildSummary(): SellerSummary {
+  const counts = orderStatusCounts();
+  const activeTotal =
+    counts.ORDERED + counts.SHIPPING + counts.DELIVERED + counts.CONFIRMED;
+
+  // 재고 부족 = 남아있지만 곧 소진될 것. 재고 0은 '품절'이라 상품 목록이 다루므로 제외. 재고 오름차순.
+  const lowStockItems = MOCK_SELLER_PRODUCTS.filter(
+    (p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD,
+  )
+    .sort((a, b) => a.stock - b.stock)
+    .map((p) => ({
+      productId: p.productId,
+      name: p.name,
+      imageUrl: p.imageUrl,
+      stockQuantity: p.stock,
+    }));
+
+  const points = [
+    { date: "2026-07-15", sales: 7120000 },
+    { date: "2026-07-16", sales: 8340000 },
+    { date: "2026-07-17", sales: 7980000 },
+    { date: "2026-07-18", sales: 9450000 },
+    { date: "2026-07-19", sales: 8870000 },
+    { date: "2026-07-20", sales: 10240000 },
+    { date: "2026-07-21", sales: 12480000 },
+  ];
+
+  return {
+    period: { from: "2026-07-21", to: "2026-07-21" },
+    orderStatus: {
+      counts,
+      activeTotal,
+      avgDeliveryDays: 1.8,
     },
-    {
-      key: "orders",
-      label: "주문 건수",
-      value: 342,
-      unit: "COUNT",
-      deltaRate: 5.1,
-      caption: "어제 대비",
+    today: {
+      sales: 12480000,
+      orderCount: 342,
+      avgOrderValue: 36500,
+      activeVisitors: 1284,
+      salesChangeRate: 8.2,
+      orderCountChangeRate: 5.1,
+      avgOrderValueChangeRate: 2.9,
     },
-    {
-      key: "aov",
-      label: "객단가",
-      value: 36500,
-      unit: "KRW",
-      deltaRate: 2.9,
-      caption: "어제 대비",
+    salesTrend: {
+      total: points.reduce((sum, p) => sum + p.sales, 0),
+      points,
     },
-    {
-      key: "visitors",
-      label: "실시간 방문자",
-      value: 1284,
-      unit: "COUNT",
-      caption: "활성 세션 417",
+    lowStock: {
+      threshold: LOW_STOCK_THRESHOLD,
+      count: lowStockItems.length,
+      items: lowStockItems,
     },
-  ],
-  revenueTrend: [
-    { x: "월", y: 7120000 },
-    { x: "화", y: 8340000 },
-    { x: "수", y: 7980000 },
-    { x: "목", y: 9450000 },
-    { x: "금", y: 8870000 },
-    { x: "토", y: 10240000 },
-    { x: "일", y: 12480000 },
-  ],
-  aiRevenue: { amount: 3270000, deltaRate: 11.4, contributionRate: 26.2 },
-};
+    products: MOCK_SELLER_PRODUCTS.map((p) => ({
+      productId: p.productId,
+      name: p.name,
+      viewCount: p.salesCount * 25,
+      cartCount: Math.round(p.salesCount * 1.5),
+      salesCount: p.salesCount,
+    })),
+  };
+}
 
 export const sellerHandlers = [
-  http.get(`${BASE}/api/seller/dashboard`, () =>
-    HttpResponse.json(MOCK_SELLER_DASHBOARD),
+  http.get(`${BASE}/api/seller/summary`, () =>
+    HttpResponse.json(ok(buildSummary())),
   ),
 
   // 주문 목록 — 상태 탭 필터 + 페이지네이션 동작(검색·정렬은 UI만, 계약 확정 후 연결)
   http.get(`${BASE}/api/seller/orders`, ({ request }) => {
     const url = new URL(request.url);
     const status = (url.searchParams.get("status") ?? "ALL") as
-      | SellerOrderStatusMock
+      | SellerOrderStatus
       | "ALL";
     const page = Number(url.searchParams.get("page") ?? 1);
 
@@ -338,16 +350,26 @@ export const sellerHandlers = [
         : MOCK_SELLER_ORDERS.filter((o) => o.status === status);
 
     const counts = { ALL: MOCK_SELLER_ORDERS.length } as Record<string, number>;
-    for (const s of ["NEW", "PREPARING", "SHIPPING", "DELIVERED", "CLAIM"]) {
+    const STATUSES: SellerOrderStatus[] = [
+      "ORDERED",
+      "SHIPPING",
+      "DELIVERED",
+      "CONFIRMED",
+      "CANCELLED",
+      "RETURNED",
+    ];
+    for (const s of STATUSES) {
       counts[s] = MOCK_SELLER_ORDERS.filter((o) => o.status === s).length;
     }
 
-    return HttpResponse.json({
-      orders: filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-      page,
-      totalPages: Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
-      counts,
-    });
+    return HttpResponse.json(
+      ok({
+        orders: filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        page,
+        totalPages: Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
+        counts,
+      }),
+    );
   }),
 
   // 상품 목록 — 상태 탭 필터 + 페이지네이션 동작
@@ -361,19 +383,21 @@ export const sellerHandlers = [
         ? MOCK_SELLER_PRODUCTS
         : MOCK_SELLER_PRODUCTS.filter((p) => p.status === tab);
 
-    return HttpResponse.json({
-      products: filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-      page,
-      totalPages: Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
-      counts: {
-        ALL: MOCK_SELLER_PRODUCTS.length,
-        ON_SALE: MOCK_SELLER_PRODUCTS.filter((p) => p.status === "ON_SALE")
-          .length,
-        SOLD_OUT: MOCK_SELLER_PRODUCTS.filter((p) => p.status === "SOLD_OUT")
-          .length,
-        HIDDEN: MOCK_SELLER_PRODUCTS.filter((p) => p.status === "HIDDEN")
-          .length,
-      },
-    });
+    return HttpResponse.json(
+      ok({
+        products: filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        page,
+        totalPages: Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
+        counts: {
+          ALL: MOCK_SELLER_PRODUCTS.length,
+          ON_SALE: MOCK_SELLER_PRODUCTS.filter((p) => p.status === "ON_SALE")
+            .length,
+          SOLD_OUT: MOCK_SELLER_PRODUCTS.filter((p) => p.status === "SOLD_OUT")
+            .length,
+          HIDDEN: MOCK_SELLER_PRODUCTS.filter((p) => p.status === "HIDDEN")
+            .length,
+        },
+      }),
+    );
   }),
 ];

@@ -10,29 +10,33 @@ import { Pagination } from "./components/Pagination";
 
 type Tab = SellerOrderStatus | "ALL";
 
+// order_item.status 정본 6종 (2026-07-21). PREPARING·교환 어휘는 삭제됨.
 const TABS: { key: Tab; label: string; alert?: boolean }[] = [
   { key: "ALL", label: "전체" },
-  { key: "NEW", label: "신규주문" },
-  { key: "PREPARING", label: "배송준비" },
+  { key: "ORDERED", label: "신규주문" },
   { key: "SHIPPING", label: "배송중" },
   { key: "DELIVERED", label: "배송완료" },
-  { key: "CLAIM", label: "취소·반품", alert: true },
+  { key: "CONFIRMED", label: "구매확정" },
+  { key: "CANCELLED", label: "취소", alert: true },
+  { key: "RETURNED", label: "반품", alert: true },
 ];
 
 const STATUS_LABEL: Record<SellerOrderStatus, string> = {
-  NEW: "신규주문",
-  PREPARING: "배송준비",
+  ORDERED: "신규주문",
   SHIPPING: "배송중",
   DELIVERED: "배송완료",
-  CLAIM: "반품요청",
+  CONFIRMED: "구매확정",
+  CANCELLED: "취소",
+  RETURNED: "반품",
 };
 
 const STATUS_CLASS: Record<SellerOrderStatus, string> = {
-  NEW: "bg-foreground text-background",
-  PREPARING: "bg-muted text-foreground",
+  ORDERED: "bg-foreground text-background",
   SHIPPING: "bg-brand/10 text-brand",
   DELIVERED: "bg-muted text-muted-foreground",
-  CLAIM: "bg-destructive/10 text-destructive",
+  CONFIRMED: "bg-muted text-foreground",
+  CANCELLED: "bg-destructive/10 text-destructive",
+  RETURNED: "bg-destructive/10 text-destructive",
 };
 
 export default function OrdersPage() {

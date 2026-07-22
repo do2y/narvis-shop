@@ -1,39 +1,79 @@
 /** 판매자 페이지 API 계약 — 백엔드 확정 전까지 mocks/handlers.ts와 1:1 */
-import type { SellerMetric, SellerProductStat } from "@/shared/types/chat";
+import type { SellerProductStat } from "@/shared/types/chat";
 
-// ── 대시보드 ──
+// ── 대시보드 (S-1 GET /api/seller/summary, 2026-07-21 개정) ──
+//
+// 대시보드 진입 1회 호출로 전 블록을 덮는다(별도 엔드포인트로 분리하지 않음).
+// brandId는 서버가 JWT의 memberId에서 도출 — 클라이언트는 보내지 않는다(IDOR 방지).
 
-export interface SellerOrderSummary {
-  status: SellerOrderStatus;
-  label: string;
-  count: number;
-  caption: string;
-  primary?: boolean; // 강조 카드(새 주문 등)
+export interface SellerSummaryParams {
+  from?: string; // YYYY-MM-DD, 생략 시 서버가 오늘로
+  to?: string;
+  lowStockThreshold?: number; // 기본 10, 1~999
+  trendDays?: number; // 기본 7, 1~90
 }
 
-export interface SellerDashboard {
-  todo: {
-    totalCount: number;
-    orderSummaries: SellerOrderSummary[];
-    lowStock: SellerProductStat[];
+/** 재고 부족 목록의 한 행 — 상품 목록(SellerProductStat)보다 필드가 적다 */
+export interface SellerLowStockItem {
+  productId: number;
+  name: string;
+  imageUrl: string;
+  stockQuantity: number;
+}
+
+export interface SellerSummary {
+  period: { from: string; to: string };
+
+  orderStatus: {
+    counts: Record<SellerOrderStatus, number>;
+    activeTotal: number; // CANCELLED·RETURNED 제외 합계
+    avgDeliveryDays: number;
   };
-  metrics: SellerMetric[];
-  revenueTrend: { x: string; y: number }[];
-  aiRevenue: {
-    amount: number;
-    deltaRate: number;
-    contributionRate: number; // AI 추천 매출 기여도(%)
+
+  today: {
+    sales: number;
+    orderCount: number;
+    avgOrderValue: number;
+    activeVisitors: number;
+    // 어제가 0이면 null — 화면은 "—"로 표기한다(0%와 구분)
+    salesChangeRate: number | null;
+    orderCountChangeRate: number | null;
+    avgOrderValueChangeRate: number | null;
   };
+
+  salesTrend: {
+    total: number;
+    points: { date: string; sales: number }[];
+  };
+
+  lowStock: {
+    threshold: number;
+    count: number; // items는 상위 일부만 올 수 있어 전체 수는 이 값을 쓴다
+    items: SellerLowStockItem[];
+  };
+
+  // 화면에는 쓰지 않는다 — AI 채팅·타 화면이 소비하는 상품 퍼널 데이터
+  products: {
+    productId: number;
+    name: string;
+    viewCount: number;
+    cartCount: number;
+    salesCount: number;
+  }[];
 }
 
 // ── 주문 ──
 
+// order_item.status 정본 6종 (I-19와 동일 어휘, 교환 없음).
+// PREPARING은 enum에 없어 2026-07-21자로 화면·탭에서 삭제됨 —
+// 운송장 컬럼이 DDL에 없어 "배송 준비/송장 대기"를 산출할 수 없다.
 export type SellerOrderStatus =
-  | "NEW"
-  | "PREPARING"
+  | "ORDERED"
   | "SHIPPING"
   | "DELIVERED"
-  | "CLAIM";
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "RETURNED";
 
 export interface SellerOrder {
   orderId: string;
