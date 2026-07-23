@@ -66,6 +66,7 @@ export function useChat({
     setStreaming,
     setLane,
     setProgress,
+    setAnalysisReport,
     reset,
   } = useChatStore();
 
@@ -104,6 +105,7 @@ export function useChat({
       setStreaming(true);
       setLane(null);
       setProgress(null);
+      // 이전 리포트는 유지(새 스트림이 analysis+replace로 끝날 때만 교체) — done에서 갱신
 
       // 한 응답 안에서 여러 결과 이벤트가 올 수 있다. 첫 결과가 도착할 때
       // 이전 턴의 결과를 비우고, 그 뒤부터는 누적한다.
@@ -134,6 +136,8 @@ export function useChat({
               case "meta":
                 // 첫 프레임 — 레인으로 즉시 레이아웃·로딩 준비
                 setLane(e.data.lane);
+                // 새 분석이 시작되면 이전 리포트를 비운다(스켈레톤부터 다시 시작)
+                if (e.data.lane === "analysis") setAnalysisReport(null);
                 break;
               case "progress":
                 // 분석 진행 상태(최종 답변 아님)
@@ -181,10 +185,20 @@ export function useChat({
                 onActionRef.current?.(action);
                 break;
               }
-              case "done":
+              case "done": {
                 setProgress(null);
+                // 분석 리포트(analysis+replace)는 우측 패널로 교체된다. 계약상 리포트는
+                // 단일 token이라 마지막 assistant 텍스트를 그대로 리포트 본문으로 승계한다.
+                const st = useChatStore.getState();
+                if (st.lane === "analysis" && e.data.panel === "replace") {
+                  const last = st.messages[st.messages.length - 1];
+                  if (last?.role === "assistant" && last.text) {
+                    setAnalysisReport(last.text);
+                  }
+                }
                 onDoneRef.current?.(e.data.panel);
                 break;
+              }
               case "error":
                 failLastAssistant(e.data.message);
                 break;
@@ -212,6 +226,7 @@ export function useChat({
       setStreaming,
       setLane,
       setProgress,
+      setAnalysisReport,
     ],
   );
 
