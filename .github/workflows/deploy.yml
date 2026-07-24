@@ -1,0 +1,88 @@
+name: Jarvis Frontend CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # Actions 탭에서 수동 실행 가능
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}   # ghcr.io/toss-delta-final/jarvis-frontend
+
+jobs:
+  # 1단계: 이미지 빌드 — EC2 대신 러너에서 빌드 (타입체크/린트는 ci.yml이 담당)
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # GHCR 푸시에 필요
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # 자동 발급 토큰, 별도 등록 불필요
+
+      # latest + 커밋 해시 태그 (해시 태그는 롤백 시 사용)
+      - name: 이미지 빌드 및 푸시
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max   # 레이어 캐시로 빌드 가속
+
+  # 2단계: 자동 배포 (CD) — 1호기 완료 후 2호기 순차 진행
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read   # EC2에서 GHCR pull 시 필요
+    strategy:
+      max-parallel: 1   # 동시 배포 금지 — 최소 1대는 항상 살아있게
+      fail-fast: true   # 1호기 실패 시 2호기 중단
+      matrix:
+        server: [EC2_HOST, EC2_HOST_2]
+    steps:
+      - name: EC2 무중단 배포
+        uses: appleboy/ssh-action@v1.0.3   # 버전 고정 — @master는 예고 없이 깨짐
+        with:
+          host: ${{ secrets[matrix.server] }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 10m
+          command_timeout: 10m
+          script: |
+            set -e   # 명령 하나라도 실패하면 뒤 단계 실행 안 함
+
+            # 1. [무중단 최적화] 기존 컨테이너 유지한 채 새 이미지 먼저 받아 대기
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.IMAGE }}:${{ github.sha }}
+
+            # 2. [충돌 원천 차단] 실행 직전 기존 컨테이너 중지 및 강제 삭제
+            docker stop jarvis-frontend || true
+            docker rm -f jarvis-frontend || true
+
+            # 3. 새 컨테이너 가동 (network host — nginx가 localhost:8080의 Spring으로 프록시)
+            docker run -d \
+              --name jarvis-frontend \
+              --restart always \
+              --network host \
+              ${{ env.IMAGE }}:${{ github.sha }}
+
+            # 4. 헬스체크 — 최대 30초 대기 후 실패 시 로그 출력하고 배포 실패 처리
+            for i in $(seq 1 15); do
+              if curl -fs http://localhost/healthz > /dev/null; then
+                docker image prune -f
+                exit 0
+              fi
+              sleep 2
+            done
+            docker logs --tail 50 jarvis-frontend
+            exit 1
