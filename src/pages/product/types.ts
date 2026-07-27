@@ -6,6 +6,11 @@ export interface ProductOption {
   extraPrice: number; // 옵션 추가금. 선택 시 단가 = price + extraPrice
 }
 
+// attributes 맵의 값. 백엔드가 필드마다 다른 모양을 넣는다(문자열/null/배열/메타 객체).
+// 객체 케이스를 unknown으로 두어 그대로 렌더하면 컴파일 에러가 나게 한다
+// — 이전에 React error #31로 상세 페이지가 통째로 죽은 원인.
+export type ProductAttributeValue = string | string[] | null | Record<string, unknown>;
+
 export interface ProductBrand {
   id: number;
   name: string;
@@ -55,7 +60,11 @@ export interface ProductDetail {
   originalPrice: number; // 정가
   summary: string;
   description: string;
-  attributes: Record<string, string>; // { "소재": "린넨", "핏": "오버핏" }
+  // 상품 속성. 값 타입이 섞여 온다:
+  //   문자열 "신축성있음" / null(값 없음) / 배열 ["S","M","L"](옵션 축 후보값)
+  //   / 객체 { axes, option_count, source }("옵션구성" — 표시용이 아닌 내부 메타데이터)
+  // 표시 가능한 것만 골라내는 책임은 toSpecRows(utils/attributes.ts)에 있다.
+  attributes: Record<string, ProductAttributeValue>;
   options: ProductOption[];
   brand: ProductBrand;
   category: ProductCategory;
