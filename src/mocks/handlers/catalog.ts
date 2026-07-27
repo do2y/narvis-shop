@@ -296,7 +296,14 @@ export const catalogHandlers = [
         status: "ON_SALE",
         summary: `${base.name} 상품 요약`,
         description: "<p>상세 설명</p>",
-        attributes: { 소재: "코튼 100%", 핏: "오버핏" },
+        // 실제 백엔드는 값 모양이 섞여 온다 — 문자열/null/배열/메타 객체.
+        // 목도 같은 모양으로 두어야 표시 필터링이 dev에서 검증된다.
+        attributes: {
+          소재: null,
+          핏: "오버핏",
+          사이즈: ["S", "M", "L", "XL"],
+          옵션구성: { axes: ["색상", "사이즈"], option_count: 49, source: "smart_option" },
+        },
         category: { id: 1, name: "패션" },
         brand: { id: 1, name: base.brandName, logoUrl: base.imageUrl },
         options: MOCK_PRODUCT_OPTIONS,

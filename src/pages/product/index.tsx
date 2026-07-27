@@ -26,6 +26,7 @@ import { SpecTable } from "./components/SpecTable";
 import { ReviewSummary } from "./components/ReviewSummary";
 import { RecommendRow } from "./components/RecommendRow";
 import { PLACEHOLDER_DETAIL } from "./placeholder";
+import { toSpecRows } from "./utils/attributes";
 import {
   useProductDetail,
   useProductReviews,
@@ -143,13 +144,9 @@ export default function ProductPage() {
   const d = PLACEHOLDER_DETAIL;
   const images = [view.imageUrl];
 
-  // attributes({ "소재": "린넨" })를 스펙 표 행으로 변환. 상세 도착 전에는 빈 표.
-  const specRows = detail
-    ? Object.entries(detail.attributes).map(([label, value]) => ({
-        label,
-        value,
-      }))
-    : [];
+  // attributes를 스펙 표 행으로 변환. 상세 도착 전에는 빈 표.
+  // 값 모양이 섞여 오므로(문자열/null/배열/메타 객체) 표시 가능한 것만 남긴다.
+  const specRows = toSpecRows(detail?.attributes);
 
   // HIDDEN·품절 상품도 200으로 조회된다(직링크·찜 목록 대응) → purchasable로 구매 차단.
   // 상세 도착 전(시딩 렌더)에는 아직 알 수 없으므로 구매 가능으로 둔다.
