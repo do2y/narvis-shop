@@ -48,7 +48,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       birthDate: v.birthDate,
       agreeTerms: v.agreeTerms,
       agreePrivacy: v.agreePrivacy,
-      // guestId는 게스트 승계 로직 붙을 때 연결 (옵셔널)
+      // 게스트 승계는 guest_id 쿠키로 서버가 처리 — body에 넣을 값 없음
     }),
   );
 

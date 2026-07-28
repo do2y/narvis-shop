@@ -8,10 +8,13 @@ export interface AuthResponse {
   member: AuthUser;
 }
 
+// 게스트 승계(장바구니 병합·행동이벤트 백필)는 body가 아니라 guest_id 쿠키로 처리된다.
+// guest_id는 HttpOnly라 FE가 읽을 수 없고, 서버가 요청 쿠키에서 직접 취한다
+// (E-1과 동일 원칙: 신원은 서버 주입, body의 신원 주장은 무시).
+// FE는 client.ts의 withCredentials로 쿠키가 실리는 것만 보장하면 된다.
 export interface LoginRequest {
   email: string;
   password: string;
-  guestId?: string; // 게스트 승계용 UUID (장바구니 병합·이벤트 이관, 있을 때만 전송)
 }
 
 export interface SignupRequest {
@@ -22,7 +25,6 @@ export interface SignupRequest {
   birthDate: string; // YYYY-MM-DD
   agreeTerms: boolean;
   agreePrivacy: boolean;
-  guestId?: string; // 게스트 승계용 UUID (있을 때만 전송)
 }
 
 // 인터셉터가 봉투를 벗겨 data(=AuthResponse)를 res.data로 넣어줌
