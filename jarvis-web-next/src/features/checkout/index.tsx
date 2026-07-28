@@ -11,7 +11,6 @@ import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
 import type { Address, AddressInput } from "@/shared/types/address";
 import type {
-  CheckoutState,
   CreateOrderRequest,
   OrderCompleteState,
   PaymentMethod,
@@ -28,6 +27,7 @@ import { AddressFormModal } from "@/shared/address/AddressFormModal";
 import { PaymentSection } from "./components/PaymentSection";
 import { OrderSummary } from "./components/OrderSummary";
 import {
+  clearCheckoutState,
   getCheckoutState,
   setOrderCompleteState,
 } from "@/shared/utils/checkoutHandoff";
@@ -190,6 +190,9 @@ export default function CheckoutPage() {
             finalTotal: itemsTotal - discount,
           },
         });
+        // 주문이 성사됐으니 결제 항목을 비운다 — 남겨두면 나중에 /checkout에 직접
+        // 들어왔을 때 이미 산 상품이 다시 떠서 재결제 가능한 것처럼 보인다.
+        clearCheckoutState();
         // 결제 화면이 히스토리에 남으면 뒤로가기로 재결제되므로 replace (원본과 동일).
         router.replace("/checkout/complete");
       } catch {
@@ -250,6 +253,7 @@ export default function CheckoutPage() {
 
       // replace로 이동 — 뒤로가기로 결제 화면에 돌아와 중복 결제하는 것을 막는다.
       setOrderCompleteState<OrderCompleteState>({ order });
+      clearCheckoutState();
       router.replace("/checkout/complete");
     } catch {
       // 요청 거부(검증·권한 등)는 createOrder.errorMessage로 안내된다.
