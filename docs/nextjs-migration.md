@@ -1,7 +1,8 @@
 # Next.js 마이그레이션 계획
 
-> 작성 2026-07-28 · 상태: 1단계 진행 예정
+> 작성 2026-07-28 · **상태: 1단계 완료(커밋 f32eb9e), 2단계 착수 가능**
 > 배경 결정은 CLAUDE.md와 `docs/auth-token-strategy.md` 참조
+> 작업 폴더: `jarvis-web-next/` (Next 16.2.12). 그 폴더의 CLAUDE.md에 이식 규칙 정리됨
 
 ## 1. 목표와 비목표
 
@@ -108,7 +109,23 @@ router.push("/checkout");
     - **`export const dynamic = 'force-dynamic'`** — 프록시 응답이 캐시되면 안 됨
     - set-cookie는 **복수 개 대응** — AT 갱신+RT 재발급이 동시에 오면 헤더가 여러 개임. `headers.get()`은 합쳐버리므로 `getSetCookie()`로 다뤄야 dev 재작성 분기가 안전함
 - dev 포트는 3000 고정 유지 (백엔드 CORS가 `http://localhost:3000`만 허용)
-- 게이트: ① 빈 페이지·헤더 렌더 ② **로그인 → 새로고침 → 세션 복원** 동작 ③ **챗봇 스트리밍이 프록시 경로에서 토큰 단위로 도착** — dev만으로는 불충분, **로컬 `next build && next start`로도 확인**(prod는 `compress: true`가 기본이라 dev에서 안 보이는 버퍼링이 생길 수 있음. 한 덩어리로 오면 실패)
+- 게이트: ① 빈 페이지·헤더 렌더 ② **로그인 → 새로고침 → 세션 복원** 동작 ③ **챗 세션 발급 → AI 서버 직통 스트리밍** 정상 동작 (dev + `next build && next start` 양쪽)
+
+#### ✅ 1단계 완료 (2026-07-28, 커밋 f32eb9e)
+
+| 검증 항목 | 결과 |
+|---|---|
+| `npm run build` | 통과 (타입 검사 포함, 경고 0) |
+| 홈 SSR | 서버 렌더 HTML에 헤더(로고·로그인·시작하기)·본문 포함 확인 |
+| `/healthz` | 200 `text/plain` |
+| 보안 헤더 4종 | nginx → `next.config.ts` 이관 확인 |
+| 프록시 GET | `/api/categories` 200 + 실데이터 (`server: nginx` 헤더로 백엔드 도달 확증) |
+| 프록시 POST | `/api/auth/refresh` 401 `AUTH_REQUIRED` (메서드·body 전달 정상) |
+| **쿠키 재작성** | **dev에서 `Secure` 제거 확인 / prod에서 `Secure` 유지 확인** — 환경 분기 정상 |
+| 챗 세션 발급 | `sessionId`·`streamTicket`·`llmSseUrl` 정상 수신 |
+| 원본 무변경 | `git status src/` 0건 |
+
+미검증(브라우저 필요): 실제 로그인 폼 제출 → 새로고침 세션 복원 UI 흐름. 4단계에서 auth 페이지 이식 후 확인.
 
 ### 2단계 — 상품 상세 SSR (SEO 1순위)
 - `app/products/[productId]/page.tsx` — 서버 컴포넌트에서 상품 데이터 호출 (1단계에서 분리한 서버 fetch 헬퍼 사용)
