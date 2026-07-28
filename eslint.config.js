@@ -6,7 +6,10 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // jarvis-web-next: 이전 중인 Next 앱. 자체 eslint 설정·의존성을 갖고 있어
+  // 여기서 훑으면 eslint-config-next를 못 찾아 CI가 깨진다(그쪽은 ci.yml의
+  // check-next 잡이 별도로 검사한다). 레포 교체 시 이 무시 규칙도 제거.
+  globalIgnores(['dist', 'jarvis-web-next']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

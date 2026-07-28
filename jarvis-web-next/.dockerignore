@@ -1,0 +1,11 @@
+# 빌드 컨텍스트에서 제외 — 전송 시간 단축 + 비밀값 유입 차단
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+npm-debug.log*
+Dockerfile
+.dockerignore
+README.md
