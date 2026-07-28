@@ -136,6 +136,22 @@ const MOCK_RECENT_PRODUCTS: RecentProduct[] = [
   },
 ];
 
+// 인기상품(P-4)·개인화 추천(P-5) 카드 응답 형태.
+// 픽스처의 purchasable·stock은 상세(P-2)·담기(C-2)·찜(W-2) 목이 쓰는 내부 필드라
+// 픽스처에는 남기되, 카드 계약(home/types.ts PopularProduct)에는 없으므로 응답에서 뺀다.
+function toPopularCard(p: (typeof POPULAR_PRODUCTS)[number]) {
+  return {
+    productId: p.productId,
+    name: p.name,
+    brandName: p.brandName,
+    imageUrl: p.imageUrl,
+    price: p.price,
+    originalPrice: p.originalPrice,
+    rating: p.rating,
+    reviewCount: p.reviewCount,
+  };
+}
+
 // ⚠ 등록 순서 주의: /api/products/popular·recommended·recent 같은 고정 경로는
 // /api/products/:productId 캐치올보다 먼저 있어야 한다(뒤에 두면 상세로 잡혀 404).
 export const catalogHandlers = [
@@ -198,7 +214,10 @@ export const catalogHandlers = [
       );
     }
     // API 명세: { success, data: { items: [...] } }
-    return HttpResponse.json(ok({ items: POPULAR_PRODUCTS.slice(0, size) }));
+    // purchasable·stock은 P-4 계약에 없다(픽스처 내부 필드) → 응답에서 제외.
+    return HttpResponse.json(
+      ok({ items: POPULAR_PRODUCTS.slice(0, size).map(toPopularCard) }),
+    );
   }),
 
   // 상품 후기 (P-3) — distribution은 페이지와 무관한 전체 별점 분포.
@@ -259,7 +278,9 @@ export const catalogHandlers = [
       });
     }
     // 인기상품과 다른 셋임을 눈으로 구분하려고 뒤에서부터 4개
-    return HttpResponse.json(ok({ items: POPULAR_PRODUCTS.slice(-4) }));
+    return HttpResponse.json(
+      ok({ items: POPULAR_PRODUCTS.slice(-4).map(toPopularCard) }),
+    );
   }),
 
   // 최근 본 상품 — 로그인 필요. behavior_events의 product_view 기반(중복 제거 후 최신 20개).
