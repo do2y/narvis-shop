@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useSyncExternalStore } from "react";
+import { hashKey, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SeededProductCard } from "@/shared/types/product";
 import { fetchProductDetail, fetchProductReviews } from "./api";
 import type { ProductReviewPage, ReviewSort } from "./types";
@@ -48,15 +49,34 @@ export function useProductReviews(
 }
 
 // 카드 시딩 데이터 — 상세 도착 전 즉시 렌더용(캐시 승계).
-// queryFn이 없어 네트워크 요청을 만들지 않고, 시딩된 값이 있으면 그것만 읽는다.
-// 시딩은 useGoToProduct(shared/hooks)만 거치므로 값은 항상 SeededProductCard 완전체다.
-// enabled: false — 이 쿼리는 캐시만 읽는 용도라 자동 실행하지 않는다. 끄지 않으면
-// 시딩 없이 진입(새 탭·URL 직접)할 때 queryFn 부재 경고가 매 마운트마다 찍힌다.
+// 시딩은 useGoToProduct(shared/hooks)가 setQueryData로 심으므로, 여기서는 그 값을 읽기만 한다.
+// 시딩값은 항상 SeededProductCard 완전체다(useGoToProduct가 타입으로 강제).
 // 캐시에 시딩값이 있으면 그대로 읽고, 없으면 undefined → 상세 API가 정본을 채운다.
-export function useSeededProductCard(id: number) {
-  return useQuery<SeededProductCard>({
-    queryKey: ["products", id],
-    enabled: false,
-    staleTime: FIVE_MIN,
-  });
+//
+// useQuery가 아니라 useQueryClient + 구독을 쓰는 이유:
+// 이 쿼리는 네트워크 요청이 없어 queryFn을 줄 수 없는데, useQuery는 enabled:false여도
+// queryFn 부재를 에러로 본다(시딩 없이 URL 직접 진입·새 탭 열기에서 콘솔 에러).
+// "캐시를 읽고 변화를 구독한다"는 실제 의도를 그대로 표현하면 그 문제가 사라진다.
+export function useSeededProductCard(id: number): {
+  data: SeededProductCard | undefined;
+} {
+  const queryClient = useQueryClient();
+  // id가 같으면 같은 참조를 유지해야 한다 — useSyncExternalStore는 subscribe가 바뀌면
+  // 구독을 해제하고 다시 건다. 매 렌더 새 함수를 주면 그 일이 반복된다.
+  const hash = hashKey(["products", id]);
+
+  const subscribe = useCallback(
+    (onChange: () => void) =>
+      queryClient.getQueryCache().subscribe((event) => {
+        if (event.query.queryHash === hash) onChange();
+      }),
+    [queryClient, hash],
+  );
+
+  const getSnapshot = useCallback(
+    () => queryClient.getQueryData<SeededProductCard>(["products", id]),
+    [queryClient, id],
+  );
+
+  return { data: useSyncExternalStore(subscribe, getSnapshot) };
 }
