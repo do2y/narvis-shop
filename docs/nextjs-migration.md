@@ -1,6 +1,6 @@
 # Next.js 마이그레이션 계획
 
-> 작성 2026-07-28 · **상태: 1~3단계 완료 — SEO/OG 목표 달성. 남은 것은 4단계(나머지 페이지 클라이언트 이식)·5단계(배포 전환)**
+> 작성 2026-07-28 · **상태: 1~4단계 완료 — 전 페이지 이식 + SEO/OG 달성. 남은 것은 5단계(배포 전환)**
 > 배경 결정은 CLAUDE.md와 `docs/auth-token-strategy.md` 참조
 > 작업 폴더: `jarvis-web-next/` (Next 16.2.12). 그 폴더의 CLAUDE.md에 이식 규칙 정리됨
 
@@ -208,6 +208,36 @@ SSR 없이 `'use client'`로 그대로 옮김. 라우터 훅 치환이 작업의
 | `/seller/*` | MEMBER 접근 차단, 대시보드 로드, 셀러 챗 SSE(직통 경로) |
 | `/admin/*` | 비ADMIN 접근 차단 |
 | 공통 | 새로고침 세션 복원, 판매자의 구매자 라우트 접근 → `/seller` 격리 |
+
+#### ✅ 4단계 완료 (2026-07-28)
+
+| 검증 항목 | 결과 |
+|---|---|
+| `npm run build` | 통과. **24개 라우트 전부 등록** |
+| 전 라우트 응답 | 24/24 HTTP 200 |
+| SSR 본문 | `/login` 17.6KB(email·password 입력 포함) · `/signup` 23.2KB · `/chat` 16.1KB(input+placeholder) · `/cart` 16.2KB |
+| **가드 동작** | 비로그인 시 `/mypage/orders`·`/checkout`·`/seller`·`/admin` 모두 본문 요소 0 (리다이렉트 대기) / 공개 라우트는 16KB 완전 렌더 |
+| react-router 의존 | **0** (설명 주석 2곳만 잔존) |
+| 원본 무변경 | `git status src/` 0건 |
+
+**구조 변환**
+- `/mypage/*` splat → `app/mypage/{orders,orders/[orderId],reviews/new,claims,recent,wishlist,addresses,inquiries}` + `layout.tsx`(RequireAuth + 셸)
+- `/seller/*` splat → `app/seller/(shell)/{,orders,products}` + `app/seller/chat`. **라우트 그룹 `(shell)`** 로 원본의 "chat만 셸 밖" 구조를 그대로 표현
+- 가드는 `Outlet` → `children` 형태로 변환(`shared/auth/guards.tsx`). 리다이렉트는 렌더 중이 아니라 이펙트에서 `router.replace` — Next는 렌더 중 내비게이션에 경고를 냄
+- `BlockSeller`는 경로 판정 방식(`shared/auth/SellerIsolation.tsx`)으로 루트에 배치. 라우트 그룹으로 구매자 라우트를 전부 이동하는 건 1:1 범위를 넘는 구조 변경이라 회피
+
+**⚠️ Suspense 경계는 최소 범위로 (실측으로 배운 것)**
+`useSearchParams`를 쓰는 컴포넌트는 Suspense 경계에 묶이고, **그 경계 안 전체가 SSR에서 비워진다.** 처음에 페이지 껍데기째 감쌌더니 `/login`이 9KB(헤더만)로 나왔다. 쿼리값이 **렌더에 필요 없고 이벤트/이펙트 시점에만 필요하면** `useSearchParams` 대신 `window.location.search`를 그 시점에 읽어 경계 자체를 없앤다:
+- `useAuthForm`(returnUrl) → 제출 콜백에서 읽기 → `/login` 9KB→17.6KB
+- `chat`(`?q=`) → 마운트 이펙트에서 읽기
+- `guards`(returnUrl) → 리다이렉트 시점에 읽기 (가드는 화면 전체를 감싸므로 특히 중요)
+
+렌더 중 실제로 쿼리가 필요한 곳(브랜드 필터·리뷰 대상·셀러 페이지네이션)에만 Suspense를 남겼다.
+
+**부수 정리**
+- `useQueryParams`(shared/hooks) 신설 — 원본 `[params, setParams] = useSearchParams()` 쓰기 패턴 대체(셀러 3개 화면). 계획서 초안의 "12곳 전부 읽기 전용" 실측은 shared 기준이었고, 페이지 코드에는 쓰기 패턴이 있었음
+- `navigate(path, {replace:true})` → `router.replace(path)` (Next에 replace 옵션 없음)
+- 죽은 파일 제거: `features/{mypage,seller}/index.tsx`(구 내부 라우터, App Router가 대체)
 
 ### 5단계 — 배포 전환
 `Dockerfile` 런타임 스테이지만 교체함. `.github/workflows/deploy.yml`(GHCR 푸시 → EC2 배포)은 **변경 없음**.

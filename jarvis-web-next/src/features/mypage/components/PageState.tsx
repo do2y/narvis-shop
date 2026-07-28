@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import type { LucideIcon } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";

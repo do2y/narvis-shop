@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useRestoreSession } from "@/shared/hooks/useRestoreSession";
+import { SellerIsolation } from "@/shared/auth/SellerIsolation";
 
 // AT는 메모리에만 두므로 새로고침 시 RT 쿠키로 세션을 복원한다(원본 App.tsx와 동일 역할).
 function SessionRestorer() {
@@ -19,7 +20,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SessionRestorer />
-      {children}
+      {/* 판매자 격리(원본 BlockSeller) */}
+      <SellerIsolation>{children}</SellerIsolation>
     </QueryClientProvider>
   );
 }

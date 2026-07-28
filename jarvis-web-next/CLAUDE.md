@@ -61,7 +61,16 @@
 - `<Link to>` → `<Link href>` (`next/link`)
 - `NavLink` + `isActive` → `usePathname()`으로 직접 판정
 - `useLocation().pathname` → `usePathname()` / `.search` → `useSearchParams()`
-- `useSearchParams`는 **읽기 전용**이고 배열이 아니다. 쓰는 클라이언트 컴포넌트는 **Suspense 경계 필요**
+- `useSearchParams`는 **읽기 전용**이고 배열이 아니다. 쓰기가 필요하면 `useQueryParams`(shared/hooks) 사용
+- `navigate(path, { replace: true })` → `router.replace(path)` (Next에 replace 옵션 없음)
+
+### ⚠️ `useSearchParams`와 Suspense — SSR을 죽이는 함정
+그 훅을 쓰는 컴포넌트는 Suspense 경계에 묶이고, **경계 안 전체가 SSR에서 빈 HTML로 나간다.** 페이지 껍데기째 감싸면 헤더까지 사라진다(실제로 `/login`이 9KB로 나왔음).
+
+**판단 기준**: 쿼리값이 *렌더*에 필요한가, *이벤트/이펙트 시점*에만 필요한가.
+- 이벤트·이펙트 시점이면 → `useSearchParams` 쓰지 말고 그 시점에 `window.location.search`를 읽는다(콜백은 클라이언트에서만 실행되므로 안전). 경계 자체가 사라져 SSR이 산다
+- 렌더에 필요하면 → Suspense를 쓰되 **경계를 최소 범위로** 좁힌다
+- **가드에서는 특히 주의** — 가드가 화면 전체를 감싸므로 그 안에서 쓰면 보호된 페이지 전부가 빈 HTML이 된다
 - `navigate(path, { state })` → Next에 없다. sessionStorage 경유 (checkout 흐름 2곳)
 
 ## 원본에서 그대로 이어받는 규칙

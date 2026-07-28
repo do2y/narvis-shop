@@ -44,5 +44,12 @@ export const setCheckoutState = (state: CheckoutState) =>
 
 export const getCheckoutState = () => read<CheckoutState>(CHECKOUT_KEY);
 
-// 주문 완료 화면(`/checkout/complete`)용 전달은 4단계에서 checkout 페이지를
-// 이식할 때 같은 패턴으로 추가한다(타입이 그 페이지 폴더에 있어 지금은 참조 불가).
+// 주문 완료 화면(`/checkout/complete`)용 전달.
+// 페이로드 타입(OrderCompleteState)이 checkout 페이지 폴더에 있어 여기서 참조하면
+// shared → features 역방향 의존이 된다. 제네릭으로 두고 호출부가 타입을 지정한다.
+const ORDER_COMPLETE_KEY = "checkout:complete";
+
+export const setOrderCompleteState = <T>(state: T) =>
+  write(ORDER_COMPLETE_KEY, state);
+
+export const getOrderCompleteState = <T>() => read<T>(ORDER_COMPLETE_KEY);
