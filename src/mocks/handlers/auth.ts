@@ -77,7 +77,6 @@ export const authHandlers = [
       birthDate: string;
       agreeTerms: boolean;
       agreePrivacy: boolean;
-      guestId?: string;
     };
     if (MOCK_ACCOUNTS[email]) {
       return HttpResponse.json(

@@ -46,6 +46,7 @@
 ## 인증/권한 (구현: src/router/guards.tsx, src/shared/api/client.ts, src/shared/stores/authStore.ts)
 - 계정 3종: MEMBER / SELLER / ADMIN. 라우트 가드에서 역할별 접근 제어 (RequireAuth, RequireRole)
 - 게스트: 탐색·챗봇·**장바구니 담기**까지 가능(횟수 제한 없음, 개인화만 미적용). 구매·찜·마이페이지는 로그인 필요
+- **게스트 승계는 `guest_id` 쿠키로 서버가 자동 처리 — 로그인·가입 body에 넣을 값이 없다.** `guest_id`는 HttpOnly라 FE JS가 읽을 수 없고, 서버가 요청 쿠키에서 직접 취한다(E-1과 동일 원칙: 신원은 서버 주입, body의 신원 주장은 무시). FE는 `withCredentials`로 쿠키가 실리는 것만 보장하면 된다. 승계 내용(이벤트 백필·장바구니 병합)과 가입/로그인별 차이도 서버 책임이라 FE 코드에 분기가 없다
 - 미인증 접근 → `?returnUrl=` 붙여 /login, 로그인 후 복귀
 - 토큰: 인터셉터에서 자동 첨부, 401 → refresh 1회 재시도 → 실패 시 clearAuth + 로그인 이동. **이 로직은 shared/api에만 존재**
 - **AT는 메모리에만 보관**(persist 제외, XSS 탈취 토큰의 지속 사용 차단). 새로고침 시 `useRestoreSession`(App.tsx)이 refresh → `/api/auth/me`로 복원, 실패하면 clearAuth
