@@ -40,10 +40,26 @@ const HOP_BY_HOP = new Set([
   "host",
 ]);
 
-function filterHeaders(source: Headers): Headers {
+/**
+ * 응답에서 추가로 제거해야 하는 헤더.
+ *
+ * `content-encoding`: fetch는 upstream 응답을 **자동으로 압축 해제**해서 body에 담는다.
+ * 그런데 이 헤더를 그대로 넘기면 브라우저는 "gzip이다"라고 믿고 평문을 압축 해제하려다
+ * `ERR_CONTENT_DECODING_FAILED`로 실패한다.
+ * (curl은 Accept-Encoding을 기본으로 보내지 않아 백엔드가 압축하지 않으므로 재현되지 않는다 —
+ *  브라우저에서만 드러난 버그였다.)
+ *
+ * `content-length`도 압축 해제로 길이가 달라지므로 HOP_BY_HOP에서 이미 제거된다.
+ */
+const RESPONSE_STRIP = new Set(["content-encoding"]);
+
+function filterHeaders(source: Headers, isResponse = false): Headers {
   const out = new Headers();
   source.forEach((value, key) => {
-    if (!HOP_BY_HOP.has(key.toLowerCase())) out.set(key, value);
+    const k = key.toLowerCase();
+    if (HOP_BY_HOP.has(k)) return;
+    if (isResponse && RESPONSE_STRIP.has(k)) return;
+    out.set(key, value);
   });
   return out;
 }
@@ -77,7 +93,7 @@ async function handler(req: NextRequest): Promise<Response> {
     cache: "no-store",
   } as RequestInit & { duplex?: "half" });
 
-  const headers = filterHeaders(upstream.headers);
+  const headers = filterHeaders(upstream.headers, true);
 
   // Set-Cookie는 한 응답에 여러 개가 올 수 있다(AT 갱신 + RT 재발급 동시).
   // headers.get()은 콤마로 합쳐버려 쿠키 값이 깨지므로 getSetCookie()로 개별 처리한다.
