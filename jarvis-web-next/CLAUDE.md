@@ -11,6 +11,12 @@
 - 이유: 개선이 섞이면 원본과의 디프 검증이 불가능해지고, 버그가 났을 때 이식 실수인지 개선 실수인지 못 가린다
 - 개선하고 싶은 걸 발견하면 코드가 아니라 메모에 남기고 이식 완료 후 별도로 처리한다
 
+## ⚠️ 디렉토리: 원본의 `src/pages/`는 `src/features/`로 이식한다
+- **`src/pages/`는 Next의 Pages Router 예약 디렉토리다.** 그 이름을 쓰면 안의 파일이 전부 클라이언트 번들 대상이 되어, 서버 전용 모듈(`server-only`)을 import하는 순간 빌드가 깨진다 (2026-07-28 실제로 겪음)
+- 그래서 원본 `src/pages/<page>/` → 이 레포에서는 **`src/features/<page>/`**. 그 안의 `{components,hooks,utils}` 구조는 원본 그대로 유지한다
+- 라우트는 `src/app/`이 담당하고, `src/features/`는 화면 구현체를 담는다
+- import는 `@/features/...`
+
 ## Next.js 16 (주의: 학습 데이터와 다를 수 있음)
 - 이 버전은 breaking change가 있다. **API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 것**
 - 이미 확인된 것:

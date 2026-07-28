@@ -27,6 +27,8 @@ in-place 전환을 택하지 않은 이유: Vite와 Next는 빌드 설정·환�
 
 **이식 원칙 — 1:1 이식, 리팩토링 금지**: 이식 단계의 목표는 동작 동일성임. 옮기면서 구조 개선·이름 변경·"김에 정리"를 섞지 않는다(라우터 치환 등 Next가 강제하는 변경만 허용). 개선이 섞이면 원본과의 디프 검증이 불가능해짐. 개선은 이식 완료 후 별도 작업으로.
 
+**⚠️ 디렉토리 예외 (2026-07-28 발견)**: 원본 `src/pages/`는 **`src/features/`로 옮긴다**. `src/pages/`가 Next의 Pages Router 예약 경로라 그 안의 파일이 전부 클라이언트 번들 대상이 되고, 서버 전용 모듈(`server-only`)을 쓰는 순간 빌드가 깨진다. 폴더 안의 `{components,hooks,utils}` 구조는 원본 그대로 유지. import는 `@/features/...`. — 1:1 원칙의 유일한 구조 예외이며 Next가 강제하는 변경에 해당함
+
 ## 3. 현황 실측 (2026-07-28 기준)
 
 | 항목 | 수치 | 이식 영향 |
@@ -135,6 +137,24 @@ router.push("/checkout");
 - 후기(`fetchProductReviews`)는 페이지네이션·정렬이 있어 클라이언트 유지
 - **주의**: 카드 시딩(`useSeededProductCard`)은 클라이언트 캐시 승계 메커니즘이라 SSR과 공존해야 함. 서버 데이터가 정본이므로 시딩은 초기 렌더 보조로만 남김
 - 게이트: `view-source`에 상품명·가격·설명이 보이고, OG 디버거에서 카드가 뜸
+
+#### ✅ 2단계 완료 (2026-07-28)
+
+| 검증 항목 | 결과 |
+|---|---|
+| `npm run build` | 통과. `/products/[productId]`가 `ƒ (Dynamic)`으로 등록 |
+| `<title>` | `[지샥] GA-2100-1A1DR … \| 지샥(G-SHOCK)` — 상품명+브랜드 |
+| meta description | 상품 `summary` 전문 렌더 |
+| OG 태그 | `og:title`·`og:description`·`og:image`·`og:type` + `twitter:card` 생성 |
+| **본문 SSR** | 상품명·브랜드·가격(142,350원/정가 150,150원)·액션 버튼이 HTML에 포함 — JS 없이 읽힘 |
+| **중복 fetch 방지** | 계측 프록시로 측정: 페이지 1요청당 백엔드 호출 **정확히 1회** (`cache()` 동작 확인) |
+| 404 처리 | 없는 상품·잘못된 형식 모두 404 (`notFound()`) |
+| 백엔드 장애 시 | 초기 데이터 없이 렌더 → 클라이언트가 재조회(원본 스켈레톤 경로와 동일) |
+
+**구현 메모**
+- 서버 fetch는 `shared/api/server.ts`(`server-only` + 봉투 언래핑) → `features/product/serverApi.ts`(`cache()` 래핑)
+- 데이터 전달은 `HydrationBoundary` 대신 **`useQuery`의 `initialData`** — 이 페이지는 상세 쿼리 1개뿐이라 더 단순하고, 클라이언트 내비게이션 진입 시엔 `undefined`라 기존 동작(카드 시딩→조회)이 그대로 유지됨
+- 리뷰는 계획대로 클라이언트 유지(정렬·페이지네이션 있음)
 
 ### 3단계 — 브랜드 + 홈 SSR
 - `app/brands/[brandId]/page.tsx` — 2단계와 동일 패턴, `generateMetadata` 포함

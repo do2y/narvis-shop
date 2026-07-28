@@ -1,0 +1,69 @@
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SeededProductCard } from "@/shared/types/product";
+import { fetchProductDetail, fetchProductReviews } from "./api";
+import type { ProductDetail, ProductReviewPage, ReviewSort } from "./types";
+
+const FIVE_MIN = 5 * 60 * 1000;
+
+// 상품 상세 — staleTime 5분 (CLAUDE.md React Query 규칙).
+// 키를 ['products', id, 'detail']로 분리한 이유: ['products', id]에는 챗봇·마이페이지 등이
+// ProductCard(부분 데이터)를 시딩해두는데 상세 응답과 구조가 달라(brandName vs brand.name,
+// rating: number vs rating: {average,count}) 같은 키를 쓰면 캐시가 섞여 렌더가 깨진다.
+//
+// initialData: 서버 컴포넌트가 SSR에서 받아온 상세를 넘긴다. 있으면 첫 렌더부터
+// 완전한 화면이 나가고(검색봇·LCP), 클라이언트는 staleTime이 지난 뒤에만 재조회한다.
+// 클라이언트 내비게이션으로 들어오면 undefined라 기존 동작(카드 시딩 → 조회) 그대로다.
+export function useProductDetail(id: number, initialData?: ProductDetail) {
+  return useQuery({
+    queryKey: ["products", id, "detail"],
+    queryFn: () => fetchProductDetail(id),
+    enabled: Number.isFinite(id),
+    staleTime: FIVE_MIN,
+    initialData,
+  });
+}
+
+// 상품 후기 — 상세와 함께 갱신되면 되므로 staleTime 5분.
+// page/sort가 키에 들어가 페이지 전환 시 각각 캐시된다.
+export function useProductReviews(
+  id: number,
+  params: { page?: number; size?: number; sort?: ReviewSort } = {},
+) {
+  const { page = 0, size = 10, sort = "latest" } = params;
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["products", id, "reviews", { page, size, sort }],
+    queryFn: () => fetchProductReviews(id, { page, size, sort }),
+    enabled: Number.isFinite(id),
+    staleTime: FIVE_MIN,
+  });
+
+  // distribution은 page=0 응답에만 온다(명세). 2페이지 이상에서는 0페이지 캐시 값을 재사용해
+  // 분포 막대가 빈 채로 렌더되지 않게 한다. sort는 분포에 영향이 없어 latest 키로 통일한다.
+  const page0 = queryClient.getQueryData<ProductReviewPage>([
+    "products",
+    id,
+    "reviews",
+    { page: 0, size, sort: "latest" },
+  ]);
+  const distribution = query.data?.distribution ?? page0?.distribution;
+
+  return { ...query, distribution };
+}
+
+// 카드 시딩 데이터 — 상세 도착 전 즉시 렌더용(캐시 승계).
+// queryFn이 없어 네트워크 요청을 만들지 않고, 시딩된 값이 있으면 그것만 읽는다.
+// 시딩은 useGoToProduct(shared/hooks)만 거치므로 값은 항상 SeededProductCard 완전체다.
+// enabled: false — 이 쿼리는 캐시만 읽는 용도라 자동 실행하지 않는다. 끄지 않으면
+// 시딩 없이 진입(새 탭·URL 직접)할 때 queryFn 부재 경고가 매 마운트마다 찍힌다.
+// 캐시에 시딩값이 있으면 그대로 읽고, 없으면 undefined → 상세 API가 정본을 채운다.
+export function useSeededProductCard(id: number) {
+  return useQuery<SeededProductCard>({
+    queryKey: ["products", id],
+    enabled: false,
+    staleTime: FIVE_MIN,
+  });
+}
