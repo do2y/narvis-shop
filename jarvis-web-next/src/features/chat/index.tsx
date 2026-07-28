@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useClientValue } from "@/shared/hooks/useClientOnce";
 
 import { Plus } from "lucide-react";
 import { ChatLayout } from "@/shared/chat/ChatLayout";
@@ -16,15 +14,12 @@ import { ProductPanel } from "./components/ProductPanel";
 import { SuggestionChips } from "./components/SuggestionChips";
 
 export default function ChatPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
 
-  // 홈에서 넘어온 첫 질문(?q=). useSearchParams를 쓰지 않는 이유: 그 훅은 이 컴포넌트를
-  // Suspense 경계에 묶어 SSR에서 화면 전체(헤더 포함)가 비워진다.
-  // q는 진입 시 한 번만 필요하므로 클라이언트에서 1회 읽어 고정한다.
-  const q = useClientValue(() =>
-    new URLSearchParams(window.location.search).get("q"),
-  );
+  // 홈에서 넘어온 첫 질문(?q=)을 한 번만 처리했는지 표시.
+  // useSearchParams를 쓰지 않는 이유: 그 훅은 이 컴포넌트를 Suspense 경계에 묶어
+  // SSR에서 화면 전체(헤더 포함)가 비워진다. 마운트 후 window에서 직접 읽는다.
+  const sentInitialQuery = useRef(false);
 
   const { send, retry, removeCondition, applySuggestion, startNewChat, isStreaming } =
     useChat({
@@ -66,18 +61,29 @@ export default function ChatPage() {
   }, [messages.length, hasResults, popularCards, popularTitle, setResults]);
 
   // 홈에서 넘어온 첫 메시지(?q=)는 "새 질문" → 기존 대화 초기화 후 시작.
-  // 처리 후 q를 URL에서 지운다 — 새로고침 시 같은 질문이 다시 전송되지 않도록.
+  // 마운트 시 1회만 실행한다(ref 가드) — StrictMode의 이펙트 2회 실행과
+  // 리렌더에 의한 중복 전송을 함께 막는다.
+  //
+  // 처리 후 q를 URL에서 지운다 — 새로고침하면 같은 질문이 다시 전송되기 때문.
+  // history.replaceState를 쓰는 이유: router.replace는 라우트 이동이라 이 시점에
+  // 부르면 방금 시작한 스트리밍이 끊긴다. 주소창만 정리하면 되므로 History API가 맞다.
   useEffect(() => {
+    if (sentInitialQuery.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
     if (!q) return;
+
+    sentInitialQuery.current = true;
     startNewChat();
     send(q);
-    const params = new URLSearchParams(window.location.search);
+
     params.delete("q");
     const qs = params.toString();
-    router.replace(qs ? `/chat?${qs}` : "/chat");
-    // q 변화에만 반응
+    window.history.replaceState(null, "", qs ? `/chat?${qs}` : "/chat");
+    // 마운트 시 1회 — send/startNewChat은 매 렌더 재생성되므로 의존성에 넣지 않는다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, []);
 
   return (
     <ChatLayout
