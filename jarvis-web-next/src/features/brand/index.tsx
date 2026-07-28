@@ -13,15 +13,18 @@ import { BrandSkeleton } from "./components/BrandSkeleton";
 import { CategoryFilter } from "./components/CategoryFilter";
 import { SortSelect } from "./components/SortSelect";
 import { useBrandHome } from "./useBrandHome";
-import type { BrandHome, BrandSort } from "./types";
+import type { BrandHome, BrandQuery, BrandSort } from "./types";
 
 // id·initialData는 서버 컴포넌트(app/brands/[brandId]/page.tsx)가 넘긴다.
 export default function BrandPage({
   id,
   initialData,
+  serverQuery,
 }: {
   id: number;
   initialData?: BrandHome;
+  /** initialData가 어떤 필터 조합의 결과인지 — 그 조합에서만 승계한다 */
+  serverQuery?: BrandQuery;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -40,6 +43,7 @@ export default function BrandPage({
     id,
     { category: category ?? undefined, sort, page },
     initialData,
+    serverQuery,
   );
 
   // 없는 브랜드는 재시도해도 결과가 같으므로 일반 오류와 구분한다(재시도 대신 홈으로).

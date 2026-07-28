@@ -96,7 +96,9 @@ export default async function Page({ params, searchParams }: Props) {
     // BrandPage가 useSearchParams를 쓰므로 Suspense 경계가 필요하다.
     // 없으면 빌드가 실패하거나 페이지 전체가 CSR로 강등된다.
     <Suspense fallback={null}>
-      <BrandPage id={id} initialData={initialData} />
+      {/* serverQuery: initialData가 어떤 조합의 결과인지 알려준다.
+          이게 없으면 정렬을 바꿔도 옛 데이터가 초기값으로 들어가 화면이 안 바뀐다. */}
+      <BrandPage id={id} initialData={initialData} serverQuery={query} />
     </Suspense>
   );
 }

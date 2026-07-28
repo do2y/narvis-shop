@@ -10,27 +10,37 @@ const THIRTY_MIN = 30 * 60 * 1000;
 // 필터·정렬·페이지가 키에 포함되므로 조합별로 캐시된다.
 // keepPreviousData: 칩을 누를 때마다 목록이 스켈레톤으로 깜빡이지 않게 이전 결과를 유지한다.
 //
-// initialData: 서버 컴포넌트가 SSR에서 받아온 결과. 서버가 렌더한 그 조합(쿼리스트링)
-// 에만 해당하므로, 필터를 바꾸면 키가 달라져 자연히 클라이언트 조회로 넘어간다.
+// initialData: 서버 컴포넌트가 SSR에서 받아온 결과.
+//
+// ⚠️ 반드시 "서버가 렌더한 그 조합"에만 넣어야 한다. 모든 키에 그대로 주면
+// 정렬·필터를 바꿔 새 키가 생겼을 때도 옛 데이터가 초기값으로 들어가고,
+// staleTime(30분) 때문에 fresh로 간주되어 **재조회조차 하지 않는다**
+// → 화면이 바뀌지 않아 "정렬이 안 먹는다"로 보인다(2026-07-28 실제 발생).
+//
+// serverQuery는 서버가 SSR에 사용한 조합. 지금 보고 있는 조합과 같을 때만 승계한다.
 export function useBrandHome(
   brandId: number,
   query: BrandQuery = {},
   initialData?: BrandHome,
+  serverQuery?: BrandQuery,
 ) {
+  const normalize = (q: BrandQuery) => ({
+    category: q.category ?? null,
+    sort: q.sort ?? "popular",
+    page: q.page ?? 0,
+  });
+
+  const current = normalize(query);
+  const isServerRenderedCombo =
+    serverQuery !== undefined &&
+    JSON.stringify(current) === JSON.stringify(normalize(serverQuery));
+
   return useQuery({
-    queryKey: [
-      "brands",
-      brandId,
-      {
-        category: query.category ?? null,
-        sort: query.sort ?? "popular",
-        page: query.page ?? 0,
-      },
-    ],
+    queryKey: ["brands", brandId, current],
     queryFn: () => fetchBrandHome(brandId, query),
     staleTime: THIRTY_MIN,
     enabled: Number.isFinite(brandId),
     placeholderData: keepPreviousData,
-    initialData,
+    initialData: isServerRenderedCombo ? initialData : undefined,
   });
 }
