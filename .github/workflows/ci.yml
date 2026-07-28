@@ -1,6 +1,7 @@
 name: CI
 on: [pull_request]
 jobs:
+  # 원본 Vite 앱 — 레포 교체 전까지 계속 검사한다(실제 배포되는 앱).
   check:
     runs-on: ubuntu-latest
     steps:
@@ -12,4 +13,24 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx eslint .
+      - run: npm run build
+
+  # 이전 중인 Next 앱 — 아직 배포되지 않지만 깨진 채로 쌓이지 않게 함께 검사한다.
+  # next build가 타입 체크를 포함하므로 별도 tsc는 두지 않는다.
+  check-next:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jarvis-web-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: jarvis-web-next/package-lock.json
+      - run: npm ci
+      - run: npx eslint .
+      # 백엔드가 없는 CI에서도 통과해야 한다 — 서버 fetch에 5초 타임아웃이 있고
+      # 홈은 force-dynamic이라 빌드 시점에 백엔드를 부르지 않는다.
       - run: npm run build

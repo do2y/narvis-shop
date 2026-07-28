@@ -1,6 +1,7 @@
 # Next.js 마이그레이션 계획
 
-> 작성 2026-07-28 · **상태: 1~4단계 완료 — 전 페이지 이식 + SEO/OG 달성. 남은 것은 5단계(배포 전환)**
+> 작성 2026-07-28 · **상태: 1~4단계 완료, 5단계 배포 파일 준비 완료(전환 스위치 OFF).**
+> **남은 것: 브라우저 수동 검증 → 워크플로 rename → 전환.** 원본 Vite 앱이 계속 배포 중이다.
 > 배경 결정은 CLAUDE.md와 `docs/auth-token-strategy.md` 참조
 > 작업 폴더: `jarvis-web-next/` (Next 16.2.12). 그 폴더의 CLAUDE.md에 이식 규칙 정리됨
 
@@ -113,7 +114,7 @@ router.push("/checkout");
 - dev 포트는 3000 고정 유지 (백엔드 CORS가 `http://localhost:3000`만 허용)
 - 게이트: ① 빈 페이지·헤더 렌더 ② **로그인 → 새로고침 → 세션 복원** 동작 ③ **챗 세션 발급 → AI 서버 직통 스트리밍** 정상 동작 (dev + `next build && next start` 양쪽)
 
-#### ✅ 1단계 완료 (2026-07-28, 커밋 f32eb9e)
+#### ✅ 1단계 완료 (2026-07-28)
 
 | 검증 항목 | 결과 |
 |---|---|
@@ -253,6 +254,45 @@ SSR 없이 `'use client'`로 그대로 옮김. 라우터 훅 치환이 작업의
 - 환경변수: `NEXT_PUBLIC_*`는 **빌드 시점에 번들에 박힘** — 현재 Dockerfile이 빌드 스테이지에서 `ENV VITE_API_BASE_URL=""`로 주입 중이라(deploy.yml build arg 아님) 같은 자리에서 이름만 `NEXT_PUBLIC_*`로 교체하면 됨. 서버 전용 base URL은 런타임 주입 가능
 - 레포 교체 후 Vite 잔재 제거(`vite.config.ts`·`index.html`·`vercel.json`·`tsconfig.*.json`)
 - CLAUDE.md 갱신 (CSR 전제 문구·디렉토리 규칙)
+
+#### ✅ 5단계 준비 완료 (2026-07-28) — **전환 스위치는 아직 OFF**
+
+배포 파일을 만들고 **Docker 이미지 빌드·컨테이너 실행까지 실제로 검증**했다. 다만 브라우저 수동 검증 전이라 실제 전환은 하지 않았다.
+
+| 검증 항목 | 결과 |
+|---|---|
+| `docker build` | 성공 (416MB, standalone) |
+| 컨테이너 실행 | 전 라우트 200, 헬스체크 `curl -fs localhost/healthz` → `ok` |
+| 컨테이너 내 SSR | 상품 제목·OG 이미지 정상 |
+| 컨테이너 내 API 프록시 | `/api/categories` 200 |
+| 보안 헤더 | 4종 응답 확인 |
+| 정적 자산 | `/_next/static/...` 200 (32KB), `/favicon.svg` 200 |
+| 실행 사용자 | `node` (비특권) |
+| **백엔드 없는 빌드** | 통과 — CI에서 안전 |
+| ESLint | 에러 0 (경고 20 = `<img>`→`next/image` 권고, 이식 후 별도 작업) |
+
+**파일**
+- `jarvis-web-next/Dockerfile` — deps/build/runtime 3스테이지. nginx → `node server.js`
+- `jarvis-web-next/.dockerignore` — `node_modules`·`.next`·`.env*` 제외(비밀값 유입 차단)
+- `.github/workflows/deploy-next.yml.disabled` — **비활성 상태로 대기.** 활성화 절차를 파일 상단에 기재
+- `.github/workflows/ci.yml` — `check-next` 잡 추가(PR에서 Next 앱도 검사, 배포와 무관해 지금 켬)
+
+**빌드 중 발견하고 고친 것**
+1. **홈 프리렌더가 `next build`를 깨뜨림** — 홈이 빌드 시점에 정적 생성되며 백엔드를 부르는데, CI 컨테이너엔 백엔드가 없어 60초 타임아웃 → 빌드 실패. 로컬은 `.env.local`이 있어 통과했었다. **`export const dynamic = "force-dynamic"`** 으로 요청 시 렌더로 전환(데이터는 `serverApi`에서 30분 재검증 캐시라 매 요청 조회는 아님)
+2. **서버 fetch 무한 대기** — `serverGet`에 5초 타임아웃(`AbortSignal.timeout`) 추가. 백엔드에 못 닿는 환경에서 요청이 매달리지 않게
+3. **80번 포트 권한** — 원본 nginx는 root라 가능했으나 Node를 비특권으로 돌리면 bind 불가. root 실행 대신 `setcap cap_net_bind_service`로 node 바이너리에 권한만 부여하고 `USER node`
+4. **standalone은 `.env`를 읽지 않음** — `docker run`에 `-e API_PROXY_TARGET` 명시 주입 필요(검증 중 500 에러로 발견)
+5. ESLint 에러 4건 — try/catch 내 JSX 구성, 이펙트 내 동기 setState 3곳. 후자는 `useClientValue`(`useSyncExternalStore` 기반) 훅으로 정리
+
+**네트워크 구성 (확인 완료)**
+`deploy.yml`이 `--network host`로 컨테이너를 띄운다 → 컨테이너의 `localhost:8080`이 EC2 호스트의 Spring을 가리킨다. bridge로 바꾸면 `localhost`가 컨테이너 자신이 되므로 `API_PROXY_TARGET`도 함께 바꿔야 한다(주석에 명시).
+
+#### ⬜ 남은 것 — 실제 전환
+
+1. **브라우저 수동 검증** (필수, 자동화로 대체 불가): 로그인 → 새로고침 세션 복원 / 상품 담기 → 결제 → 주문 완료 / 챗봇 스트리밍 / 판매자 화면. 4단계 게이트 체크리스트 참조
+2. `deploy-next.yml.disabled` → `deploy-next.yml`, 기존 `deploy.yml` → `.disabled`
+3. main 푸시 → 배포. 문제 시 워크플로 rename 되돌리거나 EC2에서 이전 이미지 해시로 `docker run`
+4. 안정화 후: 레포 교체, Vite 잔재 제거(`vite.config.ts`·`index.html`·`vercel.json`·`nginx.conf`·`src/`·`src/mocks/`), `next.config.ts`의 `turbopack.root`·`outputFileTracingRoot` 제거, 원본 CLAUDE.md 갱신
 
 ## 5. 위험 요소
 

@@ -57,16 +57,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Page({ params }: Props) {
   const id = await resolveId(params);
 
+  // try/catch는 데이터 조회만 감싼다 — JSX를 그 안에서 만들면 렌더 단계의 에러는
+  // 어차피 잡히지 않으면서(React는 즉시 렌더하지 않음) 오해를 부른다.
+  let detail;
   try {
     // 서버에서 상세를 받아 첫 HTML에 본문을 실어 보낸다(SEO·LCP).
-    // 상호작용(옵션·장바구니·찜)은 넘겨받은 클라이언트 컴포넌트가 그대로 담당한다.
-    const detail = await getProductDetail(id);
-    return <ProductPage id={id} initialDetail={detail} />;
+    detail = await getProductDetail(id);
   } catch (error) {
     // 없는 상품(404 PRODUCT_NOT_FOUND)은 Next의 not-found로 넘긴다.
     if (error instanceof ServerFetchError && error.status === 404) notFound();
-    // 그 외 장애(백엔드 다운 등)는 클라이언트가 재조회하도록 초기 데이터 없이 렌더한다.
+    // 그 외 장애(백엔드 다운 등)는 초기 데이터 없이 렌더해 클라이언트가 재조회하게 둔다.
     // 원본의 "상세 도착 전" 경로(스켈레톤 → 조회)와 같은 동작이 된다.
-    return <ProductPage id={id} />;
   }
+
+  // 상호작용(옵션·장바구니·찜)은 넘겨받은 클라이언트 컴포넌트가 그대로 담당한다.
+  return <ProductPage id={id} initialDetail={detail} />;
 }

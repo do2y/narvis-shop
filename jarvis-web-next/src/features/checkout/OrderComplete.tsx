@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { CheckCircle2 } from "lucide-react";
 import { getOrderCompleteState } from "@/shared/utils/checkoutHandoff";
+import { useClientValue } from "@/shared/hooks/useClientOnce";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,18 +15,15 @@ import { OrderItems } from "./components/OrderItems";
 export default function OrderCompletePage() {
   // 결제 화면에서 넘어온 주문 결과. 직접 진입 시 없음.
   // 원본은 location.state였지만 Next에는 없어 sessionStorage 경유.
-  // 마운트 후 읽는다 — sessionStorage는 서버에 없어 첫 렌더에서 접근하면
-  // 서버·클라이언트 결과가 달라져 하이드레이션이 깨진다.
-  const [state, setState] = useState<OrderCompleteState | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    setState(getOrderCompleteState<OrderCompleteState>());
-    setLoaded(true);
-  }, []);
-  const order = state?.order;
+  // useClientValue: 서버·하이드레이션 첫 패스에서는 null, 그 뒤 클라이언트 값으로 확정.
+  const state = useClientValue(() => ({
+    value: getOrderCompleteState<OrderCompleteState>(),
+  }));
+  const order = state?.value?.order;
 
-  // 읽기 전에는 "찾을 수 없음"을 보여주지 않는다(정상 진입에도 잠깐 뜨는 것을 방지).
-  if (!loaded) return null;
+  // 읽기 전(서버 렌더·첫 패스)에는 "찾을 수 없음"을 보여주지 않는다
+  // — 정상 진입에도 잠깐 뜨는 것을 막는다. state가 null이면 아직 안 읽은 상태.
+  if (state === null) return null;
 
   // 주문 정보 없이 진입 — 정상 흐름이 아니므로 안내.
   if (!order) {

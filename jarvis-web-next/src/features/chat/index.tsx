@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useClientValue } from "@/shared/hooks/useClientOnce";
 
 import { Plus } from "lucide-react";
 import { ChatLayout } from "@/shared/chat/ChatLayout";
@@ -19,12 +20,11 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
 
   // 홈에서 넘어온 첫 질문(?q=). useSearchParams를 쓰지 않는 이유: 그 훅은 이 컴포넌트를
-  // Suspense 경계에 묶어 SSR에서 화면 전체(헤더 포함)가 비워진다. q는 마운트 직후
-  // 한 번만 필요하므로 이펙트에서 window로 읽는다.
-  const [q, setQ] = useState<string | null>(null);
-  useEffect(() => {
-    setQ(new URLSearchParams(window.location.search).get("q"));
-  }, []);
+  // Suspense 경계에 묶어 SSR에서 화면 전체(헤더 포함)가 비워진다.
+  // q는 진입 시 한 번만 필요하므로 클라이언트에서 1회 읽어 고정한다.
+  const q = useClientValue(() =>
+    new URLSearchParams(window.location.search).get("q"),
+  );
 
   const { send, retry, removeCondition, applySuggestion, startNewChat, isStreaming } =
     useChat({

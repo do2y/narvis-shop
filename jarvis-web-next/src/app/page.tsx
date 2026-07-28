@@ -19,6 +19,15 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * 요청 시 렌더(빌드 시 정적 생성하지 않음).
+ *
+ * 이유: 홈은 백엔드에서 인기상품·카테고리를 받아야 하는데, CI 빌드 컨테이너 안에는
+ * 백엔드가 없어 프리렌더가 반드시 실패한다(`next build`가 통째로 깨짐 — 실제로 겪음).
+ * 데이터 자체는 `serverApi`에서 30분 재검증으로 캐시하므로 매 요청 조회하지 않는다.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function Page() {
   // 홈 하위 컴포넌트들은 훅으로 각자 데이터를 가져온다(CLAUDE.md: props 드릴링 대신 도메인 훅).
   // 그 구조를 유지한 채 SSR 데이터를 주려면 캐시에 심어야 하므로 HydrationBoundary를 쓴다.

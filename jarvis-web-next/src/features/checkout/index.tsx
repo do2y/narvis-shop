@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { Check } from "lucide-react";
 import { track } from "@/shared/analytics/track";
@@ -31,17 +31,15 @@ import {
   getCheckoutState,
   setOrderCompleteState,
 } from "@/shared/utils/checkoutHandoff";
+import { useClientValue } from "@/shared/hooks/useClientOnce";
 
 export default function CheckoutPage() {
   const router = useRouter();
   // 상세 "바로 구매"·장바구니에서 넘어온 주문 항목. 직접 진입 시 없음.
   // 원본은 location.state였지만 Next에는 없어 sessionStorage 경유(계획서 3장 스니펫).
-  // 마운트 후에 읽는 이유: sessionStorage는 서버에 없어 첫 렌더에서 접근하면
-  // 서버·클라이언트 결과가 달라져 하이드레이션이 깨진다.
-  const [state, setState] = useState<CheckoutState | null>(null);
-  useEffect(() => {
-    setState(getCheckoutState());
-  }, []);
+  // useClientValue: sessionStorage는 서버에 없으므로 첫 렌더에서 읽으면 하이드레이션이
+  // 깨진다. 서버·첫 패스에서는 null, 그 뒤 클라이언트 값으로 확정된다.
+  const state = useClientValue(getCheckoutState);
   const items = useMemo(() => state?.items ?? [], [state]);
 
   const { data: addresses = [] } = useAddresses();

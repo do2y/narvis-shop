@@ -55,6 +55,16 @@ interface ServerFetchOptions {
 }
 
 /**
+ * 응답 대기 상한(ms).
+ *
+ * 이게 없으면 백엔드에 닿지 못하는 환경에서 요청이 무한정 매달린다. 특히
+ * **빌드 시점 프리렌더**가 그렇다 — CI 컨테이너 안에는 백엔드가 없으므로
+ * 홈 정적 생성이 60초 타임아웃에 걸려 `next build` 자체가 실패한다(실제로 겪음).
+ * 짧게 끊고 실패시키면 호출부의 catch가 받아 초기 데이터 없이 렌더된다.
+ */
+const TIMEOUT_MS = 5000;
+
+/**
  * 공개 API GET. 백엔드 공통 봉투({success, data, error})를 벗겨 data를 반환한다.
  * 봉투 규약은 client.ts의 응답 인터셉터와 동일하게 맞춘다.
  */
@@ -66,6 +76,7 @@ export async function serverGet<T>(
 
   const res = await fetch(`${BASE}${path}`, {
     headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     // revalidate가 없으면 매 요청 조회(재고·가격이 실시간이어야 하는 화면 대비).
     ...(revalidate === undefined
       ? { cache: "no-store" as const }
