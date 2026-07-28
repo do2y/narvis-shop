@@ -26,5 +26,4 @@ export interface PopularProduct {
   originalPrice: number; // 정가 (할인 전, 할인 없으면 price와 동일)
   rating: number;
   reviewCount: number;
-  purchasable?: boolean; // 명세엔 없으나 실제 응답에 포함. 품절 표시용으로 보존
 }
