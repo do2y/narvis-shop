@@ -1,0 +1,191 @@
+# Next.js 마이그레이션 계획
+
+> 작성 2026-07-28 · 상태: 1단계 진행 예정
+> 배경 결정은 CLAUDE.md와 `docs/auth-token-strategy.md` 참조
+
+## 1. 목표와 비목표
+
+**목표 — SEO/OG 확보**
+- 상품 상세(`/products/:id`)·브랜드(`/brands/:id`)·홈(`/`)을 서버 렌더로 전환해 검색엔진에 본문이 노출되게 함
+- 상품·브랜드 페이지에 동적 OG 태그를 붙여 카카오톡·슬랙 공유 시 카드가 뜨게 함
+- 위 3개 페이지의 LCP 개선(현재는 JS 번들 로드 → 쿼리 → 렌더의 3단 지연)
+
+**비목표 (이번 범위 밖 — 하지 않음)**
+- 인증 필요 페이지(mypage·checkout·seller·admin)의 SSR 전환. 클라이언트 렌더 유지
+- BFF 구축. AT 메모리 보관 전략을 **그대로 유지**함
+- 챗봇 SSE 스트리밍 구조 변경. 현재 fetch 스트리밍 그대로 이식
+- React Query → 서버 상태 라이브러리 교체 등 상태관리 재설계
+
+**이 경계가 성립하는 이유**: SEO가 필요한 페이지는 전부 공개 라우트라 인증 토큰 없이 서버에서 데이터를 받을 수 있음. 따라서 인증 아키텍처를 건드리지 않고 목표를 달성함. 인증 페이지를 SSR하려 드는 순간 BFF가 필수가 되고 공수가 몇 배로 뜀 → 그래서 뺌.
+
+## 2. 방식: 새 프로젝트로 점진 이식
+
+`jarvis-web-next/`를 별도로 만들고 페이지를 하나씩 옮김. 이식 중에도 현재 Vite 앱은 계속 동작하므로 언제든 중단·롤백 가능함. 전부 옮긴 뒤 레포를 교체함.
+
+in-place 전환을 택하지 않은 이유: Vite와 Next는 빌드 설정·환경변수·엔트리가 모두 충돌해서 중간 상태에서 앱이 빌드되지 않는 구간이 길게 생김. 1인 체제에서 "지금 돌아가는 앱"을 잃는 건 위험함.
+
+**이식 원칙 — 1:1 이식, 리팩토링 금지**: 이식 단계의 목표는 동작 동일성임. 옮기면서 구조 개선·이름 변경·"김에 정리"를 섞지 않는다(라우터 치환 등 Next가 강제하는 변경만 허용). 개선이 섞이면 원본과의 디프 검증이 불가능해짐. 개선은 이식 완료 후 별도 작업으로.
+
+## 3. 현황 실측 (2026-07-28 기준)
+
+| 항목 | 수치 | 이식 영향 |
+|---|---|---|
+| 전체 TS/TSX 파일 | 180개 / 15,811줄 | — |
+| react-router 의존 파일 | 33개 | 기계적 치환 대상 |
+| `useNavigate` | 32회 | → `useRouter().push` |
+| `<Link>` / `NavLink` | 21회 / 12회 | → `next/link` (`NavLink`는 `usePathname`으로 active 판정 직접 구현) |
+| `useSearchParams` | 12회 (실측 결과 **전부 읽기 전용** — `setSearchParams` 사용 0회) | → `next/navigation` 동명 훅. **Suspense 경계 필수** — 없으면 빌드 실패 또는 페이지 전체 CSR 강등 |
+| `useLocation` | 13회 | → `usePathname` + `useSearchParams` 분해 |
+| `useParams` | 6회 | → 서버 컴포넌트는 `params` prop, 클라이언트는 동명 훅 |
+| `navigate(..., { state })` | 2흐름 (상품 상세→`/checkout`, 결제→`/checkout/complete`) | **Next에 없는 개념** — `router.push`는 state 전달 불가. sessionStorage 경유로 대체 (아래 스니펫) |
+| splat 라우트 | 3개 (`/mypage/*`, `/seller/*`, `/admin/*`) | **실질 공수** — 폴더 구조로 재배치 |
+| `import.meta.env` | 7곳 | → `process.env.NEXT_PUBLIC_*` |
+
+가장 무거운 페이지: mypage 2,461줄 · seller 2,106줄 · product 1,095줄
+
+### 치환 표준 스니펫 (33개 파일에서 이 패턴만 사용 — 제각각 구현 금지)
+
+**NavLink → active 판정 직접 구현**
+```tsx
+// before: <NavLink to="/mypage/orders" className={({ isActive }) => isActive ? A : B}>
+const pathname = usePathname();
+const isActive = pathname.startsWith("/mypage/orders");
+<Link href="/mypage/orders" className={isActive ? A : B}>
+```
+
+**useLocation 분해**
+```tsx
+// location.pathname        → usePathname()
+// location.search          → useSearchParams()  ※ .toString()에 '?' 미포함 주의
+// location.pathname+search → `${pathname}${qs ? `?${qs}` : ""}`  (returnUrl 조립)
+// location.state           → 없음. 아래 sessionStorage 패턴으로
+```
+
+**useSearchParams (전부 읽기 전용이라 이것만)**
+```tsx
+// before: const [searchParams] = useSearchParams();
+const searchParams = useSearchParams(); // 배열 아님, 단일 반환
+// 사용하는 클라이언트 컴포넌트는 <Suspense>로 감쌀 것 (page 단위에서)
+```
+
+**navigate state → sessionStorage 경유 (checkout 흐름 전용)**
+```tsx
+// before: navigate("/checkout", { state });
+sessionStorage.setItem("checkout:state", JSON.stringify(state));
+router.push("/checkout");
+// 수신측: 마운트 시 읽기. removeItem은 하지 않는다 — 원본(history.state)은 새로고침에도
+// 살아남으므로 지우면 동작이 달라짐. 다음 결제 진입 시 setItem이 덮어씀. 없으면 기존 null 분기.
+// [알고 수용한 차이] history.state는 히스토리 엔트리별, sessionStorage는 탭별.
+// 결제 A → 뒤로 → 바로구매 B → 뒤로가기로 A의 checkout 엔트리 복귀 시 원래는 A state,
+// 이제는 B state가 보임. checkout 특성상 실사용 영향 낮다고 판단해 수용 — 관련 버그
+// 리포트가 오면 이 차이부터 의심할 것.
+```
+
+## 4. 단계별 계획
+
+각 단계 끝에서 `npm run build` 통과를 게이트로 삼음 (tsc만으로는 놓치는 에러가 있음).
+
+### 1단계 — 프로젝트 셋업 + 공통 계층 이식
+- `jarvis-web-next/` 생성 (App Router, TypeScript, Tailwind v4)
+- **새 레포용 CLAUDE.md를 1단계에 작성** — `jarvis-web-next/`에서 작업하는 모든 세션이 알아야 할 결정(AT 메모리 전략, 미들웨어 가드 금지, 프록시 구조, 포트 3000 고정, 1:1 이식 원칙)을 담고 이 계획 문서를 참조시킴. 기존 레포 CLAUDE.md의 CSR 전제 문구 갱신은 5단계에
+- `src/shared/` 전체를 그대로 복사 — 대부분 라우터 비의존이라 수정 없이 넘어감
+  - 수정 필요: `AppHeader.tsx`(Link), `useGoToProduct.ts`·`useLogout.ts`·`useWishlist.ts`(useNavigate)
+- **서버-safe fetch 분리** — 현재 `shared/api/client.ts`(axios)는 클라이언트 전용임: 인터셉터가 authStore·`window.location`을 참조하고 401 리다이렉트를 수행함. 서버 컴포넌트에서 그대로 쓰면 안 됨. 공개 API(상품·브랜드·홈)용 **서버 fetch 헬퍼를 별도 파일로 분리**(인증 헤더·인터셉터 없음, 서버 전용 base URL 사용, 봉투 언래핑만 공유). 2단계 SSR이 이걸 사용함
+- `import.meta.env` → `process.env.NEXT_PUBLIC_*` 치환 (7곳)
+- React Query Provider를 `'use client'` 경계 컴포넌트로 분리해 루트 레이아웃에 배치
+- `useRestoreSession`을 클라이언트 부트 컴포넌트로 이식 — **AT 메모리 전략 그대로**
+- **MSW는 이식하지 않음** (2026-07-28 결정) — 백엔드·LLM 서버가 배포되어 실 API 연동이 기본이 됨. 현 레포도 이미 `VITE_ENABLE_MOCKS=false`로 배포 백엔드에 붙어 개발 중. 필요해지면 `src/mocks/`를 복사(핸들러는 프레임워크 비의존이라 거의 그대로 동작)
+- **`/api` 프록시: 전 환경 공용 Route Handler로 통일 (2026-07-28 결정)** — `app/api/[...path]/route.ts` 하나가 dev·prod 모두에서 백엔드로 프록시함
+  - 배경: dev는 쿠키 재작성이 필요함(`vite.config.ts:26-36` — 로컬 http에서 `Secure` RT 쿠키가 저장되지 않아 refresh가 항상 401 → 로그인 불가). Next `rewrites()`는 응답 헤더 조작 불가
+  - "dev 전용 Route Handler + prod rewrites" 조합은 **불가** — Route Handler는 파일시스템 라우트라 rewrites보다 먼저 매칭되므로 prod에서도 `/api/*`를 가로챔. 파일 존재로는 환경 분기가 안 됨
+  - 따라서 Route Handler를 공용 프록시로 삼음. 쿠키 재작성(`Secure` 제거·`SameSite=Lax`)만 `NODE_ENV=development` 분기 — **prod에서는 헤더를 건드리지 않고 그대로 통과**
+  - 이점: dev와 prod가 같은 **코드** 경로임. 단 **서버는 다름** — `next dev`는 압축을 안 하지만 prod `next start`는 기본 `compress: true`(문서 확인). 스트리밍 응답이 이 프록시를 지나간다면 버퍼링 위험이 있으므로 게이트 ③에 `next start` 검증을 포함함
+  - **※ 실측 정정 (2026-07-28): 챗봇 SSE는 이 프록시를 타지 않음.** 구매자·판매자 모두 세션 발급(`POST /api/chat/sessions`·`/api/chat/seller/sessions`, 일반 JSON)으로 받은 `llmSseUrl`(AI 서버 절대 URL)에 `streamChat`이 직접 fetch함 — 원본 `vite.config.ts` 주석에도 명시됨. 따라서 **SSE 버퍼링 리스크는 이 프록시에 실재하지 않음**. passthrough 구현은 방어적으로 유지하되(장래 스트리밍 엔드포인트 대비), 게이트 ③의 실제 검증 대상은 "세션 발급 → AI 서버 직통 스트리밍"이 정상 동작하는지임
+  - **구현 요건 (처음부터 이렇게 짤 것)**:
+    - 응답 스트리밍 passthrough — body를 버퍼링 없이 `new Response(upstream.body, ...)`로 그대로 흘림. 버퍼링하면 "SSE 구조 그대로 이식" 비목표가 여기서 깨짐
+    - **전 HTTP 메서드 export** (GET/POST/PUT/PATCH/DELETE) — 챗봇·로그인은 POST라 GET만 만들면 즉시 막힘
+    - 요청 body를 스트림으로 넘기면 Node fetch는 **`duplex: 'half'` 필수** (없으면 런타임 에러)
+    - **`export const dynamic = 'force-dynamic'`** — 프록시 응답이 캐시되면 안 됨
+    - set-cookie는 **복수 개 대응** — AT 갱신+RT 재발급이 동시에 오면 헤더가 여러 개임. `headers.get()`은 합쳐버리므로 `getSetCookie()`로 다뤄야 dev 재작성 분기가 안전함
+- dev 포트는 3000 고정 유지 (백엔드 CORS가 `http://localhost:3000`만 허용)
+- 게이트: ① 빈 페이지·헤더 렌더 ② **로그인 → 새로고침 → 세션 복원** 동작 ③ **챗봇 스트리밍이 프록시 경로에서 토큰 단위로 도착** — dev만으로는 불충분, **로컬 `next build && next start`로도 확인**(prod는 `compress: true`가 기본이라 dev에서 안 보이는 버퍼링이 생길 수 있음. 한 덩어리로 오면 실패)
+
+### 2단계 — 상품 상세 SSR (SEO 1순위)
+- `app/products/[productId]/page.tsx` — 서버 컴포넌트에서 상품 데이터 호출 (1단계에서 분리한 서버 fetch 헬퍼 사용)
+- `generateMetadata`로 title·description·OG(이미지·가격) 생성
+- **중복 fetch 방지**: `generateMetadata`와 `page.tsx`가 같은 상품을 각각 부르면 요청당 API 2회. 서버 fetch 함수를 React `cache()`로 감싸 요청 단위 dedup — 헬퍼가 네이티브 `fetch()` 기반이면 Next가 동일 요청을 자동 dedup하므로 그것만으로도 해결되지만, 헬퍼가 axios를 재사용하는 경우엔 dedup이 없으므로 `cache()` 래핑을 표준으로 함(fetch 기반이어도 무해)
+- 서버에서 받은 데이터를 React Query에 하이드레이션 → 클라이언트 상호작용(옵션 선택·장바구니·찜)은 기존 컴포넌트 그대로 `'use client'`
+- 후기(`fetchProductReviews`)는 페이지네이션·정렬이 있어 클라이언트 유지
+- **주의**: 카드 시딩(`useSeededProductCard`)은 클라이언트 캐시 승계 메커니즘이라 SSR과 공존해야 함. 서버 데이터가 정본이므로 시딩은 초기 렌더 보조로만 남김
+- 게이트: `view-source`에 상품명·가격·설명이 보이고, OG 디버거에서 카드가 뜸
+
+### 3단계 — 브랜드 + 홈 SSR
+- `app/brands/[brandId]/page.tsx` — 2단계와 동일 패턴, `generateMetadata` 포함
+- `app/page.tsx` — 홈. 인기/추천 상품 목록을 서버에서 받음
+- 브랜드의 카테고리 필터·정렬은 URL 쿼리로 올려 서버에서 처리 (SEO상 필터별 URL이 색인 가능해짐)
+- 게이트: 3개 페이지 모두 소스에 본문 노출
+
+### 4단계 — 나머지 페이지 클라이언트 이식
+SSR 없이 `'use client'`로 그대로 옮김. 라우터 훅 치환이 작업의 대부분임.
+- 순서: auth → cart → wishlist → chat/inquiry → checkout → mypage → seller → admin
+- splat 라우트 3개는 폴더 구조로 펼침:
+  - `/mypage/*` → `app/mypage/{orders,reviews,wishlist,...}/page.tsx`
+  - `/seller/*` → `app/seller/{dashboard,products,orders,chat}/page.tsx`
+- 가드(`RequireAuth`·`RequireRole`·`BlockSeller`)는 레이아웃 단위 클라이언트 컴포넌트로 재구성
+  - **`proxy.ts`(구 middleware)로 옮기지 않음**: AT가 메모리에만 있어 서버가 인증 상태를 알 수 없음. 현행 클라이언트 가드 + 백엔드 최종 방어 구조를 유지함
+  - ※ Next 16에서 `middleware` 규약은 `proxy`로 이름이 바뀜(deprecated). 이 프로젝트는 애초에 쓰지 않으므로 영향 없음
+- checkout 흐름의 `navigate(..., { state })` 2곳은 sessionStorage 패턴으로 치환 (3장 스니펫)
+- 게이트 — 라우트별 체크리스트 (각 항목 확인 결과를 보고):
+
+| 라우트 | 확인 동작 |
+|---|---|
+| `/login` `/signup` | 로그인·가입 성공, `?returnUrl=` 복귀 |
+| `/` | 인기·추천 상품 렌더 |
+| `/products/:id` | 옵션 선택 → 장바구니 담기, 바로구매 → `/checkout` state 전달 |
+| `/brands/:id` | 카테고리 필터·정렬 동작 |
+| `/chat` | 스트리밍 수신, 조건 칩 제거, 카드 → 상세 캐시 시딩 |
+| `/inquiry` | 문의 챗 응답 수신 |
+| `/cart` | 게스트 담기, 수량 변경 시 헤더 뱃지 동기화 |
+| `/wishlist` | 게스트 → 로그인 유도, 회원 → 찜 목록 |
+| `/checkout` → `/complete` | 게스트 접근 시 로그인 리다이렉트, 주문 완료 화면에 주문 정보 표시 |
+| `/mypage/*` | 주문 목록·상세 로드, 리뷰 작성, 게스트 접근 차단 |
+| `/seller/*` | MEMBER 접근 차단, 대시보드 로드, 셀러 챗 SSE(직통 경로) |
+| `/admin/*` | 비ADMIN 접근 차단 |
+| 공통 | 새로고침 세션 복원, 판매자의 구매자 라우트 접근 → `/seller` 격리 |
+
+### 5단계 — 배포 전환
+`Dockerfile` 런타임 스테이지만 교체함. `.github/workflows/deploy.yml`(GHCR 푸시 → EC2 배포)은 **변경 없음**.
+
+- `next.config.ts`에 `output: 'standalone'` — 컨테이너 이미지 크기 최소화
+- Dockerfile runtime: `FROM nginx:1.27-alpine` + dist 복사 → `FROM node:20-alpine` + `node server.js`
+- `nginx.conf` 설정 이관처:
+  - 보안 헤더 4종 → `next.config.ts`의 `headers()`
+  - `/api/` 프록시(8080) → **1단계의 공용 Route Handler가 이미 담당** (rewrites 안 씀 — Route Handler가 파일시스템 라우트라 rewrites보다 먼저 매칭되므로 병행 불가, 1단계 참조). **prod 프록시 대상 주소는 착수 전 확인 필요** — nginx 시절 `127.0.0.1:8080`이 통한 건 그 컨테이너의 네트워크 구성 덕분임. Next 컨테이너 안의 `127.0.0.1`은 자기 자신이므로, 백엔드가 별도 컨테이너면 bridge 네트워크에선 안 닿음. EC2에서 컨테이너가 host 네트워크인지 / compose 서비스명으로 부르는지 확인 후 서버 전용 env로 주입
+  - `/healthz` → `app/healthz/route.ts`
+  - gzip·정적자산 캐시 → Next 기본 제공
+  - SPA fallback(`try_files`) → 불필요(App Router가 처리)
+- 환경변수: `NEXT_PUBLIC_*`는 **빌드 시점에 번들에 박힘** — 현재 Dockerfile이 빌드 스테이지에서 `ENV VITE_API_BASE_URL=""`로 주입 중이라(deploy.yml build arg 아님) 같은 자리에서 이름만 `NEXT_PUBLIC_*`로 교체하면 됨. 서버 전용 base URL은 런타임 주입 가능
+- 레포 교체 후 Vite 잔재 제거(`vite.config.ts`·`index.html`·`vercel.json`·`tsconfig.*.json`)
+- CLAUDE.md 갱신 (CSR 전제 문구·디렉토리 규칙)
+
+## 5. 위험 요소
+
+| 위험 | 영향 | 대응 |
+|---|---|---|
+| **배포 런타임 변경** | nginx 정적 서빙 → Node 상시 프로세스. SSR은 매 요청 서버에서 렌더를 돌리므로 JS 실행 주체가 필요함 | 이미 Docker+EC2 구조라 컨테이너 런타임 스테이지 교체로 해결됨. GitHub Actions 파이프라인은 변경 없음. nginx.conf의 보안헤더·gzip·`/api` 프록시·`/healthz`를 Next 설정으로 이관 (5단계) |
+| 서버에서 백엔드 호출 시 네트워크 경로 | 브라우저용 `VITE_API_BASE_URL`이 서버에선 안 닿을 수 있음 | 서버 전용 base URL 환경변수 분리 |
+| ~~SSE가 공용 프록시 Route Handler 통과~~ | ~~prod에서 챗봇 스트리밍이 Node 프록시를 거침~~ | **해소됨(실측)** — 구매자·판매자 챗 모두 `llmSseUrl`(AI 서버 절대 URL) 직통이라 프록시를 타지 않음. 프록시엔 세션 발급(일반 JSON)만 지나감. passthrough는 방어적으로 구현해 두되 게이트 ③은 "AI 서버 직통 스트리밍 정상 동작" 확인으로 수행 |
+| AI 서버 CORS | SSE가 브라우저에서 AI 서버로 직접 나가므로 새 오리진(Next dev 3000 / prod 도메인)을 AI 서버가 허용해야 함 | 포트 3000 유지로 dev는 기존과 동일. prod 도메인은 5단계에서 확인 |
+| React Query 하이드레이션 불일치 | 서버·클라이언트 렌더 결과가 달라 경고·깜빡임 | 쿼리 키·staleTime을 서버/클라이언트 동일하게 맞춤 |
+| ~~MSW와 서버 컴포넌트~~ | ~~브라우저 워커는 서버 fetch를 가로채지 못함~~ | **해소됨** — MSW를 이식하지 않기로 해 SSR 경로가 실 백엔드만 바라봄 |
+| 백엔드 의존 심화 | 목을 버리므로 백엔드·LLM 서버가 내려가면 화면 작업이 막힘 | 필요 시 `src/mocks/` 복사로 복구 가능(원본은 5단계까지 보존) |
+| Tailwind v4 + Next 설정 | 현재 `@tailwindcss/vite` 플러그인 사용 중 | PostCSS 방식으로 전환 |
+| mypage·seller 대형 페이지 | 각 2,000줄 이상, 치환 누락 위험 | 4단계에서 페이지 단위로 나눠 진행, 매번 빌드 검증 |
+
+## 6. 열린 질문 (진행 중 결정)
+
+- 상품 상세를 SSR로 할지 ISR(정적 재생성)로 할지 — 2단계에서 상품 데이터 갱신 빈도 보고 결정. 재고·가격이 자주 바뀌면 SSR, 아니면 ISR + revalidate
+- 브랜드 필터 URL 구조 — 3단계에서 SEO 관점으로 결정
+- **EC2 컨테이너 네트워크 구성** — host 네트워크인지 bridge+compose인지. prod 프록시 대상 주소(`127.0.0.1` vs 서비스명)와 서버 fetch base URL이 이것에 달림. 5단계 전 확인 (2단계 SSR을 로컬에서 배포 백엔드로 붙여 개발하는 데는 지장 없음)
+
+~~배포 환경의 Node 런타임 지원 여부~~ → 해소(2026-07-28). Docker+EC2라 컨테이너 안에서 Node 구동은 정의상 가능함 (위험 요소 표 참조)
