@@ -1,0 +1,55 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { categoryEmoji } from "../categoryEmoji";
+import { useCategories } from "../useHomeData";
+import { SectionHeading } from "./SectionHeading";
+
+export function CategoryGrid() {
+  const router = useRouter();
+  const { data: categories, isLoading, isError } = useCategories();
+
+  return (
+    <section className="bg-muted/30 px-6 py-16">
+      <div className="mx-auto max-w-6xl">
+        <SectionHeading
+          eyebrow="카테고리"
+          title="어떤 걸 찾고 계세요?"
+          aside="클릭하면 AI가 해당 분야에서 도와드려요"
+        />
+
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+          {isLoading &&
+            Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-sm" />
+            ))}
+
+          {isError && (
+            <p className="col-span-full text-sm text-muted-foreground">
+              카테고리를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+            </p>
+          )}
+
+          {categories?.map((cat) => (
+            // 인기상품 API에 카테고리 필터가 없어(P-4), 카테고리명을 질문으로 넘겨
+            // 챗봇이 해당 분야를 추천하게 한다.
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() =>
+                router.push(`/chat?q=${encodeURIComponent(`${cat.name} 추천해줘`)}`)
+              }
+              className="flex flex-col items-center gap-2 rounded-sm border bg-background px-3 py-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:bg-muted hover:shadow-md active:translate-y-0 active:scale-[0.98]"
+            >
+              <span className="text-2xl" aria-hidden>
+                {categoryEmoji(cat.name)}
+              </span>
+              <span className="text-sm font-medium">#{cat.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
