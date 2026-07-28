@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { ErrorState } from "@/features/mypage/components/PageState";
 import { ApiError } from "@/shared/api/client";
@@ -26,7 +26,6 @@ export default function BrandPage({
   /** initialData가 어떤 필터 조합의 결과인지 — 그 조합에서만 승계한다 */
   serverQuery?: BrandQuery;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -73,8 +72,11 @@ export default function BrandPage({
     }
 
     const qs = params.toString();
-    // scroll:false — 필터를 바꿀 때 목록 위치를 유지한다(원본 setState와 같은 체감).
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // 네이티브 History API를 쓴다 — Next 문서가 "상품 목록 정렬"을 이 방식으로 안내한다.
+    // router.push는 서버 라운드트립을 도는 페이지 이동이라 이런 화면 내 필터 갱신에는
+    // 주소창이 즉시 반영되지 않는다. pushState는 Next 라우터와 통합되어
+    // useSearchParams가 그대로 갱신되고, 뒤로가기도 정상 동작한다.
+    window.history.pushState(null, "", qs ? `${pathname}?${qs}` : pathname);
   };
 
   // 필터·정렬을 바꾸면 첫 페이지로 되돌린다(2페이지에서 필터를 바꾸면 빈 목록이 될 수 있음)
