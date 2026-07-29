@@ -9,7 +9,7 @@
 ## 1. 한 줄 요약
 
 프론트엔드를 Vite(CSR) → **Next.js(SSR)** 로 전환합니다.
-**정적 파일을 nginx로 서빙하던 컨테이너가 Node 프로세스가 상시 도는 컨테이너로 바뀝니다.**
+**nginx는 그대로 두고**(층2 LB · `/internal` 차단), 그 뒤에 Next SSR 서버를 추가합니다.
 
 인프라(EC2·ALB·GHCR·SSH 시크릿)는 **그대로**입니다. 새로 등록할 시크릿도 없습니다.
 
@@ -42,31 +42,41 @@
 
 > 아래는 **전환했을 때** 달라지는 내용입니다. 지금 기존 파일이 이렇게 수정돼 있다는 뜻이 아닙니다.
 
-### ① 컨테이너 런타임: nginx → Node
+### ① 컨테이너 구성: nginx 유지 + Next 추가
+
+**nginx는 그대로 있습니다.** 아키텍처 문서(03 D-분산4)의 "앱 티어 A = nginx+next+spring" 구조와 `/internal` 3중 방어 ①을 유지합니다.
+
+```
+ALB → nginx(80) ─ /api/**, /.well-known/**, /actuator/** → spring:8080
+                 ─ /internal/**                          → 404 차단
+                 ─ /_next/static/**, 그 외               → next:3000 (SSR)
+```
 
 | | 기존 | 변경 후 |
 |---|---|---|
-| 베이스 이미지 | `nginx:1.27-alpine` | `node:20-alpine` |
-| 실행 | nginx 정적 서빙 | `node server.js` (Next standalone) |
-| 포트 | 80 | **80 (동일)** |
-| 실행 사용자 | root | **`node` (비특권)** |
-| 이미지 크기 | (nginx-alpine + 정적파일) | **416MB** (로컬 빌드 실측) |
+| 베이스 이미지 | `nginx:1.27-alpine` | `node:20-alpine` + `apk add nginx` |
+| 프로세스 | nginx 1개 | **nginx + node 2개** (entrypoint가 관리) |
+| 외부 포트 | 80 (nginx) | **80 (nginx, 동일)** |
+| Next 포트 | — | 3000, **`127.0.0.1`만 바인딩** (외부 노출 없음) |
+| 정적 파일 | nginx가 직접 서빙 | Next가 서빙(`/_next/static`), nginx는 프록시 |
 
 **포트가 그대로라 ALB 타깃그룹·보안그룹 변경이 없습니다.**
 
-80은 특권 포트라 비특권 사용자로는 bind가 안 됩니다. root로 돌리는 대신 `setcap cap_net_bind_service`로 node 바이너리에만 권한을 주고 사용자를 낮췄습니다.
+**두 프로세스 관리**: `docker-entrypoint.sh`가 Next를 먼저 띄우고 준비되면 nginx를 올립니다. 둘 중 하나라도 죽으면 컨테이너를 내려 `--restart always`가 통째로 재기동합니다(부분 장애 상태로 남지 않게).
 
-### ② nginx.conf가 사라지고 Next 설정으로 이관
+### ② nginx.conf 변경점
 
-| 기존 nginx.conf | 이관처 |
-|---|---|
-| 보안 헤더 4종 | `next.config.ts`의 `headers()` |
-| `/api/` → `127.0.0.1:8080` 프록시 | `app/api/[...path]/route.ts` (Route Handler) |
-| `/healthz` | `app/healthz/route.ts` |
-| gzip·정적자산 캐시 | Next 기본 제공 |
-| SPA fallback(`try_files`) | 불필요 (App Router가 처리) |
+경로 규칙은 **기존과 동일**하고, 정적 서빙 대신 Next로 프록시하는 것만 다릅니다.
 
-**`nginx.conf` 파일은 더 이상 쓰이지 않습니다.**
+| 경로 | 기존 | 변경 후 |
+|---|---|---|
+| `/api/`, `/.well-known/`, `/actuator/` | → `127.0.0.1:8080` | **동일** |
+| `/internal/` | (프록시했음) | **404 차단** ← 3중 방어 ① 강화 |
+| `/healthz` | nginx `return 200` | → Next `/healthz` (앱까지 살아야 200) |
+| `/assets/` 정적 | nginx 직접 서빙 | `/_next/static/` → Next 프록시 |
+| `/` (SPA fallback) | `try_files → index.html` | → Next (SSR) |
+
+보안 헤더는 **Next(`next.config.ts`)가 붙입니다** — nginx에서도 붙이면 응답에 중복으로 실려서, 로컬(nginx 없음)에서도 일관되도록 앱 쪽에 두었습니다.
 
 ### ③ 워크플로 — 신규 파일이지만 기존과 두 줄만 다름
 
@@ -141,40 +151,60 @@ mv .github/workflows/deploy-next.yml.disabled .github/workflows/deploy-next.yml
 # A. EC2에서 이전 이미지로 즉시 되돌리기 (가장 빠름)
 docker stop jarvis-frontend && docker rm -f jarvis-frontend
 docker run -d --name jarvis-frontend --restart always --network host \
-  ghcr.io/toss-delta-final/jarvis-frontend:<이전_커밋_해시>
+  ghcr.io/toss-delta-final/jarvis-frontend:076198920d750b158f3bd40edd7ed40463f76fe5
 
 # B. 워크플로 rename 되돌리고 재푸시 → 기존 Vite 앱 재배포
 ```
 
-커밋 해시 태그를 계속 남기므로 A가 언제든 가능합니다.
+**위 해시 `0761989...` = 전환 직전 main의 마지막 커밋(현재 배포 중인 Vite 앱)입니다.**
+워크플로가 `github.sha`(40자 전체)로 태그를 달므로 **짧은 해시로는 pull이 안 됩니다.**
+
+EC2에 남아 있는 태그를 직접 확인하려면:
+```bash
+docker images ghcr.io/toss-delta-final/jarvis-frontend
+```
+(배포 시 `docker image prune -f`가 돌지만 실행 중이던 이미지는 보통 남아 있습니다)
 
 ---
 
 ## 7. 배포 후 확인 항목
 
 ```bash
-# 헬스체크
-curl -i http://<서버>/healthz          # → 200, "ok", Content-Type: text/plain
+# 헬스체크 (nginx → Next 프록시 — 둘 다 살아야 200)
+curl -i http://<서버>/healthz          # → 200, "ok"
 
 # SSR 동작 (HTML에 본문이 있어야 함 — 이번 전환의 핵심)
 curl -s http://<서버>/products/<상품ID> | grep -o '<title>[^<]*</title>'
 
-# API 프록시
-curl -s -o /dev/null -w '%{http_code}' http://<서버>/api/categories   # → 200
+# API 프록시 (nginx → spring:8080)
+curl -s -o /dev/null -w '%{http_code}\n' http://<서버>/api/categories   # → 200
 
-# 보안 헤더 (nginx에서 이관됨)
-curl -sI http://<서버>/ | grep -iE 'x-frame|x-content|referrer|permissions'
+# ★ JWKS — AI 서버가 챗 티켓 검증에 쓴다. 이게 막히면 챗봇이 401로 죽는다
+curl -s -o /dev/null -w '%{http_code}\n' http://<서버>/.well-known/jwks.json  # → 200
+
+# ★ /internal 차단 (3중 방어 ①)
+curl -s -o /dev/null -w '%{http_code}\n' http://<서버>/internal/products/changes  # → 404
+
+# 보안 헤더 (각 1개씩만 — 중복이면 nginx/Next 양쪽에서 붙는 것)
+curl -sI http://<서버>/ | grep -icE 'x-frame|x-content|referrer|permissions'  # → 4
 ```
 
 브라우저에서는 **상품 상세 페이지 소스 보기**로 상품명·가격이 HTML에 들어있는지 확인하면 SSR이 동작하는 것입니다.
+
+**컨테이너 안 프로세스 확인** (nginx·node 둘 다 떠 있어야 함):
+```bash
+docker exec jarvis-frontend ps -o pid,comm
+```
 
 ---
 
 ## 8. 알려진 차이·주의
 
-- **메모리·CPU 사용량이 늘어납니다.** 정적 파일 서빙 → 매 요청 서버 렌더로 바뀌기 때문입니다. 현재 트래픽 규모에서는 인스턴스 상향이 필요 없을 것으로 보지만, 배포 후 모니터링 부탁드립니다.
-- **기동이 느립니다.** nginx는 즉시, Node SSR은 수 초 걸립니다. 헬스체크 대기를 60초로 늘린 이유입니다.
+- **메모리·CPU 사용량이 늘어납니다.** 매 요청 SSR을 돌리기 때문입니다. 현재 트래픽 규모에서는 인스턴스 상향이 필요 없을 것으로 보지만, 배포 후 모니터링 부탁드립니다.
+- **기동이 느립니다.** Next SSR 부팅에 수 초 걸리고, 그 뒤에 nginx가 올라옵니다. 헬스체크 대기를 60초로 늘린 이유입니다.
+- **`--network host`라 Next가 호스트의 3000 포트를 씁니다.** `127.0.0.1`에만 바인딩해 외부 노출은 없지만, EC2에서 3000을 쓰는 다른 프로세스가 있으면 충돌합니다(현재는 없음을 확인).
 - **컨테이너 이름·재시작 정책·네트워크 모드는 그대로**입니다(`jarvis-frontend`, `--restart always`, `--network host`).
+- **한 컨테이너에 두 프로세스**가 돕니다. Docker 모범사례(컨테이너당 1프로세스)와는 다르지만, 아키텍처 문서의 "앱 티어 A = nginx+next+spring" 구조를 따른 것입니다.
 
 ---
 
