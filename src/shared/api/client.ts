@@ -42,7 +42,7 @@ export class ApiError extends Error {
 }
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
   // RT는 httpOnly 쿠키(Path=/api/auth)로 오가므로 자격증명 동봉 필요
   withCredentials: true,
 });
@@ -146,7 +146,7 @@ api.interceptors.response.use(
         // refresh는 body 없이 RT 쿠키로 식별 → withCredentials로 쿠키 동봉
         refreshing ??= axios
           .post<ApiEnvelope<{ accessToken: string }>>(
-            `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
+            `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/auth/refresh`,
             null,
             { withCredentials: true },
           )

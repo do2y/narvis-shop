@@ -1,4 +1,6 @@
-import { useNavigate } from "react-router-dom";
+"use client";
+
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { logout } from "@/shared/api/auth";
 import { useAuthStore } from "@/shared/stores/authStore";
@@ -9,7 +11,7 @@ import { useAuthStore } from "@/shared/stores/authStore";
  */
 export function useLogout() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
-  const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   return async () => {
@@ -21,7 +23,7 @@ export function useLogout() {
       clearAuth();
       // 이전 사용자의 장바구니·주문·찜이 다음 로그인 때 잠깐 보이지 않도록 캐시 폐기
       queryClient.clear();
-      navigate("/");
+      router.push("/");
     }
   };
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addCartItem, fetchCart } from "@/shared/api/cart";
 import { ApiError } from "@/shared/api/client";

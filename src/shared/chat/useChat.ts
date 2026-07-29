@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useEffect, useRef } from "react";
 import { track } from "@/shared/analytics/track";
 import { ApiError } from "@/shared/api/client";

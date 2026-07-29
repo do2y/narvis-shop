@@ -6,7 +6,7 @@ import type { BehaviorEvent, BehaviorEventType, EventProperties } from "./types"
 
 const FLUSH_SIZE = 10;
 const FLUSH_MS = 5000;
-const ENDPOINT = `${import.meta.env.VITE_API_BASE_URL}/api/events`;
+const ENDPOINT = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/events`;
 
 let queue: BehaviorEvent[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;

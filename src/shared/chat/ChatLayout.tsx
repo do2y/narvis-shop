@@ -1,3 +1,5 @@
+"use client";
+
 import { ChatConversation } from "./ChatConversation";
 
 interface ChatLayoutProps {

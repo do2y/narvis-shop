@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect } from "react";
 import axios from "axios";
 import { fetchMe } from "@/shared/api/auth";
@@ -37,7 +39,7 @@ async function restore(): Promise<void> {
   let token: string;
   try {
     const res = await axios.post<ApiEnvelope<{ accessToken: string }>>(
-      `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
+      `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/auth/refresh`,
       null,
       { withCredentials: true },
     );
