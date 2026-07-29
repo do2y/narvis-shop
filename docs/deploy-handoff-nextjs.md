@@ -141,12 +141,19 @@ mv .github/workflows/deploy-next.yml.disabled .github/workflows/deploy-next.yml
 # A. EC2에서 이전 이미지로 즉시 되돌리기 (가장 빠름)
 docker stop jarvis-frontend && docker rm -f jarvis-frontend
 docker run -d --name jarvis-frontend --restart always --network host \
-  ghcr.io/toss-delta-final/jarvis-frontend:<이전_커밋_해시>
+  ghcr.io/toss-delta-final/jarvis-frontend:076198920d750b158f3bd40edd7ed40463f76fe5
 
 # B. 워크플로 rename 되돌리고 재푸시 → 기존 Vite 앱 재배포
 ```
 
-커밋 해시 태그를 계속 남기므로 A가 언제든 가능합니다.
+**위 해시 `0761989...` = 전환 직전 main의 마지막 커밋(현재 배포 중인 Vite 앱)입니다.**
+워크플로가 `github.sha`(40자 전체)로 태그를 달므로 **짧은 해시로는 pull이 안 됩니다.**
+
+EC2에 남아 있는 태그를 직접 확인하려면:
+```bash
+docker images ghcr.io/toss-delta-final/jarvis-frontend
+```
+(배포 시 `docker image prune -f`가 돌지만 실행 중이던 이미지는 보통 남아 있습니다)
 
 ---
 
