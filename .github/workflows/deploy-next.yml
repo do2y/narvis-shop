@@ -93,8 +93,9 @@ jobs:
               -e API_PROXY_TARGET="http://localhost:8080" \
               ${{ env.IMAGE }}:${{ github.sha }}
 
-            # 헬스체크 — Next 라우트 핸들러(app/healthz)가 응답한다.
-            # nginx 때보다 기동이 느리므로(SSR 서버 부팅) 대기를 60초로 늘린다.
+            # 헬스체크 — nginx(80) → Next(3000)의 /healthz로 프록시된다.
+            # 즉 nginx와 Next가 **둘 다** 떠야 200이 나온다(부분 기동 상태를 걸러냄).
+            # SSR 서버 부팅이 nginx보다 느리므로 대기를 60초로 늘린다.
             for i in $(seq 1 30); do
               if curl -fs http://localhost/healthz > /dev/null; then
                 docker image prune -f

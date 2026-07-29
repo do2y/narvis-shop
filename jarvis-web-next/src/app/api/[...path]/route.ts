@@ -1,16 +1,19 @@
 import type { NextRequest } from "next/server";
 
 /**
- * /api/* 백엔드 프록시 — dev·prod 공용.
+ * /api/* 백엔드 프록시 — **로컬 개발 전용 경로**.
  *
- * rewrites()를 쓰지 않는 이유: Route Handler는 파일시스템 라우트라 rewrites보다 먼저
- * 매칭된다. "dev만 Route Handler + prod는 rewrites" 조합은 성립하지 않으므로
- * (prod에서도 이 파일이 /api/*를 가로챈다) 아예 전 환경 공용 프록시로 둔다.
+ * 배포에서는 이 핸들러가 쓰이지 않는다. nginx(층2 LB, 03 D-분산4)가 `/api/`를
+ * spring:8080으로 직접 프록시하므로 요청이 Next까지 오지 않는다.
+ * 로컬에는 nginx가 없어 이 핸들러가 그 역할을 대신한다.
  *
- * dev에서만 Set-Cookie를 재작성한다 — 백엔드 RT 쿠키는 `Secure; SameSite=Strict`로
+ * dev에서 Set-Cookie를 재작성하는 이유: 백엔드 RT 쿠키는 `Secure; SameSite=Strict`로
  * 내려오는데 로컬은 http라 브라우저가 Secure 쿠키를 저장하지 않는다. 그러면
  * /api/auth/refresh가 항상 401(AUTH_REQUIRED) → 인터셉터가 /login으로 튕겨
  * 로그인 자체가 불가능해진다. (원본 vite.config.ts의 proxyRes 훅과 동일 목적)
+ *
+ * rewrites()를 쓰지 않는 이유: Route Handler는 파일시스템 라우트라 rewrites보다 먼저
+ * 매칭되어 둘을 환경별로 나눠 쓸 수 없고, rewrites로는 응답 헤더(Set-Cookie) 조작도 못 한다.
  */
 
 // 프록시 응답은 절대 캐시되면 안 된다.
