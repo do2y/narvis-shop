@@ -1,5 +1,7 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import {
   addWishlistItem,
   fetchWishlist,
@@ -35,7 +37,7 @@ export function useIsWished(productId: number): boolean {
 // 낙관적 업데이트 — 하트가 즉시 반응해야 하므로. 실패 시 롤백.
 export function useToggleWishlist() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const router = useRouter();
   // 여기선 "로그인 화면으로 보낼지"를 판단하므로 user 기준이다.
   // AT(=isAuthReady)로 보면 복원 중인 로그인 사용자를 게스트로 오인해 로그인으로 보낸다.
   const isAuthed = useAuthStore((s) => s.user !== null);
@@ -82,7 +84,7 @@ export function useToggleWishlist() {
       const returnUrl = encodeURIComponent(
         window.location.pathname + window.location.search,
       );
-      navigate(`/login?returnUrl=${returnUrl}`);
+      router.push(`/login?returnUrl=${returnUrl}`);
       return;
     }
     mutation.mutate({ productId, wished });

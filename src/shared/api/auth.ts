@@ -24,7 +24,7 @@ export async function fetchMe(): Promise<AuthUser> {
 // 헤더 등 여러 위치에서 호출되므로 shared/api에 둔다(로그인/가입은 auth 페이지 전용).
 export async function logout(): Promise<void> {
   await axios.post(
-    `${import.meta.env.VITE_API_BASE_URL}/api/auth/logout`,
+    `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/auth/logout`,
     null,
     { withCredentials: true },
   );

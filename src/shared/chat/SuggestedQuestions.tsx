@@ -1,3 +1,5 @@
+"use client";
+
 interface SuggestedQuestionsProps {
   questions: string[];
   onSelect: (question: string) => void;

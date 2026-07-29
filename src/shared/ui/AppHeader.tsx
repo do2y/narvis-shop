@@ -1,4 +1,7 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ChevronDown,
   Heart,
@@ -33,7 +36,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 // 헤더 아이콘 링크 — 44px 터치 타깃, 활성 경로 강조, title 툴팁 + aria-label 병행.
-// active 판단은 NavLink의 isActive에 위임(경로 일치 시 배경·색으로 현재 위치 표시).
+// active 판단은 현재 pathname과 대조(경로 일치 시 배경·색으로 현재 위치 표시).
 function NavIconLink({
   to,
   label,
@@ -47,21 +50,23 @@ function NavIconLink({
 }) {
   // 0(빈 장바구니)이면 뱃지를 숨긴다. 99를 넘으면 자릿수가 늘어 아이콘을 가리므로 99+로 절삭.
   const badgeText = !badge ? undefined : badge > 99 ? "99+" : String(badge);
+  const pathname = usePathname();
+  // 원본 NavLink의 기본 동작(하위 경로 포함 매칭)과 맞춘다.
+  // 여기 쓰이는 경로(/chat·/wishlist·/cart)는 하위 경로가 없어 결과가 동일하다.
+  const isActive = pathname === to || pathname.startsWith(`${to}/`);
 
   return (
-    <NavLink
-      to={to}
+    <Link
+      href={to}
       // 뱃지 수를 라벨에 포함해 스크린리더에도 개수가 전달되게 한다
       aria-label={badge ? `${label} (${badge}개)` : label}
       title={label}
-      className={({ isActive }) =>
-        cn(
-          buttonVariants({ variant: "ghost", size: "icon" }),
-          // 최소 44px 클릭 영역 (터치 안정성)
-          "relative size-11 rounded-full",
-          isActive && "bg-muted text-foreground",
-        )
-      }
+      className={cn(
+        buttonVariants({ variant: "ghost", size: "icon" }),
+        // 최소 44px 클릭 영역 (터치 안정성)
+        "relative size-11 rounded-full",
+        isActive && "bg-muted text-foreground",
+      )}
     >
       {/* 뱃지가 있으면 아이콘을 살짝 내려 우상단에 뱃지 자리를 비운다.
           (아이콘 간격이 gap-0.5로 좁아 뱃지를 버튼 밖으로 빼면 옆 아이콘과 닿는다) */}
@@ -74,7 +79,7 @@ function NavIconLink({
           {badgeText}
         </span>
       )}
-    </NavLink>
+    </Link>
   );
 }
 
@@ -87,7 +92,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
   //  - 홈(/): 히어로에 채팅 입력창이 있음
   //  - 채팅(/chat): 이미 그 페이지임
   // 그 외 페이지에선 상시 채팅 진입점으로 유지.
-  const pathname = useLocation().pathname;
+  const pathname = usePathname();
   const hasChatEntry = pathname === "/" || pathname.startsWith("/chat");
 
   const handleLogout = useLogout();
@@ -97,7 +102,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4">
           <Link
-            to="/"
+            href="/"
             aria-label="Jarvis 홈"
             className="flex items-center gap-2 rounded-full"
           >
@@ -163,7 +168,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
                   {/* 구분선 1개만 — 정체성 ↔ 메뉴. 항목끼리는 이어 붙여 칸 분할감 줄임 */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    render={<Link to="/mypage" />}
+                    render={<Link href="/mypage" />}
                     className="rounded-lg py-2"
                   >
                     <User />
@@ -182,7 +187,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
             ) : (
               <>
                 <Link
-                  to="/login"
+                  href="/login"
                   className={cn(
                     buttonVariants({ variant: "ghost" }),
                     "ml-1 h-11 rounded-full px-3",
@@ -191,7 +196,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
                   로그인
                 </Link>
                 <Link
-                  to="/signup"
+                  href="/signup"
                   className={cn(
                     buttonVariants(),
                     "h-11 rounded-full px-4",

@@ -1,5 +1,7 @@
+"use client";
+
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import type { SeededProductCard } from "@/shared/types/product";
 
 // 카드 → 상세 진입(캐시 승계, CLAUDE.md). 카드 데이터를 ['products', id]에 시딩해
@@ -8,13 +10,13 @@ import type { SeededProductCard } from "@/shared/types/product";
 // 카드 데이터가 SeededProductCard를 채우지 못하면 시딩 없이 navigate만 할 것.
 export function useGoToProduct() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   return (card: SeededProductCard) => {
     queryClient.setQueryData<SeededProductCard>(
       ["products", card.productId],
       card,
     );
-    navigate(`/products/${card.productId}`);
+    router.push(`/products/${card.productId}`);
   };
 }
