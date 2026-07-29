@@ -11,16 +11,7 @@ export function PopularProducts() {
   return (
     <section className="px-6 py-16">
       <div className="mx-auto max-w-6xl">
-        <SectionHeading
-          eyebrow="추천 상품"
-          title="지금 많이 찾는 상품"
-          aside={
-            // TODO: 전체 상품/추천 목록 페이지로 이동
-            <button type="button" className="hover:text-foreground">
-              더 보기 →
-            </button>
-          }
-        />
+        <SectionHeading eyebrow="추천 상품" title="지금 많이 찾는 상품" />
 
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading &&
