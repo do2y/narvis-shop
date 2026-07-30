@@ -10,6 +10,11 @@ function toOrderErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "CART_OPTION_INVALID")
       return "선택한 옵션을 찾을 수 없어요. 상품을 다시 선택해주세요.";
+    // 담아둔 뒤 판매가 중지된 상품이 섞인 경우(O-1). 품절은 여기가 아니라
+    // 200 PAYMENT_FAILED로 갈라지므로, 이 코드는 "판매 중지"만 뜻한다.
+    // 서버가 어떤 상품인지 알려주지 않아 장바구니에서 확인하도록 안내한다.
+    if (error.code === "ORDER_PRODUCT_UNAVAILABLE")
+      return "판매가 중지된 상품이 포함되어 있어요. 장바구니에서 확인해주세요.";
     if (error.code === "AUTH_FORBIDDEN")
       return "이 주문을 처리할 권한이 없어요.";
     // 검증 실패는 필드 사유가 더 구체적(품절·수량 등)

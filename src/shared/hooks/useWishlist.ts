@@ -63,12 +63,16 @@ export function useToggleWishlist() {
       if (context?.previous) {
         queryClient.setQueryData(["wishlist"], context.previous);
       }
-      // 이미 찜함(409)·이미 해제됨(404)은 사용자 입장에선 실패가 아니다.
-      // 원하는 상태에 이미 도달해 있으므로 롤백을 되돌리고 서버 기준으로 맞춘다.
+      // 이미 찜함(409 WISHLIST_DUPLICATE)·이미 해제됨(404 WISHLIST_NOT_FOUND)은
+      // 사용자 입장에선 실패가 아니다. 원하는 상태에 이미 도달해 있으므로
+      // 롤백을 되돌리고 서버 기준으로 맞춘다.
       // (onSettled가 어차피 재조회하지만, 롤백된 하트가 잠깐 보이는 것을 막는다)
+      // status 404로 뭉치면 안 된다 — 찜 추가의 PRODUCT_NOT_FOUND(없는 상품)도 404라
+      // 진짜 실패를 성공으로 오인해 하트가 켜진 채 남는다(M-5·M-6).
       if (
         error instanceof ApiError &&
-        (error.code === "WISHLIST_DUPLICATE" || error.status === 404)
+        (error.code === "WISHLIST_DUPLICATE" ||
+          error.code === "WISHLIST_NOT_FOUND")
       ) {
         queryClient.invalidateQueries({ queryKey: ["wishlist"] });
       }
