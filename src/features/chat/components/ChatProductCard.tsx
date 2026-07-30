@@ -13,6 +13,9 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   const { toggle, isPending } = useToggleWishlist();
   const addCart = useAddCartItem();
   const hasDiscount = product.originalPrice > product.price;
+  const discountRate = hasDiscount
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    : 0;
 
   // 챗봇 카드만 새 탭으로 연다. 대화 상태는 persist하지 않아(CLAUDE.md) 같은 탭에서
   // 상세로 나갔다 돌아오면 대화가 사라지기 때문. 새 탭은 캐시를 공유하지 않아
@@ -78,14 +81,19 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
         )}
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
-          <div className="flex flex-wrap items-baseline gap-x-2">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-base font-bold">
               {formatPrice(product.price)}
             </span>
             {hasDiscount && (
-              <span className="text-sm text-muted-foreground line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
+              <>
+                <span className="text-sm text-muted-foreground line-through">
+                  {formatPrice(product.originalPrice)}
+                </span>
+                <span className="text-sm font-bold text-red-500">
+                  {discountRate}%
+                </span>
+              </>
             )}
           </div>
 
