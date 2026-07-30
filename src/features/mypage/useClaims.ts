@@ -23,9 +23,12 @@ export function useClaims(page = 0, size = 10) {
 // 신청 거부 사유를 사용자 문구로. 허용 판정은 서버 몫이라 FE는 코드만 보고 안내한다.
 function toClaimErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    // 매트릭스 위반(예: 배송중 취소) — 서버 메시지가 사유를 정확히 담고 있어 우선 사용
+    // 매트릭스 위반(배송중 취소·배송 전 반품 등)과 동시 요청 경합이 같은 코드로 온다.
+    // 서버 message 는 상황별로 바뀌지 않으므로("배송중이라 못 한다" 같은 문구 없음, O-5)
+    // 사유를 기대하지 말고 고정 문구로 안내한다. 구체적 사유가 필요하면 주문 상세의
+    // 아이템 상태로 FE 가 만들어야 한다.
     if (error.code === "CLAIM_NOT_ALLOWED")
-      return error.message || "지금은 신청할 수 없는 상품이에요.";
+      return "지금은 신청할 수 없는 상품이에요. 주문 상세에서 상태를 확인해주세요.";
     if (error.code === "CLAIM_ALREADY_REQUESTED")
       return "이미 접수된 신청이 있어요. 취소·반품 내역에서 확인해주세요.";
     // 타인 아이템도 404로 통일되므로 존재 여부를 드러내지 않는 문구를 쓴다

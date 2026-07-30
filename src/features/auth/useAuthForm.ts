@@ -65,8 +65,13 @@ function toLoginErrorMessage(error: unknown): string {
 // 같은 규칙을 Zod가 먼저 잡으므로 실제로는 프론트 검증 우회·규칙 불일치 시의 2차 방어선.
 function toSignupErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === "MEMBER_EMAIL_DUPLICATE") {
-      return error.message || "이미 가입된 이메일입니다";
+    // RESOURCE_CONFLICT는 같은 이메일로 동시에 가입 요청이 들어와 DB UNIQUE 제약에서
+    // 진 쪽이다(A-1). 명세가 MEMBER_EMAIL_DUPLICATE와 동일하게 안내하라고 정했다.
+    if (
+      error.code === "MEMBER_EMAIL_DUPLICATE" ||
+      error.code === "RESOURCE_CONFLICT"
+    ) {
+      return "이미 가입된 이메일입니다";
     }
     if (error.displayMessage) return error.displayMessage;
   }

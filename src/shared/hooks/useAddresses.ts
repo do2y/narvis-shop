@@ -40,6 +40,10 @@ function toAddressErrorMessage(error: unknown): string {
     if (error.code === "ADDRESS_LAST_UNDELETABLE")
       return "배송지가 1개일 때는 삭제할 수 없어요.";
     if (error.code === "ADDRESS_NOT_FOUND") return "이미 삭제된 배송지예요.";
+    // 서로 다른 배송지를 동시에 기본으로 지정해 UNIQUE 제약에 걸린 경우(M-8c).
+    // 한쪽만 성공하므로 재시도하면 풀린다 — 서버 메시지는 제약 이름이 섞여 나올 수 있어 쓰지 않는다.
+    if (error.code === "RESOURCE_CONFLICT")
+      return "잠시 후 다시 시도해주세요.";
     if (error.displayMessage) return error.displayMessage;
   }
   return "배송지를 저장하지 못했어요. 잠시 후 다시 시도해주세요.";

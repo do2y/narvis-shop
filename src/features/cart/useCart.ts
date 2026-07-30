@@ -26,6 +26,9 @@ function toCartMutationMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "AUTH_FORBIDDEN")
       return "이 항목을 변경할 권한이 없어요.";
+    // 삭제(C-4)의 정식 코드를 수량 변경(C-3)도 쓰는 것으로 보고 분기한다 —
+    // C-3 명세 표에는 404 행의 code 칸이 비어 있어 백엔드에 확인 요청 중.
+    // 코드가 다르면 displayMessage 폴백으로 빠지므로 화면이 깨지지는 않는다.
     if (error.code === "CART_ITEM_NOT_FOUND")
       return "이미 삭제된 항목이에요.";
     // 재고 부족 — 서버가 변경 후 수량(치환값)과 재고를 비교(02 D33).

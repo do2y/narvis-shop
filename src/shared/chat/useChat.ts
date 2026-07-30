@@ -88,14 +88,22 @@ export function useChat({
 
   // 스트림 진입 티켓 확보 — 티켓 TTL 이 30~60초로 짧아 매 전송 직전에 확보한다.
   // 기존 sessionId 가 있으면 재발급(CH-1b)으로 세션·맥락을 유지하고, 없으면 새로 발급한다.
-  // 재발급이 404(SESSION_NOT_FOUND: 만료·미존재)면 새 세션으로 폴백한다.
   // sessionId 는 항상 발급 응답값을 쓴다(BE·Redis 발급, sliding TTL) — 클라이언트가 만들지 않는다.
+  //
+  // 재발급 실패 중 아래 2종은 "이 sessionId 로는 더 못 쓴다"는 뜻이라 새 세션으로 폴백한다:
+  // - 404 SESSION_NOT_FOUND — 만료·미존재(로그인·로그아웃·"새 대화"로 정리된 경우 포함)
+  // - 403 SESSION_FORBIDDEN — 요청 신원 ≠ 세션 소유자. 로그인/로그아웃으로 신원이 바뀐 뒤
+  //   이전 신원의 sessionId 가 스토어에 남아 있으면 발생한다. 새로 받으면 풀리므로
+  //   오류로 띄우지 않는다(맥락은 끊기지만 대화는 이어갈 수 있다).
   const acquireTicket = useCallback((): Promise<ChatSession> => {
     const existing = useChatStore.getState().sessionId;
     if (!existing) return createSession();
     return reissueTicket(existing).catch((err: unknown) => {
-      if (err instanceof ApiError && err.code === "SESSION_NOT_FOUND") {
-        return createSession(); // 만료된 세션 → 새 세션으로 시작
+      if (
+        err instanceof ApiError &&
+        (err.code === "SESSION_NOT_FOUND" || err.code === "SESSION_FORBIDDEN")
+      ) {
+        return createSession();
       }
       throw err;
     });
