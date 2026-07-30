@@ -9,6 +9,7 @@ import { ChatConversation } from "@/shared/chat/ChatConversation";
 import { SuggestedQuestions } from "@/shared/chat/SuggestedQuestions";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
+import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { cn } from "@/lib/utils";
 import type { SellerPanel } from "@/shared/types/chat";
 import { SellerHeader } from "./components/SellerHeader";
@@ -85,16 +86,36 @@ export default function SellerChatPage() {
 
   // 진입 시 새 대화 — 스토어가 채널 공용이라 이전 쇼핑 대화가 남아있을 수 있음.
   // 대시보드 히어로에서 넘어온 첫 메시지(?q=)가 있으면 초기화 직후 이어서 전송.
+  //
+  // ?q= 는 "한 번 쓰고 버리는" 값이라 소비 여부를 ref 로 기록한다. deps 를 [q] 로 두고
+  // URL 에서 q 를 지우면(replaceState → useSearchParams 갱신) 이 이펙트가 q=null 로 다시 돌아
+  // startNewChat() 이 방금 띄운 스트림을 abort·reset 해 메시지가 사라진다.
+  // (대시보드에서 전송 → 채팅 화면에서 말풍선이 떴다 사라지던 원인)
+  //
+  // 전송은 AT 가 준비된 뒤에만 한다(selectIsAuthReady = 복원완료 + AT 보유).
+  // RequireRole 은 `user`만 보는데 user 는 localStorage persist·AT 는 메모리라,
+  // 새로고침 직후엔 "가드는 통과했지만 AT 는 아직 없는" 구간이 있다. 그때 세션 발급을
+  // 보내면 Authorization 없이 나가 401 → 로그인으로 튕긴다(CLAUDE.md 인증 규칙).
+  const isAuthReady = useAuthStore(selectIsAuthReady);
+  const consumedQRef = useRef(false);
   useEffect(() => {
+    if (consumedQRef.current) return;
+    // q 가 있으면 보낼 수 있을 때까지 기다린다. q 가 없으면 초기화만 하면 되므로
+    // 인증을 기다릴 이유가 없다(빈 화면에서 이전 쇼핑 대화를 즉시 걷어내야 한다).
+    if (q && !isAuthReady) return;
+    consumedQRef.current = true;
+
     startNewChat();
     if (q) {
       send(q);
+      // 새로고침·뒤로가기로 같은 질문이 재전송되지 않게 URL 에서만 지운다.
+      // 위 ref 가드 덕분에 이 갱신은 이펙트를 다시 돌리지 않는다.
       params.delete("q");
       setParams(params, { replace: true });
     }
-    // 마운트 시 1회 + q 변화에만 반응
+    // q·인증 준비 시점에만 반응 — 실제 1회 실행은 위 ref 가드가 보장한다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q]);
+  }, [q, isAuthReady]);
 
   // draft 승인/취소 — confirm은 최상위 action/draftId로, 취소는 서버 호출 없이 카드만 닫음
   const confirmDraft = (draftId: string) => confirm(draftId);
