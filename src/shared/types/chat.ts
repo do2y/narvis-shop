@@ -57,9 +57,23 @@ export interface ProductCard extends SeededProductCard {
   recommendationContext?: RecommendationContext;
 }
 
+/** CH-5 추천 목록의 성격 — PICK_ONE(하나만 고름) | BUY_ALL(전부 삼) */
+export type RecommendationListType = "PICK_ONE" | "BUY_ALL";
+
 export interface ProductGroup {
   title: string;
   items: ProductCard[];
+  /**
+   * 추천 목록에서 온 묶음의 부가 정보(CH-5). 인기상품·경로 A 카드에는 없다.
+   * BUY_ALL 은 "이 조합을 통째로 산다"는 제안이라 합계·예산을 함께 보여줘야 의미가 통한다.
+   */
+  recommendation?: {
+    listType: RecommendationListType;
+    itemsDropped: number;
+    totalBudget?: number;
+    sum?: number;
+    withinBudget?: boolean | null;
+  };
 }
 
 /**
@@ -72,6 +86,18 @@ export interface ChatListResponse {
   listId: string;
   // 담기·주문 시 recommendationContext 로 되돌려보낼 상관키(C-2·O-1). 이게 있어야 전환이 귀속된다.
   recommendationRequestId: string;
+  /** PICK_ONE(하나만 고름) | BUY_ALL(전부 삼) — 항상 존재. 렌더 분기의 축 */
+  listType: RecommendationListType;
+  /** 추천 이후 품절·숨김으로 빠진 개수. listType 과 무관하게 항상 존재하며 0 도 내려온다 */
+  itemsDropped: number;
+  /** "알뜰"·"균형" 등 묶음 이름 — 여러 세트를 함께 제안할 때만 */
+  label?: string;
+  // 아래 3개는 BUY_ALL 에서만 존재한다(PICK_ONE 은 하나만 사므로 합계·예산이 의미 없다)
+  totalBudget?: number;
+  /** 남은 상품 기준 합계 — 드롭이 있으면 남은 것만 재계산된 값 */
+  sum?: number;
+  /** itemsDropped > 0 이면 판정 불가라 null 로 온다 */
+  withinBudget?: boolean | null;
   items: (SeededProductCard & {
     reason: string | null; // I-21 콜백 reasons echo, 없으면 null
     purchasable: boolean;

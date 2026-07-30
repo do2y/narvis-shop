@@ -9,7 +9,7 @@ import {
   openSellerSession,
   reissueTicket,
 } from "@/shared/chat/sessions";
-import { fetchChatListCards } from "@/shared/chat/lists";
+import { fetchChatListGroup } from "@/shared/chat/lists";
 import type {
   ChatAction,
   ChatChannel,
@@ -195,18 +195,20 @@ export function useChat({
               // 조회 실패(404 등)는 재시도 버튼이 아니라 안내만 — 답변 자체는 정상 종료됐으므로.
               const { listId } = e.data;
               pendingFetches.push(
-                fetchChatListCards(listId)
-                  .then((items) => {
-                    if (items.length) {
-                      pushResult({
-                        kind: "products",
-                        groups: [{ title: "추천 상품", items }],
-                      });
+                fetchChatListGroup(listId)
+                  .then((group) => {
+                    // 카드가 0개라도 드롭이 있었다면 패널에 넣는다 — "추천이 다 품절됐다"는
+                    // 사실 자체가 안내거리다(200 · items:[] · itemsDropped>0, CH-5).
+                    // 드롭도 0이고 카드도 없으면 보여줄 게 없으므로 넣지 않는다.
+                    if (group.items.length || group.recommendation?.itemsDropped) {
+                      pushResult({ kind: "products", groups: [group] });
                     }
                   })
                   .catch(() => {
+                    // 404 RESOURCE_NOT_FOUND(listId 만료·미존재)가 대표 사유다.
+                    // TTL 만료는 재시도해도 계속 404이므로 "다시 시도"를 권하지 않는다.
                     appendToLastAssistant(
-                      "\n\n추천 목록을 불러오지 못했어요. 다시 시도해 주세요.",
+                      "\n\n추천 목록을 불러오지 못했어요. 다시 물어봐 주세요.",
                     );
                   }),
               );
