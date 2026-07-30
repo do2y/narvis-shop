@@ -34,8 +34,13 @@ function toAddCartMessage(error: unknown): string {
     if (error.code === "CART_OPTION_INVALID")
       return "선택한 옵션을 찾을 수 없어요.";
     if (error.code === "PRODUCT_NOT_FOUND") return "상품을 찾을 수 없어요.";
-    // 재고 수량은 응답에 실려 오지 않을 수 있어(백엔드 정책) 수치 없이 안내한다.
-    if (error.code === "CART_STOCK_INSUFFICIENT") return "재고가 부족해요.";
+    // 남은 재고는 detail.availableStock으로 함께 온다(C-2, 2026-07-22) — 수치를 안내에 쓴다.
+    // 0이면 "0개만 담을 수 있어요"가 되어버리므로 품절로 안내한다.
+    if (error.code === "CART_STOCK_INSUFFICIENT") {
+      const stock = error.availableStock;
+      if (stock === undefined) return "재고가 부족해요.";
+      return stock > 0 ? `재고가 ${stock}개 남았어요.` : "품절된 상품이에요.";
+    }
     // 검증 실패는 필드 사유("수량은 99 이하여야 합니다.")가 더 구체적이라 우선
     if (error.displayMessage) return error.displayMessage;
   }

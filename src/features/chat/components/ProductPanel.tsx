@@ -1,6 +1,7 @@
 import { MessagesSquare } from "lucide-react";
 import { Skeleton } from "@/shared/ui/skeleton";
-import type { ChatResult } from "@/shared/types/chat";
+import type { ChatResult, ProductGroup } from "@/shared/types/chat";
+import { formatPrice } from "@/shared/utils/formatPrice";
 import { ChatProductCard } from "./ChatProductCard";
 
 interface ProductPanelProps {
@@ -47,7 +48,10 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
           key={group.title}
           className="flex animate-in flex-col gap-4 duration-300 fade-in slide-in-from-bottom-2"
         >
-          <h2 className="text-lg font-bold tracking-tight">{group.title}</h2>
+          <div className="flex flex-col gap-2">
+            <h2 className="text-lg font-bold tracking-tight">{group.title}</h2>
+            <RecommendationSummary recommendation={group.recommendation} />
+          </div>
           <div className={GRID}>
             {group.items.map((product) => (
               <ChatProductCard key={product.productId} product={product} />
@@ -55,6 +59,51 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
           </div>
         </section>
       ))}
+    </div>
+  );
+}
+
+/**
+ * 묶음 단위 안내(CH-5). BUY_ALL 은 "이 조합을 통째로 산다"는 제안이라 합계·예산이 함께 있어야
+ * 의미가 통하고, 드롭은 listType 과 무관하게 알려야 한다("5개 중 3개가 품절").
+ * 추천이 아닌 묶음(인기상품·경로 A)은 recommendation 이 없어 아무것도 그리지 않는다.
+ */
+function RecommendationSummary({
+  recommendation,
+}: {
+  recommendation: ProductGroup["recommendation"];
+}) {
+  if (!recommendation) return null;
+  const { listType, itemsDropped, totalBudget, sum, withinBudget } =
+    recommendation;
+
+  // 합계·예산은 BUY_ALL 에만 존재한다. 드롭이 있으면 서버가 withinBudget 을 null 로 주므로
+  // (남은 것만의 합계로 예산을 판정하면 오해를 준다) 초과 여부는 그때 표시하지 않는다.
+  const showBudget = listType === "BUY_ALL" && sum !== undefined;
+
+  if (!showBudget && !itemsDropped) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      {showBudget && (
+        <span className="font-semibold">합계 {formatPrice(sum)}</span>
+      )}
+      {showBudget && totalBudget !== undefined && (
+        <span className="text-muted-foreground">
+          예산 {formatPrice(totalBudget)}
+        </span>
+      )}
+      {showBudget && withinBudget === true && (
+        <span className="font-medium text-brand">예산 안에 들어요</span>
+      )}
+      {showBudget && withinBudget === false && (
+        <span className="font-medium text-red-500">예산을 넘어요</span>
+      )}
+      {itemsDropped > 0 && (
+        <span className="text-muted-foreground">
+          품절·판매중지로 {itemsDropped}개가 빠졌어요
+        </span>
+      )}
     </div>
   );
 }

@@ -15,10 +15,16 @@ export interface ApiFieldError {
   message: string;
 }
 
+// 코드별 부가 정보. 코드마다 형태가 달라(재고 수량 / 옵션 목록 등) 여기서는 좁히지 않고,
+// 읽는 쪽이 코드를 확인한 뒤 좁혀 쓴다.
+// 예: CART_STOCK_INSUFFICIENT → { availableStock } / CART_OPTION_REQUIRED → { options }
+export type ApiErrorDetail = Record<string, unknown>;
+
 export interface ApiErrorBody {
   code: string;
   message: string;
   fields?: ApiFieldError[];
+  detail?: ApiErrorDetail;
 }
 
 // 언래핑된 에러. 컴포넌트/훅은 err.code로 분기, err.message는 표시용.
@@ -27,17 +33,28 @@ export class ApiError extends Error {
   code: string;
   status?: number;
   fields?: ApiFieldError[];
+  detail?: ApiErrorDetail;
   constructor(body: ApiErrorBody, status?: number) {
     super(body.message);
     this.name = "ApiError";
     this.code = body.code;
     this.status = status;
     this.fields = body.fields;
+    this.detail = body.detail;
   }
 
   // 검증 실패면 필드 사유("수량은 99 이하여야 합니다.")를, 없으면 공통 message를 반환
   get displayMessage(): string {
     return this.fields?.[0]?.message ?? this.message;
+  }
+
+  /**
+   * 남은 재고 — CART_STOCK_INSUFFICIENT에 동반되는 detail.availableStock (C-2·C-3, 2026-07-22).
+   * detail은 코드마다 형태가 달라 여기서 숫자만 좁혀 꺼낸다. 없으면 undefined.
+   */
+  get availableStock(): number | undefined {
+    const value = this.detail?.availableStock;
+    return typeof value === "number" ? value : undefined;
   }
 }
 

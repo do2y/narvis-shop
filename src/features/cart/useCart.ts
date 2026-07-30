@@ -26,12 +26,21 @@ function toCartMutationMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "AUTH_FORBIDDEN")
       return "이 항목을 변경할 권한이 없어요.";
+    // 삭제(C-4)의 정식 코드를 수량 변경(C-3)도 쓰는 것으로 보고 분기한다 —
+    // C-3 명세 표에는 404 행의 code 칸이 비어 있어 백엔드에 확인 요청 중.
+    // 코드가 다르면 displayMessage 폴백으로 빠지므로 화면이 깨지지는 않는다.
     if (error.code === "CART_ITEM_NOT_FOUND")
       return "이미 삭제된 항목이에요.";
     // 재고 부족 — 서버가 변경 후 수량(치환값)과 재고를 비교(02 D33).
-    // 남은 재고 수량은 응답에 실려 와도 노출하지 않는다(수치 없이 안내).
-    if (error.code === "CART_STOCK_INSUFFICIENT")
-      return "재고가 부족해 수량을 변경할 수 없어요.";
+    // 남은 재고는 detail.availableStock으로 함께 온다(C-3, 2026-07-22) — 수량을 고르는
+    // 화면이라 "몇 개까지 되는지"를 알려주는 편이 재시도에 필요하다.
+    if (error.code === "CART_STOCK_INSUFFICIENT") {
+      const stock = error.availableStock;
+      if (stock === undefined) return "재고가 부족해 수량을 변경할 수 없어요.";
+      return stock > 0
+        ? `재고가 ${stock}개뿐이라 그 이상은 담을 수 없어요.`
+        : "품절돼 수량을 변경할 수 없어요.";
+    }
     if (error.displayMessage) return error.displayMessage;
   }
   return "장바구니를 변경하지 못했어요. 잠시 후 다시 시도해주세요.";

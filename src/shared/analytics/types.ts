@@ -20,5 +20,5 @@ export interface BehaviorEvent {
   eventType: BehaviorEventType;
   productId?: number;
   properties?: EventProperties;
-  occurredAt: string; // 발생 시각(로컬). 서버는 created_at을 수신 시각으로 별도 기록
+  occurredAt: string; // 발생 시각, ISO 8601 UTC(Z). 서버는 created_at을 수신 시각으로 별도 기록
 }

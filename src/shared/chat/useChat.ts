@@ -9,7 +9,7 @@ import {
   openSellerSession,
   reissueTicket,
 } from "@/shared/chat/sessions";
-import { fetchChatListCards } from "@/shared/chat/lists";
+import { fetchChatListGroup } from "@/shared/chat/lists";
 import type {
   ChatAction,
   ChatChannel,
@@ -88,14 +88,22 @@ export function useChat({
 
   // 스트림 진입 티켓 확보 — 티켓 TTL 이 30~60초로 짧아 매 전송 직전에 확보한다.
   // 기존 sessionId 가 있으면 재발급(CH-1b)으로 세션·맥락을 유지하고, 없으면 새로 발급한다.
-  // 재발급이 404(SESSION_NOT_FOUND: 만료·미존재)면 새 세션으로 폴백한다.
   // sessionId 는 항상 발급 응답값을 쓴다(BE·Redis 발급, sliding TTL) — 클라이언트가 만들지 않는다.
+  //
+  // 재발급 실패 중 아래 2종은 "이 sessionId 로는 더 못 쓴다"는 뜻이라 새 세션으로 폴백한다:
+  // - 404 SESSION_NOT_FOUND — 만료·미존재(로그인·로그아웃·"새 대화"로 정리된 경우 포함)
+  // - 403 SESSION_FORBIDDEN — 요청 신원 ≠ 세션 소유자. 로그인/로그아웃으로 신원이 바뀐 뒤
+  //   이전 신원의 sessionId 가 스토어에 남아 있으면 발생한다. 새로 받으면 풀리므로
+  //   오류로 띄우지 않는다(맥락은 끊기지만 대화는 이어갈 수 있다).
   const acquireTicket = useCallback((): Promise<ChatSession> => {
     const existing = useChatStore.getState().sessionId;
     if (!existing) return createSession();
     return reissueTicket(existing).catch((err: unknown) => {
-      if (err instanceof ApiError && err.code === "SESSION_NOT_FOUND") {
-        return createSession(); // 만료된 세션 → 새 세션으로 시작
+      if (
+        err instanceof ApiError &&
+        (err.code === "SESSION_NOT_FOUND" || err.code === "SESSION_FORBIDDEN")
+      ) {
+        return createSession();
       }
       throw err;
     });
@@ -187,18 +195,20 @@ export function useChat({
               // 조회 실패(404 등)는 재시도 버튼이 아니라 안내만 — 답변 자체는 정상 종료됐으므로.
               const { listId } = e.data;
               pendingFetches.push(
-                fetchChatListCards(listId)
-                  .then((items) => {
-                    if (items.length) {
-                      pushResult({
-                        kind: "products",
-                        groups: [{ title: "추천 상품", items }],
-                      });
+                fetchChatListGroup(listId)
+                  .then((group) => {
+                    // 카드가 0개라도 드롭이 있었다면 패널에 넣는다 — "추천이 다 품절됐다"는
+                    // 사실 자체가 안내거리다(200 · items:[] · itemsDropped>0, CH-5).
+                    // 드롭도 0이고 카드도 없으면 보여줄 게 없으므로 넣지 않는다.
+                    if (group.items.length || group.recommendation?.itemsDropped) {
+                      pushResult({ kind: "products", groups: [group] });
                     }
                   })
                   .catch(() => {
+                    // 404 RESOURCE_NOT_FOUND(listId 만료·미존재)가 대표 사유다.
+                    // TTL 만료는 재시도해도 계속 404이므로 "다시 시도"를 권하지 않는다.
                     appendToLastAssistant(
-                      "\n\n추천 목록을 불러오지 못했어요. 다시 시도해 주세요.",
+                      "\n\n추천 목록을 불러오지 못했어요. 다시 물어봐 주세요.",
                     );
                   }),
               );
