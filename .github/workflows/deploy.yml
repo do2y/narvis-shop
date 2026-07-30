@@ -1,92 +1,199 @@
 name: Jarvis Frontend CI/CD
 
-
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:   # Actions 탭에서 수동 실행 가능
+
+# 워크플로 동시 실행 방지 — 두 개가 겹치면 두 서버가 동시에 대상그룹에서 빠질 수 있음
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
-  IMAGE: ghcr.io/${{ github.repository }}
+  IMAGE: ghcr.io/${{ github.repository }}   # ghcr.io/toss-delta-final/jarvis-frontend
 
 jobs:
+  # 1단계: 이미지 빌드 — EC2 대신 러너에서 빌드 (타입체크/린트는 ci.yml이 담당)
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: write   # GHCR 푸시에 필요
     steps:
       - uses: actions/checkout@v4
-
       - uses: docker/setup-buildx-action@v3
-
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
+          password: ${{ secrets.GITHUB_TOKEN }}   # 자동 발급 토큰, 별도 등록 불필요
+      # latest + 커밋 해시 태그 (해시 태그는 롤백 시 사용)
       - name: 이미지 빌드 및 푸시
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: .                 # Next 앱이 레포 루트로 이동 완료 (2026-07-28)
           push: true
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max   # 레이어 캐시로 빌드 가속
 
+  # 2단계: 무중단 배포 (CD)
+  #   프론트 컨테이너가 곧 nginx라 교체 중에는 그 서버의 80포트 전체가 죽는다.
+  #   SSR 전환으로 기동 시간이 1초에서 수십 초로 늘어 대상그룹 분리가 필수가 되었다.
   deploy:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      packages: read
+      packages: read   # EC2에서 GHCR pull 시 필요
     strategy:
-      max-parallel: 1
-      fail-fast: true
+      max-parallel: 1   # 동시 배포 금지 — 두 대가 동시에 빠지면 서비스 중단
+      fail-fast: true   # 1호기 실패 시 2호기 중단
       matrix:
-        server: [EC2_HOST, EC2_HOST_2]
+        include:
+          - host: EC2_HOST
+            instance: i-07d7478729bc460da   # jarvis-backend-server
+          - host: EC2_HOST_2
+            instance: i-0605ad8b59fc4b03e   # jarvis-backend-server2
+    env:
+      # 인스턴스를 재생성하면 ID가 바뀌므로 matrix 값도 함께 수정해야 함
+      TG_ARN: arn:aws:elasticloadbalancing:ap-northeast-2:049705857330:targetgroup/jarvis-nginx-tg/d471e3090ff3c8b1
     steps:
-      - name: EC2 무중단 배포
-        uses: appleboy/ssh-action@v1.0.3
+      - name: AWS 자격증명 설정
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets[matrix.server] }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      # 이 서버로 오는 신규 요청을 끊고, 처리 중이던 요청이 끝날 때까지 대기
+      - name: 대상그룹에서 등록 취소
+        run: |
+          aws elbv2 deregister-targets \
+            --target-group-arn "$TG_ARN" \
+            --targets Id=${{ matrix.instance }}
+          aws elbv2 wait target-deregistered \
+            --target-group-arn "$TG_ARN" \
+            --targets Id=${{ matrix.instance }}
+
+      # 이 시점부터 이 서버에는 트래픽이 없음
+      - name: EC2 배포 및 기동 검증
+        uses: appleboy/ssh-action@v1.0.3   # 버전 고정 — @master는 예고 없이 깨짐
+        with:
+          host: ${{ secrets[matrix.host] }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 10m
-          command_timeout: 10m
+          timeout: 15m
+          command_timeout: 15m
           script: |
-            set -e
+            set -e   # 명령 하나라도 실패하면 뒤 단계 실행 안 함
 
+            LAST_GOOD=/home/ubuntu/jarvis-frontend.last-good
+
+            # 1. 롤백 대상 확보 — 교체 전에 현재 실행 중인 이미지를 기억
+            PREV_IMAGE=$(docker inspect -f '{{.Config.Image}}' jarvis-frontend 2>/dev/null || true)
+
+            # 2. 기존 컨테이너 유지한 채 새 이미지 먼저 받아 대기
+            #    여기서 실패하면 아래로 진행하지 않으므로 서비스는 그대로 유지됨
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ${{ env.IMAGE }}:${{ github.sha }}
 
+            # 3. 교체 — 80 포트를 새 컨테이너가 이어받아야 하므로 중지 후 기동
+            #    docker run 뒤의 || true 는 필수: 기동 명령 자체가 실패해도
+            #    스크립트를 중단시키지 않고 아래 롤백 경로로 흘려보내기 위함
             docker stop jarvis-frontend || true
             docker rm -f jarvis-frontend || true
-
-            # --network host — 컨테이너가 EC2 호스트 네트워크를 그대로 쓴다.
-            # 그래서 API_PROXY_TARGET의 localhost:8080이 호스트의 Spring을 가리킨다.
-            # (bridge로 바꾸면 localhost는 컨테이너 자신이 되므로 이 값도 함께 바꿀 것)
-            #
-            # API_PROXY_TARGET: Next 서버(app/api/[...path] 프록시)가 백엔드를 부를 주소.
-            # standalone 서버는 .env 파일을 읽지 않으므로 명시 주입한다.
             docker run -d \
               --name jarvis-frontend \
               --restart always \
               --network host \
+              --init \
+              --log-opt max-size=10m \
+              --log-opt max-file=3 \
               -e API_PROXY_TARGET="http://localhost:8080" \
-              ${{ env.IMAGE }}:${{ github.sha }}
+              ${{ env.IMAGE }}:${{ github.sha }} || true
 
-            # 헬스체크 — nginx(80) → Next(3000)의 /healthz로 프록시된다.
-            # 즉 nginx와 Next가 **둘 다** 떠야 200이 나온다(부분 기동 상태를 걸러냄).
-            # SSR 서버 부팅이 nginx보다 느리므로 대기를 60초로 늘린다.
-            for i in $(seq 1 30); do
-              if curl -fs http://localhost/healthz > /dev/null; then
-                docker image prune -f
-                exit 0
-              fi
+            # 4. 기동 확인 — 2초 간격 최대 60회(약 120초)
+            #    entrypoint 가 Next 기동에 최대 60초를 쓰고 그 뒤에 nginx 를 띄우므로
+            #    기존 30초로는 정상 배포도 실패로 판정된다
+            OK=0
+            for i in $(seq 1 60); do
+              if curl -fs http://localhost/healthz > /dev/null; then OK=1; break; fi
               sleep 2
             done
-            docker logs --tail 50 jarvis-frontend
-            exit 1
+
+            # 5. 프록시 경로 검증 — /healthz 는 Next 만 확인하므로 백엔드 경로를 따로 본다
+            #    이게 깨지면 화면은 뜨는데 데이터가 안 나오는 형태라 눈치채기 어렵다
+            if [ "$OK" = "1" ]; then
+              curl -s -o /dev/null -w 'actuator -> %{http_code}\n' http://localhost/actuator/health
+              curl -s -o /dev/null -w 'internal -> %{http_code}\n' http://localhost/internal/products/changes
+              PROXY=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/actuator/health || true)
+              if [ "$PROXY" != "200" ]; then OK=0; fi
+            fi
+
+            # 6. 실패 시 롤백 — 이미지를 되돌리고 복구 여부까지 검증
+            if [ "$OK" != "1" ]; then
+              docker logs --tail 100 jarvis-frontend || true
+              docker rm -f jarvis-frontend || true
+
+              ROLLBACK_IMAGE="$PREV_IMAGE"
+              if [ -z "$ROLLBACK_IMAGE" ] && [ -f "$LAST_GOOD" ]; then
+                ROLLBACK_IMAGE=$(cat "$LAST_GOOD")
+              fi
+
+              # 되돌릴 대상이 아예 없는 경우 — 수동 개입 필요
+              if [ -z "$ROLLBACK_IMAGE" ]; then
+                docker images ${{ env.IMAGE }} --format '{{.Tag}} {{.CreatedSince}}' | head -10
+                exit 1
+              fi
+
+              docker run -d \
+                --name jarvis-frontend \
+                --restart always \
+                --network host \
+                --init \
+                --log-opt max-size=10m \
+                --log-opt max-file=3 \
+                -e API_PROXY_TARGET="http://localhost:8080" \
+                "$ROLLBACK_IMAGE" || true
+
+              # 롤백이 실제로 살아났는지 검증 — 최대 120초
+              RB=0
+              for i in $(seq 1 60); do
+                if curl -fs http://localhost/healthz > /dev/null; then RB=1; break; fi
+                sleep 2
+              done
+
+              # 롤백까지 실패한 경우에만 두 번째 로그 블록이 찍힘 — 즉시 수동 개입 신호
+              if [ "$RB" != "1" ]; then
+                docker ps -a --filter 'name=jarvis-frontend' --format '{{.Names}} {{.Status}}'
+                docker logs --tail 50 jarvis-frontend || true
+              fi
+              exit 1
+            fi
+
+            # 7. 정상 기동 확인됨 — 이 이미지를 '마지막 정상'으로 기록
+            docker inspect -f '{{.Config.Image}}' jarvis-frontend > "$LAST_GOOD"
+
+            # 8. 48시간 이상 지난 미사용 이미지 정리 (sha 태그 누적 방지)
+            docker image prune -af --filter "until=48h"
+
+      # 정상 기동이 확인된 뒤에만 트래픽을 다시 받기 시작
+      - name: 대상그룹에 재등록
+        run: |
+          aws elbv2 register-targets \
+            --target-group-arn "$TG_ARN" \
+            --targets Id=${{ matrix.instance }}
+          aws elbv2 wait target-in-service \
+            --target-group-arn "$TG_ARN" \
+            --targets Id=${{ matrix.instance }}
+
+      # 배포 실패 또는 워크플로우 취소 시 인스턴스가 대상그룹 밖에 방치되는 것을 방지
+      - name: 실패·취소 시 재등록 보장
+        if: failure() || cancelled()
+        run: |
+          aws elbv2 register-targets \
+            --target-group-arn "$TG_ARN" \
+            --targets Id=${{ matrix.instance }}
