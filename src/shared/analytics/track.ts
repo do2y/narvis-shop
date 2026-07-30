@@ -18,16 +18,6 @@ function clearTimer() {
   }
 }
 
-// 로컬 시각 "2026-07-17T10:00:00" — 명세 예시가 오프셋 없는 형태라 맞춘다.
-function localIsoNow(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-  );
-}
-
 function send(events: BehaviorEvent[]) {
   if (events.length === 0) return;
   // 인증은 선택(JWT 있으면 서버가 검증). member_id·guest_id는 서버가 JWT·쿠키에서
@@ -64,7 +54,8 @@ export function track(
     eventType,
     ...(payload?.productId !== undefined ? { productId: payload.productId } : {}),
     ...(payload?.properties ? { properties: payload.properties } : {}),
-    occurredAt: localIsoNow(),
+    // UTC(Z) 고정 — 오프셋 없는 로컬 시각을 보내면 서버가 어긋난 줄도 모른 채 저장한다(명세 E-1)
+    occurredAt: new Date().toISOString(),
   });
 
   if (queue.length >= FLUSH_SIZE) {
