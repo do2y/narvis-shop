@@ -98,11 +98,17 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           </div>
 
           {/* 담기 — 옵션이 필요한 상품은 서버가 400(CART_OPTION_REQUIRED)으로 알려주므로
-              카드에서는 기본 1개 담기만 시도하고 실패 사유를 안내한다. 자동 재시도 없음. */}
+              카드에서는 기본 1개 담기만 시도하고 실패 사유를 안내한다. 자동 재시도 없음.
+              추천 카드면 출처를 함께 보내 전환을 귀속시킨다(C-2) — 인기상품 카드엔 없어
+              undefined 로 빠지고, api 함수가 필드 자체를 생략한다. */}
           <button
             type="button"
             onClick={() =>
-              addCart.mutate({ productId: product.productId, quantity: 1 })
+              addCart.mutate({
+                productId: product.productId,
+                quantity: 1,
+                recommendationContext: product.recommendationContext,
+              })
             }
             disabled={addCart.isPending}
             aria-label="장바구니에 담기"

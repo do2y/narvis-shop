@@ -1,4 +1,5 @@
 import type { SeededProductCard } from "@/shared/types/product";
+import type { RecommendationContext } from "@/shared/types/cart";
 
 /** 채팅 API 계약 타입 — 백엔드/LLM 스키마와 1:1. 변경 시 계약 문서와 함께 갱신 */
 export type ChatChannel = "SHOPPING" | "CS" | "SELLER";
@@ -47,6 +48,13 @@ export interface ChatSession {
 export interface ProductCard extends SeededProductCard {
   reason: string; // AI 추천 이유 한 줄(CH-5는 없으면 null → FE에서 "")
   purchasable?: boolean; // 재고·판매 가능 여부(CH-5). 목록은 이미 품절 드롭이라 대개 true
+  /**
+   * 이 카드가 나온 추천 목록의 출처 — 담기(C-2) 시 그대로 돌려보내 전환을 귀속시킨다.
+   * 카드 자체에 붙여 둔다: 담기 버튼은 카드 안에 있고, 화면에 여러 목록이 동시에 뜰 수 있어
+   * 별도 상태로 두면 어느 목록의 카드인지 잃는다(낡은 listId 오귀속의 주 원인).
+   * 인기상품 등 추천이 아닌 카드에는 없다.
+   */
+  recommendationContext?: RecommendationContext;
 }
 
 export interface ProductGroup {
@@ -62,6 +70,8 @@ export interface ProductGroup {
  */
 export interface ChatListResponse {
   listId: string;
+  // 담기·주문 시 recommendationContext 로 되돌려보낼 상관키(C-2·O-1). 이게 있어야 전환이 귀속된다.
+  recommendationRequestId: string;
   items: (SeededProductCard & {
     reason: string | null; // I-21 콜백 reasons echo, 없으면 null
     purchasable: boolean;
