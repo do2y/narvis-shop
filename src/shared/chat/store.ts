@@ -37,6 +37,8 @@ interface ChatState {
   setSessionId: (id: string | null) => void; // null = 만료된 세션 폐기(다음 전송 때 재발급)
   setThreadId: (id: string) => void;
   addMessage: (msg: ChatMessage) => void;
+  /** 로그인 왕복 후 대화 복원(chatHandoff) — 그 외 용도로 통째 교체하지 않는다 */
+  setMessages: (messages: ChatMessage[]) => void;
   appendToLastAssistant: (text: string) => void; // token 이벤트 누적
   failLastAssistant: (message: string) => void; // 마지막 assistant 말풍선을 에러 상태로
   dropLastExchange: () => string | null; // 실패한 (user, assistant) 쌍 제거하고 user 텍스트 반환
@@ -72,6 +74,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setSessionId: (sessionId) => set({ sessionId }),
   setThreadId: (threadId) => set({ threadId }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+  setMessages: (messages) => set({ messages }),
   appendToLastAssistant: (text) =>
     set((s) => {
       const messages = [...s.messages];

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { track } from "@/shared/analytics/track";
 import { ApiError } from "@/shared/api/client";
+import { claimChatSessionAfterLogin } from "@/shared/chat/claimOnLogin";
 import { useAuthStore } from "@/shared/stores/authStore";
 import {
   login,
@@ -35,7 +36,7 @@ function useAuthSuccess(method: "login" | "signup") {
   const setAuth = useAuthStore((s) => s.setAuth);
   const router = useRouter();
 
-  return (res: AuthResponse) => {
+  return async (res: AuthResponse) => {
     // returnUrl은 제출 시점에만 필요하다. useSearchParams를 쓰면 이 훅을 부르는
     // 폼 전체가 Suspense 경계에 묶여 SSR에서 로그인 화면이 통째로 비워진다.
     // 이 콜백은 클라이언트에서만 실행되므로 window에서 직접 읽는다.
@@ -46,6 +47,15 @@ function useAuthSuccess(method: "login" | "signup") {
     // 구분은 properties.method로 남긴다. 개인정보는 싣지 않는다(명세).
     track("login", { properties: { method, role: res.member.role } });
     const returnUrl = safeReturnUrl(params.get("returnUrl"));
+
+    // 채팅에서 왔으면 게스트 대화를 회원으로 승계하고(CH-7) 말풍선을 되돌린다.
+    // 맡겨 둔 대화가 있을 때만 동작하므로 다른 화면에서 온 로그인은 그냥 지나간다
+    // (모든 로그인에 대화를 귀속시키지 않는 게 계약 원칙이다).
+    // setAuth 뒤에 부르는 이유: 이 요청에 회원 AT 가 실려야 한다.
+    // 복귀 전에 끝내야 채팅 화면이 구 게스트 티켓으로 스트림을 여는 일이 없다.
+    // 실패는 내부에서 흡수한다 — 로그인은 이미 성공했고 대화 맥락만 못 잇는다.
+    await claimChatSessionAfterLogin("SHOPPING");
+
     // 로그인 화면이 히스토리에 남으면 뒤로가기로 되돌아오므로 replace (원본과 동일).
     router.replace(postLoginDest(res.member.role, returnUrl));
   };

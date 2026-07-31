@@ -1,6 +1,11 @@
 "use client";
 
-import { openChatSession, openSellerSession, reissueTicket } from "./sessions";
+import {
+  claimChatSession,
+  openChatSession,
+  openSellerSession,
+  reissueTicket,
+} from "./sessions";
 import type { ChatChannel, ChatSession } from "@/shared/types/chat";
 
 /**
@@ -186,6 +191,26 @@ export async function refreshTicket(
 ): Promise<ChatSession> {
   return withLock(keyFor(channel), async () => {
     const session = await reissueTicket(sessionId);
+    publish(channel, session);
+    return session;
+  });
+}
+
+/**
+ * 게스트 세션을 회원으로 승계한다(CH-7) — 채팅 화면에서 로그인·가입한 직후.
+ *
+ * 성공하면 회원 신원의 새 티켓이 오므로 캐시를 갈아끼우고 다른 탭에도 전파한다.
+ * 구 게스트 티켓을 계속 쓰면 AI 가 403 으로 막는다.
+ * 발급과 같은 락을 써서 승계 도중 다른 탭이 세션을 새로 발급하지 않게 한다.
+ *
+ * 실패는 그대로 던진다 — 호출부가 code 로 분기한다(409 2종의 후속 처리가 다르다).
+ */
+export async function claimSession(
+  channel: ChatChannel,
+  sessionId: string,
+): Promise<ChatSession> {
+  return withLock(keyFor(channel), async () => {
+    const session = await claimChatSession(sessionId);
     publish(channel, session);
     return session;
   });
