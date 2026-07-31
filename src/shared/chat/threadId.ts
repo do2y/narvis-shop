@@ -5,13 +5,12 @@ import type { ChatChannel } from "@/shared/types/chat";
 /**
  * thread_id — 대화 방(탭) 식별자.
  *
- * session_id 가 탭 간 **공유**되므로(sessionCoordinator), 방 구분은 별도 식별자가 맡는다.
- * 그래서 보관도 localStorage 가 아니라 **sessionStorage**(탭 단위)다 — 탭마다 고유해야
- * 여러 탭이 서로 축출하지 않고 각자 독립 대화를 한다.
+ * session_id 는 탭 간 공유되므로(sessionCoordinator) 방 구분은 이쪽이 맡는다.
+ * 보관도 localStorage 가 아니라 sessionStorage(탭 단위)다 — 탭마다 고유해야
+ * 여러 탭이 각자 독립 대화를 한다.
  *
- * 스토어에 두지 않는 이유: `reset()`(새 대화)이 initial 을 통째로 뿌려서
- * 스토어에 있으면 방 id 를 지켜낼 수 없다. "새 대화"는 방을 **새로 만드는** 것이지
- * 방 개념 자체를 잃는 게 아니다.
+ * 스토어에 두지 않는 이유: reset()(새 대화)이 initial 을 통째로 뿌려서 방 id 를
+ * 지켜낼 수 없다. "새 대화"는 방을 새로 만드는 것이지 방 개념을 잃는 게 아니다.
  */
 
 const keyFor = (channel: ChatChannel) => `jarvis:chat:thread:${channel}`;

@@ -24,7 +24,7 @@ export interface ChatScreenContext {
  */
 export interface StreamChatBody {
   sessionId: string; // 세션 발급으로 받은 BE 발급값
-  threadId: string; // 방 식별자(FE 생성, 방마다 고유) — **필수, 없으면 400**
+  threadId: string; // 방 식별자(FE 생성, 방마다 고유) — 필수, 없으면 400
   message?: string; // confirm 요청에선 생략. conditionActions 가 있으면 빈 문자열 허용
   /**
    * 조건 칩 제거(구매자 전용). 미지정 기본값은 빈 배열이라 일반 발화는 종전대로 동작한다.
@@ -238,13 +238,7 @@ export type ChatEvent =
   | { type: "conditions"; data: { chips: ConditionChip[] } }
   | { type: "suggestions"; data: { chips: SuggestionChip[] } }
   // products.ready: 카드가 아니라 상관키만 온다(경로 B). FE가 CH-5로 목록을 조회한다.
-  //
-  // ⚠️ 과도기 — 두 형태를 모두 받는다. 계약 CH-2(2026-07-30)는 listIds(항상 배열, 상한 10)로
-  // 개정됐으나 **AI 서버가 아직 단수 listId 를 emit 한다**(jarvis-ai 확인 2026-07-31:
-  // ProductsReadyData.list_id: str, Spring I-21 콜백도 단수라 배열 전환은 AI↔Spring 계약 동반).
-  // 배열만 읽으면 undefined.map() 으로 스트림 파싱이 죽어 답변 자체가 실패한다.
-  //
-  // 🧹 정리 조건: AI 서버가 listIds 배열로 전환하면 listId 를 지우고 listIds 를 필수로 되돌린다.
+  // 계약은 listIds(배열)지만 AI 가 아직 단수 listId 를 보낸다. 전환되면 listId 를 지운다.
   | {
       type: "products.ready";
       data: { sessionId?: string; listIds?: string[]; listId?: string };

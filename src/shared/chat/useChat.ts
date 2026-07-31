@@ -200,8 +200,7 @@ export function useChat({
               // 경로 B — 카드는 SSE에 없다. 각 listId 로 CH-5 를 개별 조회해 패널에 넣는다.
               // listIds 는 항상 배열이다(세트형·니즈별 추천이 여러 묶음일 수 있음, 상한 10).
               // 조회 실패(404 등)는 재시도 버튼이 아니라 안내만 — 답변 자체는 정상 종료됐으므로.
-              // ⚠️ 과도기 — 서버가 아직 단수 listId 를 보낸다(타입 정의의 정리 조건 참조).
-              // 배열 우선, 없으면 단수를 길이 1 배열로 승격한다.
+              // 서버가 아직 단수 listId 를 보낸다 — 배열 우선, 없으면 길이 1로 승격
               const listIds =
                 e.data.listIds ?? (e.data.listId ? [e.data.listId] : []);
               if (!listIds.length) break;
@@ -335,13 +334,10 @@ export function useChat({
         // (각 조회는 내부에서 catch 하므로 여기서 예외로 실패 처리되지 않는다.)
         if (pendingFetches.length) await Promise.all(pendingFetches);
       } catch (err) {
-        // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라
-        // 다른 탭/기기가 세션을 축출하는 일은 없다(CH-1 정본 2026-07-31) —
-        // 즉 404 는 "다른 곳에서 종료됨"이 아니라 단순 만료다.
-        //
-        // 명세 지시: FE 는 CH-1 로 새 세션을 받는다(대화 맥락은 끊긴다).
-        // 죽은 세션을 캐시에서 지워 두면 다음 전송의 ensureSession 이 새로 발급하므로,
-        // 여기서 자동 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지 원칙 유지).
+        // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라 다른 탭이
+        // 세션을 축출하는 일은 없으므로 "다른 곳에서 종료됨"이 아니라 단순 만료다.
+        // 캐시를 비워 두면 다음 전송의 ensureSession 이 새로 발급한다 — 여기서 자동
+        // 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지).
         if (isNotFound(err)) {
           clearCachedSession(channel);
           setSessionId(null);
@@ -349,16 +345,9 @@ export function useChat({
             "대화가 만료되었어요. 다시 시도하면 새로 이어서 대화할 수 있어요.",
           );
         } else if (err instanceof StreamStartError && err.status === 409) {
-          // 409 STREAM_IN_PROGRESS — 같은 방에 이미 활성 스트림이 있다는 뜻.
-          //
-          // ⚠️ 현재는 멀티탭에서 방이 달라도 발생한다 — 계약 CH-2(2026-07-30)는 락 키를
-          // threadId(방) 단위로 확정했으나 **AI 서버가 아직 sessionId 로 잠근다**
-          // (jarvis-ai 확인 2026-07-31: registry_key(identity, session_id), 잔여 구현 3건 중 1건).
-          // 탭이 세션을 공유하므로 탭 B 가 탭 A 의 스트리밍 때문에 409 를 맞는다.
-          // **FE 로는 회피 불가** — 세션 분리는 명세가 금지한 방향이다.
-          //
-          // 🧹 정리 조건: AI 가 락 키를 threadId 로 전환하면 이 분기는 "같은 탭에서 연타"
-          // 정도로만 남는다(그때도 안내 자체는 유효하니 문구만 손보면 된다).
+          // 409 STREAM_IN_PROGRESS — 같은 방에 이미 활성 스트림이 있다.
+          // 계약상 락 키는 threadId(방)지만 AI 가 아직 sessionId 로 잠근다. 탭이 세션을
+          // 공유하므로 방이 달라도 다른 탭의 스트리밍에 걸린다 — FE 로는 회피 못 한다.
           failLastAssistant(
             "다른 대화가 진행 중이에요. 잠시 후 다시 시도해 주세요.",
           );
@@ -448,15 +437,9 @@ export function useChat({
     if (userText) send(userText);
   }, [send]);
 
-  // 조건 칩 제거 — conditionActions 구조화 배열로 보낸다(계약 CH-2, 2026-07-28 #84).
+  // 조건 칩 제거 — conditionActions 배열로 보낸다(계약 CH-2 #84, 규약 문자열 방식은 폐기).
   // 어떤 칩을 지웠는지는 UI만 아는 사실이라 발화만으로는 서버가 복원할 수 없다.
-  //
-  // ⚠️ 현재 무동작 — AI 서버에 수신부가 없다(jarvis-ai 확인 2026-07-31: ChatRequest 가
-  // session_id/thread_id/message 3필드뿐, Pydantic extra=ignore 라 400 없이 조용히 버려진다).
-  // 폐기된 구 방식(`[조건 제거] <field>` 규약 문자열)도 포맷 미확정이라 어차피 동작하지
-  // 않으므로, 계약이 확정된 이쪽으로 보내며 서버 구현을 기다린다.
-  //
-  // 🧹 정리 조건: AI 가 conditionActions 를 수신하면 이 주석만 지운다(코드는 그대로 맞다).
+  // 아직 AI 에 수신부가 없어 무동작이다(extra=ignore 라 조용히 버려진다).
   const removeCondition = useCallback(
     (field: ConditionField) => {
       send("", [{ op: "remove", field }]);
@@ -473,7 +456,7 @@ export function useChat({
     [send],
   );
 
-  // 새 대화 = **새 방**. 세션(접속)은 유지하고 thread_id 만 새로 판다 — BE 와 합의된 동작.
+  // 새 대화 = 새 방. 세션(접속)은 유지하고 thread_id 만 새로 판다 — BE 와 합의된 동작.
   // 여기서 세션을 새로 발급하면 다른 탭의 세션을 축출해 멀티탭이 깨진다.
   const startNewChat = useCallback(() => {
     abortRef.current?.abort();
