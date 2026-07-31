@@ -21,15 +21,7 @@ export default function ChatPage() {
   // SSR에서 화면 전체(헤더 포함)가 비워진다. 마운트 후 window에서 직접 읽는다.
   const sentInitialQuery = useRef(false);
 
-  const {
-    send,
-    retry,
-    removeCondition,
-    applySuggestion,
-    startNewChat,
-    restartAfterEviction,
-    isStreaming,
-  } =
+  const { send, retry, removeCondition, applySuggestion, startNewChat, isStreaming } =
     useChat({
       channel: "SHOPPING",
       // 챗봇 장바구니 담기 → 헤더 뱃지 전역 동기화 (CLAUDE.md)
@@ -97,7 +89,6 @@ export default function ChatPage() {
     <ChatLayout
       onSend={send}
       onRetry={retry}
-      onRestart={restartAfterEviction}
       isStreaming={isStreaming}
       /* "새 대화"는 헤더 로고 옆에 — 대화 영역을 차지하지 않게(기존 배치 유지) */
       header={

@@ -4,12 +4,14 @@ import { openChatSession, openSellerSession, reissueTicket } from "./sessions";
 import type { ChatChannel, ChatSession } from "@/shared/types/chat";
 
 /**
- * 챗 세션 조정자 — 세션 발급·재발급을 **탭 전체에서 단일화**한다.
+ * 챗 세션 조정자 — 세션 발급·재발급을 탭 전체에서 단일화한다.
  *
- * 문제: 탭마다 독립적으로 세션을 발급하면 BE 가 이전 접속을 축출해
- * 먼저 열린 탭이 404 SESSION_NOT_FOUND 로 죽는다(멀티탭 버그).
- * 해결: Web Locks 로 발급을 접속당 1회로 강제하고, 결과를 localStorage(부팅 생존)와
- * BroadcastChannel(실시간 전파)로 다른 탭에 나눠준다.
+ * **CH-1 은 멱등 발급이다**(정본 2026-07-31). 같은 신원·채널의 활성 세션이 있으면
+ * 서버가 그 sessionId 를 그대로 돌려주며, 멀티탭·다기기가 서로를 축출하지 않는다.
+ * 따라서 이 모듈은 "축출 방지"가 아니라 **중복 호출 억제**가 목적이다:
+ * 탭 N 개가 동시에 진입해도 CH-1 은 1회만 나가고, 나머지는 캐시를 공유한다.
+ *
+ * 방(thread) 분리는 서버가 아니라 FE 몫이다 — threadId.ts 참조.
  *
  * 락은 **발급/재발급만** 감싼다. 장시간 SSE 스트림을 감싸면 그동안 다른 탭의
  * 발급이 막혀 교착처럼 보인다.
@@ -155,10 +157,10 @@ export async function ensureSession(
 /**
  * 기존 sessionId 로 티켓만 재발급하되, 그 sessionId 가 더는 못 쓰는 상태면 새로 만든다.
  *
- * 403 SESSION_FORBIDDEN(요청 신원 ≠ 세션 소유자)은 로그인/로그아웃으로 신원이 바뀐
- * 정상 상황이라 새 세션으로 조용히 폴백한다.
- * 404 SESSION_NOT_FOUND 는 **폴백하지 않는다** — 다른 탭/기기가 세션을 축출했다는
- * 뜻이고, 여기서 자동 재발급하면 서로 축출하는 탭 전쟁이 된다. 호출부가 안내 + 수동 재시작으로 처리한다.
+ * 두 실패 모두 "이 sessionId 로는 더 못 쓴다"는 뜻이라 새 세션으로 폴백한다.
+ * CH-1 이 멱등이라 폴백이 다른 탭을 축출하지 않는다(활성 세션이 있으면 그걸 돌려받는다).
+ * - 403 SESSION_FORBIDDEN — 로그인/로그아웃으로 신원이 바뀜(또는 신원 자체가 없음)
+ * - 404 SESSION_NOT_FOUND — TTL 10분 만료. 명세 지시가 "CH-1 로 새 세션"이다(맥락은 끊김)
  */
 async function reissueOrCreate(
   channel: ChatChannel,
@@ -167,7 +169,10 @@ async function reissueOrCreate(
   try {
     return await reissueTicket(sessionId);
   } catch (err) {
-    if (isApiCode(err, "SESSION_FORBIDDEN")) {
+    if (
+      isApiCode(err, "SESSION_FORBIDDEN") ||
+      isApiCode(err, "SESSION_NOT_FOUND")
+    ) {
       return createSession(channel);
     }
     throw err;
@@ -184,19 +189,6 @@ export async function refreshTicket(
 ): Promise<ChatSession> {
   return withLock(keyFor(channel), async () => {
     const session = await reissueTicket(sessionId);
-    publish(channel, session);
-    return session;
-  });
-}
-
-/**
- * "새 대화" 등으로 세션을 명시적으로 새로 만들 때(수동 재시작 포함).
- * 캐시를 비우고 락 안에서 새로 발급한다.
- */
-export async function restartSession(channel: ChatChannel): Promise<ChatSession> {
-  clearCachedSession(channel);
-  return withLock(keyFor(channel), async () => {
-    const session = await createSession(channel);
     publish(channel, session);
     return session;
   });

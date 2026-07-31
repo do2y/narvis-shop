@@ -8,7 +8,6 @@ import {
   clearCachedSession,
   ensureSession,
   refreshTicket,
-  restartSession,
   subscribeSession,
 } from "@/shared/chat/sessionCoordinator";
 import { getThreadId, newThreadId } from "@/shared/chat/threadId";
@@ -74,7 +73,6 @@ export function useChat({
     setConditions,
     setSuggestions,
     setSessionId,
-    setSessionEnded,
     setStreaming,
     setLane,
     setProgress,
@@ -320,15 +318,18 @@ export function useChat({
         // (각 조회는 내부에서 catch 하므로 여기서 예외로 실패 처리되지 않는다.)
         if (pendingFetches.length) await Promise.all(pendingFetches);
       } catch (err) {
-        // 404 = 세션이 다른 탭/기기에서 축출됨. 출처 2개:
-        // (a) 스트림 fetch 가 미지 세션에 4xx, (b) reissueTicket 의 404 SESSION_NOT_FOUND.
-        // **자동 재발급 금지** — 여기서 새로 발급하면 탭끼리 서로 축출하는 전쟁이 된다.
-        // 안내를 띄우고 사용자가 직접 재시작하게 한다(REQ-FE-06).
+        // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라
+        // 다른 탭/기기가 세션을 축출하는 일은 없다(CH-1 정본 2026-07-31) —
+        // 즉 404 는 "다른 곳에서 종료됨"이 아니라 단순 만료다.
+        //
+        // 명세 지시: FE 는 CH-1 로 새 세션을 받는다(대화 맥락은 끊긴다).
+        // 죽은 세션을 캐시에서 지워 두면 다음 전송의 ensureSession 이 새로 발급하므로,
+        // 여기서 자동 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지 원칙 유지).
         if (isNotFound(err)) {
-          clearCachedSession(channel); // 죽은 세션을 캐시에 남기지 않는다
-          setSessionEnded(true);
+          clearCachedSession(channel);
+          setSessionId(null);
           failLastAssistant(
-            "다른 탭이나 기기에서 새 대화가 시작되어 이 대화는 종료되었습니다.",
+            "대화가 만료되었어요. 다시 시도하면 새로 이어서 대화할 수 있어요.",
           );
         } else {
           // 자동 재시도 금지 — 해당 말풍선에 에러 표시, 재시도 버튼 제공.
@@ -351,7 +352,6 @@ export function useChat({
       addResult,
       settleDraft,
       setSessionId,
-      setSessionEnded,
       setStreaming,
       setLane,
       setProgress,
@@ -440,21 +440,6 @@ export function useChat({
     useChatStore.getState().setThreadId(threadId); // reset 이 initial 을 뿌린 뒤에 다시 심는다
   }, [reset, channel]);
 
-  // 세션 축출(404) 후 사용자가 직접 누르는 재시작 — 이때만 새 세션을 발급한다.
-  // 새 접속이므로 방도 새로 판다.
-  const restartAfterEviction = useCallback(async () => {
-    abortRef.current?.abort();
-    const threadId = newThreadId(channel);
-    reset();
-    useChatStore.getState().setThreadId(threadId);
-    try {
-      const session = await restartSession(channel);
-      setSessionId(session.sessionId);
-    } catch {
-      // 발급 실패는 다음 전송의 ensureSession 이 다시 시도한다 — 여기선 안내만 내린다
-    }
-  }, [reset, channel, setSessionId]);
-
   return {
     send,
     confirm,
@@ -462,7 +447,6 @@ export function useChat({
     removeCondition,
     applySuggestion,
     startNewChat,
-    restartAfterEviction,
     isStreaming,
   };
 }

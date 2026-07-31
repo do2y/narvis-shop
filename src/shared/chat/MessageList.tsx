@@ -9,12 +9,6 @@ interface MessageListProps {
   /** 분석 진행 상태(판매자 progress 이벤트). 답변 전 로딩 표시용 */
   progress?: string | null;
   onRetry: () => void;
-  /**
-   * 세션이 다른 탭/기기에서 축출됨(404). true 면 "다시 시도" 대신 재시작을 노출한다 —
-   * 같은 세션으로 재시도해봐야 계속 404 이기 때문.
-   */
-  sessionEnded?: boolean;
-  onRestart?: () => void;
 }
 
 function TypingIndicator() {
@@ -36,8 +30,6 @@ export function MessageList({
   isStreaming,
   progress,
   onRetry,
-  sessionEnded,
-  onRestart,
 }: MessageListProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -72,24 +64,13 @@ export function MessageList({
             {msg.error ? (
               <div className="flex max-w-[80%] flex-col items-start gap-2 rounded-2xl rounded-tl-sm bg-destructive/10 px-4 py-2.5">
                 <span className="text-sm text-destructive">{msg.error}</span>
-                {/* 축출된 세션은 재시도해도 계속 404 — 마지막 말풍선에만 재시작을 준다 */}
-                {sessionEnded && isLast ? (
-                  <button
-                    type="button"
-                    onClick={onRestart}
-                    className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive transition-all hover:bg-destructive/10 active:scale-95"
-                  >
-                    새 대화 시작
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive transition-all hover:bg-destructive/10 active:scale-95"
-                  >
-                    다시 시도
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive transition-all hover:bg-destructive/10 active:scale-95"
+                >
+                  다시 시도
+                </button>
               </div>
             ) : (
               <span

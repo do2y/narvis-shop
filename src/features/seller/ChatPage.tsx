@@ -38,14 +38,7 @@ export default function SellerChatPage() {
   const [showResultsState, setShowResults] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
 
-  const {
-    send,
-    confirm,
-    retry,
-    startNewChat,
-    restartAfterEviction,
-    isStreaming,
-  } = useChat({
+  const { send, confirm, retry, startNewChat, isStreaming } = useChat({
     channel: "SELLER",
     onDone: (panel: SellerPanel | undefined) => {
       // refresh: 쓰기 반영 → 목록 재조회 후 목록으로 복귀
@@ -133,7 +126,6 @@ export default function SellerChatPage() {
       <ChatConversation
         onSend={send}
         onRetry={retry}
-        onRestart={restartAfterEviction}
         isStreaming={isStreaming}
         placeholder="상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
         aboveInput={
