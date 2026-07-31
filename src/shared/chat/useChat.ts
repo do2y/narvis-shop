@@ -18,6 +18,8 @@ import type {
   ChatEvent,
   ChatScreenContext,
   ChatSession,
+  ConditionAction,
+  ConditionField,
   SellerPanel,
   StreamChatBody,
 } from "@/shared/types/chat";
@@ -195,26 +197,36 @@ export function useChat({
               setSuggestions(e.data.chips.filter((c) => c.estCount > 0));
               break;
             case "products.ready": {
-              // 경로 B — 카드는 SSE에 없다. listId 로 CH-5 목록을 조회해 패널에 넣는다.
+              // 경로 B — 카드는 SSE에 없다. 각 listId 로 CH-5 를 개별 조회해 패널에 넣는다.
+              // listIds 는 항상 배열이다(세트형·니즈별 추천이 여러 묶음일 수 있음, 상한 10).
               // 조회 실패(404 등)는 재시도 버튼이 아니라 안내만 — 답변 자체는 정상 종료됐으므로.
-              const { listId } = e.data;
+              const { listIds } = e.data;
               pendingFetches.push(
-                fetchChatListGroup(listId)
-                  .then((group) => {
-                    // 카드가 0개라도 드롭이 있었다면 패널에 넣는다 — "추천이 다 품절됐다"는
-                    // 사실 자체가 안내거리다(200 · items:[] · itemsDropped>0, CH-5).
-                    // 드롭도 0이고 카드도 없으면 보여줄 게 없으므로 넣지 않는다.
-                    if (group.items.length || group.recommendation?.itemsDropped) {
-                      pushResult({ kind: "products", groups: [group] });
-                    }
-                  })
-                  .catch(() => {
-                    // 404 RESOURCE_NOT_FOUND(listId 만료·미존재)가 대표 사유다.
-                    // TTL 만료는 재시도해도 계속 404이므로 "다시 시도"를 권하지 않는다.
+                // 병렬 조회하되 결과는 listIds 순서(=I-21 lists 순서)로 한 번에 넣는다.
+                // 개별 push 하면 응답이 빨리 온 묶음이 앞서 붙어 순서가 뒤집힌다.
+                Promise.all(
+                  listIds.map((id) =>
+                    fetchChatListGroup(id).catch(() => null),
+                  ),
+                ).then((groups) => {
+                  const usable = groups.filter(
+                    (g): g is NonNullable<typeof g> =>
+                      // 카드가 0개라도 드롭이 있었다면 넣는다 — "추천이 다 품절됐다"는
+                      // 사실 자체가 안내거리다(200 · items:[] · itemsDropped>0, CH-5).
+                      g !== null &&
+                      Boolean(g.items.length || g.recommendation?.itemsDropped),
+                  );
+                  if (usable.length) {
+                    pushResult({ kind: "products", groups: usable });
+                  }
+                  // 404 RESOURCE_NOT_FOUND(listId 만료·미존재)가 대표 사유다.
+                  // TTL 만료는 재시도해도 계속 404이므로 "다시 시도"를 권하지 않는다.
+                  if (usable.length < listIds.length) {
                     appendToLastAssistant(
                       "\n\n추천 목록을 불러오지 못했어요. 다시 물어봐 주세요.",
                     );
-                  }),
+                  }
+                }),
               );
               break;
             }
@@ -362,14 +374,15 @@ export function useChat({
   );
 
   const send = useCallback(
-    (message: string) => {
+    (message: string, conditionActions?: ConditionAction[]) => {
       const trimmed = message.trim();
-      if (!trimmed) return;
+      // 계약 CH-2: message 와 conditionActions 가 둘 다 비면 400. 하나만 있으면 정상이다.
+      if (!trimmed && !conditionActions?.length) return;
 
-      // 이 앱의 상품 검색은 챗봇이다. 단 "[조건 제거]"·"[수정 확인]" 같은 제어 메시지는
-      // 사용자의 검색 의도가 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어
-      // 보내지 않고 채널·길이만 싣는다(명세: properties에 개인정보 금지).
-      if (!trimmed.startsWith("[")) {
+      // 이 앱의 상품 검색은 챗봇이다. 단 칩 제거 같은 제어 요청은 사용자의 검색 의도가
+      // 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어 보내지 않고
+      // 채널·길이만 싣는다(명세: properties에 개인정보 금지).
+      if (trimmed && !conditionActions?.length) {
         track("search", {
           properties: { channel, queryLength: trimmed.length },
         });
@@ -383,9 +396,12 @@ export function useChat({
           sessionId,
           threadId,
           message: trimmed,
+          ...(conditionActions?.length ? { conditionActions } : {}),
           ...(screen ? { screen } : {}),
         }),
-        trimmed,
+        // 칩 제거만 있는 턴은 사용자 말풍선을 남기지 않는다 — 제어 신호이지 발화가 아니다
+        // (판매자 confirm 과 동일 처리, 계약 CH-2).
+        trimmed || null,
       );
     },
     [channel, run],
@@ -413,11 +429,12 @@ export function useChat({
     if (userText) send(userText);
   }, [send]);
 
-  // 조건 칩 제거 = 후속 메시지 왕복(별도 API 없음, 계약 CH-2 §conditions).
-  // 규약 문자열에 칩의 field 를 실어 서버가 해당 조건을 빼고 재분해하게 한다.
+  // 조건 칩 제거 — conditionActions 구조화 배열로 보낸다(계약 CH-2, 2026-07-28 #84).
+  // 어떤 칩을 지웠는지는 UI만 아는 사실이라 발화만으로는 서버가 복원할 수 없다.
+  // 구 방식(`[조건 제거] <field>` 규약 문자열)은 폐기 — AI 에 수신부가 없어 무동작이었다.
   const removeCondition = useCallback(
-    (field: string) => {
-      send(`[조건 제거] ${field}`);
+    (field: ConditionField) => {
+      send("", [{ op: "remove", field }]);
     },
     [send],
   );
