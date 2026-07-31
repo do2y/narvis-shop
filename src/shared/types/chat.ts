@@ -237,10 +237,18 @@ export type ChatEvent =
   // ── SHOPPING/CS 전용 ──
   | { type: "conditions"; data: { chips: ConditionChip[] } }
   | { type: "suggestions"; data: { chips: SuggestionChip[] } }
-  // products.ready: 카드가 아니라 상관키 listIds 만 온다(경로 B). FE가 CH-5로 목록을 조회한다.
-  // listIds 는 **항상 배열**이다(목록 1개여도 길이 1) — 세트형·니즈별 추천이 여러 묶음을
-  // 나르기 때문. 순서 = I-21 lists 순서, 개수 상한 10. (계약 CH-2, 2026-07-30)
-  | { type: "products.ready"; data: { sessionId?: string; listIds: string[] } }
+  // products.ready: 카드가 아니라 상관키만 온다(경로 B). FE가 CH-5로 목록을 조회한다.
+  //
+  // ⚠️ 과도기 — 두 형태를 모두 받는다. 계약 CH-2(2026-07-30)는 listIds(항상 배열, 상한 10)로
+  // 개정됐으나 **AI 서버가 아직 단수 listId 를 emit 한다**(jarvis-ai 확인 2026-07-31:
+  // ProductsReadyData.list_id: str, Spring I-21 콜백도 단수라 배열 전환은 AI↔Spring 계약 동반).
+  // 배열만 읽으면 undefined.map() 으로 스트림 파싱이 죽어 답변 자체가 실패한다.
+  //
+  // 🧹 정리 조건: AI 서버가 listIds 배열로 전환하면 listId 를 지우고 listIds 를 필수로 되돌린다.
+  | {
+      type: "products.ready";
+      data: { sessionId?: string; listIds?: string[]; listId?: string };
+    }
   // products: 카드를 직접 싣는 구버전/폴백 경로(경로 A). 목·초기 시딩에서 사용.
   | { type: "products"; data: { groups: ProductGroup[] } }
   | { type: "action"; data: ChatAction }

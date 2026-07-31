@@ -200,7 +200,12 @@ export function useChat({
               // 경로 B — 카드는 SSE에 없다. 각 listId 로 CH-5 를 개별 조회해 패널에 넣는다.
               // listIds 는 항상 배열이다(세트형·니즈별 추천이 여러 묶음일 수 있음, 상한 10).
               // 조회 실패(404 등)는 재시도 버튼이 아니라 안내만 — 답변 자체는 정상 종료됐으므로.
-              const { listIds } = e.data;
+              // ⚠️ 과도기 — 서버가 아직 단수 listId 를 보낸다(타입 정의의 정리 조건 참조).
+              // 배열 우선, 없으면 단수를 길이 1 배열로 승격한다.
+              const listIds =
+                e.data.listIds ?? (e.data.listId ? [e.data.listId] : []);
+              if (!listIds.length) break;
+
               pendingFetches.push(
                 // 병렬 조회하되 결과는 listIds 순서(=I-21 lists 순서)로 한 번에 넣는다.
                 // 개별 push 하면 응답이 빨리 온 묶음이 앞서 붙어 순서가 뒤집힌다.
@@ -343,6 +348,20 @@ export function useChat({
           failLastAssistant(
             "대화가 만료되었어요. 다시 시도하면 새로 이어서 대화할 수 있어요.",
           );
+        } else if (err instanceof StreamStartError && err.status === 409) {
+          // 409 STREAM_IN_PROGRESS — 같은 방에 이미 활성 스트림이 있다는 뜻.
+          //
+          // ⚠️ 현재는 멀티탭에서 방이 달라도 발생한다 — 계약 CH-2(2026-07-30)는 락 키를
+          // threadId(방) 단위로 확정했으나 **AI 서버가 아직 sessionId 로 잠근다**
+          // (jarvis-ai 확인 2026-07-31: registry_key(identity, session_id), 잔여 구현 3건 중 1건).
+          // 탭이 세션을 공유하므로 탭 B 가 탭 A 의 스트리밍 때문에 409 를 맞는다.
+          // **FE 로는 회피 불가** — 세션 분리는 명세가 금지한 방향이다.
+          //
+          // 🧹 정리 조건: AI 가 락 키를 threadId 로 전환하면 이 분기는 "같은 탭에서 연타"
+          // 정도로만 남는다(그때도 안내 자체는 유효하니 문구만 손보면 된다).
+          failLastAssistant(
+            "다른 대화가 진행 중이에요. 잠시 후 다시 시도해 주세요.",
+          );
         } else {
           // 자동 재시도 금지 — 해당 말풍선에 에러 표시, 재시도 버튼 제공.
           // 세션 발급 실패(401/403)·티켓 재발급 실패도 여기로 떨어진다(스트림 시작 전 거부).
@@ -431,7 +450,13 @@ export function useChat({
 
   // 조건 칩 제거 — conditionActions 구조화 배열로 보낸다(계약 CH-2, 2026-07-28 #84).
   // 어떤 칩을 지웠는지는 UI만 아는 사실이라 발화만으로는 서버가 복원할 수 없다.
-  // 구 방식(`[조건 제거] <field>` 규약 문자열)은 폐기 — AI 에 수신부가 없어 무동작이었다.
+  //
+  // ⚠️ 현재 무동작 — AI 서버에 수신부가 없다(jarvis-ai 확인 2026-07-31: ChatRequest 가
+  // session_id/thread_id/message 3필드뿐, Pydantic extra=ignore 라 400 없이 조용히 버려진다).
+  // 폐기된 구 방식(`[조건 제거] <field>` 규약 문자열)도 포맷 미확정이라 어차피 동작하지
+  // 않으므로, 계약이 확정된 이쪽으로 보내며 서버 구현을 기다린다.
+  //
+  // 🧹 정리 조건: AI 가 conditionActions 를 수신하면 이 주석만 지운다(코드는 그대로 맞다).
   const removeCondition = useCallback(
     (field: ConditionField) => {
       send("", [{ op: "remove", field }]);
