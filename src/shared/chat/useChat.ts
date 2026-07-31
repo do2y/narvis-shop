@@ -18,6 +18,8 @@ import type {
   ChatEvent,
   ChatScreenContext,
   ChatSession,
+  ConditionAction,
+  ConditionField,
   SellerPanel,
   StreamChatBody,
 } from "@/shared/types/chat";
@@ -195,26 +197,40 @@ export function useChat({
               setSuggestions(e.data.chips.filter((c) => c.estCount > 0));
               break;
             case "products.ready": {
-              // 경로 B — 카드는 SSE에 없다. listId 로 CH-5 목록을 조회해 패널에 넣는다.
+              // 경로 B — 카드는 SSE에 없다. 각 listId 로 CH-5 를 개별 조회해 패널에 넣는다.
+              // listIds 는 항상 배열이다(세트형·니즈별 추천이 여러 묶음일 수 있음, 상한 10).
               // 조회 실패(404 등)는 재시도 버튼이 아니라 안내만 — 답변 자체는 정상 종료됐으므로.
-              const { listId } = e.data;
+              // 서버가 아직 단수 listId 를 보낸다 — 배열 우선, 없으면 길이 1로 승격
+              const listIds =
+                e.data.listIds ?? (e.data.listId ? [e.data.listId] : []);
+              if (!listIds.length) break;
+
               pendingFetches.push(
-                fetchChatListGroup(listId)
-                  .then((group) => {
-                    // 카드가 0개라도 드롭이 있었다면 패널에 넣는다 — "추천이 다 품절됐다"는
-                    // 사실 자체가 안내거리다(200 · items:[] · itemsDropped>0, CH-5).
-                    // 드롭도 0이고 카드도 없으면 보여줄 게 없으므로 넣지 않는다.
-                    if (group.items.length || group.recommendation?.itemsDropped) {
-                      pushResult({ kind: "products", groups: [group] });
-                    }
-                  })
-                  .catch(() => {
-                    // 404 RESOURCE_NOT_FOUND(listId 만료·미존재)가 대표 사유다.
-                    // TTL 만료는 재시도해도 계속 404이므로 "다시 시도"를 권하지 않는다.
+                // 병렬 조회하되 결과는 listIds 순서(=I-21 lists 순서)로 한 번에 넣는다.
+                // 개별 push 하면 응답이 빨리 온 묶음이 앞서 붙어 순서가 뒤집힌다.
+                Promise.all(
+                  listIds.map((id) =>
+                    fetchChatListGroup(id).catch(() => null),
+                  ),
+                ).then((groups) => {
+                  const usable = groups.filter(
+                    (g): g is NonNullable<typeof g> =>
+                      // 카드가 0개라도 드롭이 있었다면 넣는다 — "추천이 다 품절됐다"는
+                      // 사실 자체가 안내거리다(200 · items:[] · itemsDropped>0, CH-5).
+                      g !== null &&
+                      Boolean(g.items.length || g.recommendation?.itemsDropped),
+                  );
+                  if (usable.length) {
+                    pushResult({ kind: "products", groups: usable });
+                  }
+                  // 404 RESOURCE_NOT_FOUND(listId 만료·미존재)가 대표 사유다.
+                  // TTL 만료는 재시도해도 계속 404이므로 "다시 시도"를 권하지 않는다.
+                  if (usable.length < listIds.length) {
                     appendToLastAssistant(
                       "\n\n추천 목록을 불러오지 못했어요. 다시 물어봐 주세요.",
                     );
-                  }),
+                  }
+                }),
               );
               break;
             }
@@ -318,18 +334,22 @@ export function useChat({
         // (각 조회는 내부에서 catch 하므로 여기서 예외로 실패 처리되지 않는다.)
         if (pendingFetches.length) await Promise.all(pendingFetches);
       } catch (err) {
-        // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라
-        // 다른 탭/기기가 세션을 축출하는 일은 없다(CH-1 정본 2026-07-31) —
-        // 즉 404 는 "다른 곳에서 종료됨"이 아니라 단순 만료다.
-        //
-        // 명세 지시: FE 는 CH-1 로 새 세션을 받는다(대화 맥락은 끊긴다).
-        // 죽은 세션을 캐시에서 지워 두면 다음 전송의 ensureSession 이 새로 발급하므로,
-        // 여기서 자동 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지 원칙 유지).
+        // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라 다른 탭이
+        // 세션을 축출하는 일은 없으므로 "다른 곳에서 종료됨"이 아니라 단순 만료다.
+        // 캐시를 비워 두면 다음 전송의 ensureSession 이 새로 발급한다 — 여기서 자동
+        // 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지).
         if (isNotFound(err)) {
           clearCachedSession(channel);
           setSessionId(null);
           failLastAssistant(
             "대화가 만료되었어요. 다시 시도하면 새로 이어서 대화할 수 있어요.",
+          );
+        } else if (err instanceof StreamStartError && err.status === 409) {
+          // 409 STREAM_IN_PROGRESS — 같은 방에 이미 활성 스트림이 있다.
+          // 계약상 락 키는 threadId(방)지만 AI 가 아직 sessionId 로 잠근다. 탭이 세션을
+          // 공유하므로 방이 달라도 다른 탭의 스트리밍에 걸린다 — FE 로는 회피 못 한다.
+          failLastAssistant(
+            "다른 대화가 진행 중이에요. 잠시 후 다시 시도해 주세요.",
           );
         } else {
           // 자동 재시도 금지 — 해당 말풍선에 에러 표시, 재시도 버튼 제공.
@@ -362,14 +382,15 @@ export function useChat({
   );
 
   const send = useCallback(
-    (message: string) => {
+    (message: string, conditionActions?: ConditionAction[]) => {
       const trimmed = message.trim();
-      if (!trimmed) return;
+      // 계약 CH-2: message 와 conditionActions 가 둘 다 비면 400. 하나만 있으면 정상이다.
+      if (!trimmed && !conditionActions?.length) return;
 
-      // 이 앱의 상품 검색은 챗봇이다. 단 "[조건 제거]"·"[수정 확인]" 같은 제어 메시지는
-      // 사용자의 검색 의도가 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어
-      // 보내지 않고 채널·길이만 싣는다(명세: properties에 개인정보 금지).
-      if (!trimmed.startsWith("[")) {
+      // 이 앱의 상품 검색은 챗봇이다. 단 칩 제거 같은 제어 요청은 사용자의 검색 의도가
+      // 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어 보내지 않고
+      // 채널·길이만 싣는다(명세: properties에 개인정보 금지).
+      if (trimmed && !conditionActions?.length) {
         track("search", {
           properties: { channel, queryLength: trimmed.length },
         });
@@ -383,9 +404,12 @@ export function useChat({
           sessionId,
           threadId,
           message: trimmed,
+          ...(conditionActions?.length ? { conditionActions } : {}),
           ...(screen ? { screen } : {}),
         }),
-        trimmed,
+        // 칩 제거만 있는 턴은 사용자 말풍선을 남기지 않는다 — 제어 신호이지 발화가 아니다
+        // (판매자 confirm 과 동일 처리, 계약 CH-2).
+        trimmed || null,
       );
     },
     [channel, run],
@@ -413,11 +437,12 @@ export function useChat({
     if (userText) send(userText);
   }, [send]);
 
-  // 조건 칩 제거 = 후속 메시지 왕복(별도 API 없음, 계약 CH-2 §conditions).
-  // 규약 문자열에 칩의 field 를 실어 서버가 해당 조건을 빼고 재분해하게 한다.
+  // 조건 칩 제거 — conditionActions 배열로 보낸다(계약 CH-2 #84, 규약 문자열 방식은 폐기).
+  // 어떤 칩을 지웠는지는 UI만 아는 사실이라 발화만으로는 서버가 복원할 수 없다.
+  // 아직 AI 에 수신부가 없어 무동작이다(extra=ignore 라 조용히 버려진다).
   const removeCondition = useCallback(
-    (field: string) => {
-      send(`[조건 제거] ${field}`);
+    (field: ConditionField) => {
+      send("", [{ op: "remove", field }]);
     },
     [send],
   );
@@ -431,7 +456,7 @@ export function useChat({
     [send],
   );
 
-  // 새 대화 = **새 방**. 세션(접속)은 유지하고 thread_id 만 새로 판다 — BE 와 합의된 동작.
+  // 새 대화 = 새 방. 세션(접속)은 유지하고 thread_id 만 새로 판다 — BE 와 합의된 동작.
   // 여기서 세션을 새로 발급하면 다른 탭의 세션을 축출해 멀티탭이 깨진다.
   const startNewChat = useCallback(() => {
     abortRef.current?.abort();

@@ -24,8 +24,14 @@ export interface ChatScreenContext {
  */
 export interface StreamChatBody {
   sessionId: string; // 세션 발급으로 받은 BE 발급값
-  threadId?: string; // 대화 스레드 식별자
-  message?: string; // confirm 요청에선 생략
+  threadId: string; // 방 식별자(FE 생성, 방마다 고유) — 필수, 없으면 400
+  message?: string; // confirm 요청에선 생략. conditionActions 가 있으면 빈 문자열 허용
+  /**
+   * 조건 칩 제거(구매자 전용). 미지정 기본값은 빈 배열이라 일반 발화는 종전대로 동작한다.
+   * message 와 함께 보낼 수 있다 — "category 칩을 지우고 노트북으로 바꿔줘".
+   * 둘 다 비어 있으면 400.
+   */
+  conditionActions?: ConditionAction[];
   screen?: ChatScreenContext; // 사이드 채팅에서만 전송
   action?: "confirm"; // draft 승인 — message 대신 이 필드로 확정
   draftId?: string; // action:"confirm" 일 때 대상 draft
@@ -107,13 +113,35 @@ export interface ChatListResponse {
 // ── SHOPPING/CS 전용 페이로드 (계약 CH-2) ──
 
 /**
+ * conditions 칩의 field 허용값 6종(계약 CH-2).
+ * conditions 가 내보내는 집합과 conditionActions 가 지우는 집합은 동일하다.
+ */
+export type ConditionField =
+  | "category"
+  | "priceMax"
+  | "priceMin"
+  | "brand"
+  | "ratingMin"
+  | "keyword";
+
+/**
  * AI가 추출한 필터 조건 칩. 제거 가능하게 노출한다.
- * 칩 제거는 왕복 — 다음 턴 message에 규약 문자열(`[조건 제거] <field>`)을 실어 재분해를 트리거.
+ * 칩 제거는 conditionActions 배열로 보낸다(아래) — 규약 문자열 왕복은 폐기(2026-07-28, #84).
  */
 export interface ConditionChip {
-  field: string; // "priceMax" — 제거 왕복의 식별자
+  field: ConditionField; // "priceMax" — 제거 액션의 식별자
   label: string; // "5만원 이하" — 표시용
   value: string | number; // 50000 | "여행용품/보안용품"
+}
+
+/**
+ * 조건 칩 제거 액션(구매자 전용, 계약 CH-2 2026-07-28 신설).
+ * 어떤 칩을 지웠는지는 UI만 아는 사실이라 서버가 발화만으로 복원할 수 없다.
+ * op 는 remove 만 허용. 멱등하다 — 없는 필드를 지워도 성공 no-op.
+ */
+export interface ConditionAction {
+  op: "remove";
+  field: ConditionField;
 }
 
 /**
@@ -209,8 +237,12 @@ export type ChatEvent =
   // ── SHOPPING/CS 전용 ──
   | { type: "conditions"; data: { chips: ConditionChip[] } }
   | { type: "suggestions"; data: { chips: SuggestionChip[] } }
-  // products.ready: 카드가 아니라 상관키 listId 만 온다(경로 B). FE가 CH-5로 목록을 조회한다.
-  | { type: "products.ready"; data: { sessionId?: string; listId: string } }
+  // products.ready: 카드가 아니라 상관키만 온다(경로 B). FE가 CH-5로 목록을 조회한다.
+  // 계약은 listIds(배열)지만 AI 가 아직 단수 listId 를 보낸다. 전환되면 listId 를 지운다.
+  | {
+      type: "products.ready";
+      data: { sessionId?: string; listIds?: string[]; listId?: string };
+    }
   // products: 카드를 직접 싣는 구버전/폴백 경로(경로 A). 목·초기 시딩에서 사용.
   | { type: "products"; data: { groups: ProductGroup[] } }
   | { type: "action"; data: ChatAction }

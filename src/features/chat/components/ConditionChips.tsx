@@ -1,15 +1,15 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { ConditionChip } from "@/shared/types/chat";
+import type { ConditionChip, ConditionField } from "@/shared/types/chat";
 
 interface ConditionChipsProps {
   conditions: ConditionChip[];
-  onRemove: (field: string) => void; // 칩 제거 왕복 — field 로 트리거
+  onRemove: (field: ConditionField) => void; // 칩 제거 — conditionActions 로 전송
   disabled?: boolean; // 스트리밍 중엔 제거 비활성
 }
 
-// AI가 추출한 필터 조건 칩. 각 칩은 X로 제거 가능(계약 CH-2 §conditions — field 기준 왕복).
+// AI가 추출한 필터 조건 칩. 각 칩은 X로 제거 가능(계약 CH-2 §conditions).
 export function ConditionChips({
   conditions,
   onRemove,
