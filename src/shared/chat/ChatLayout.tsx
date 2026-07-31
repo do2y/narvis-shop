@@ -5,6 +5,8 @@ import { ChatConversation } from "./ChatConversation";
 interface ChatLayoutProps {
   onSend: (message: string) => void;
   onRetry: () => void;
+  /** 세션 축출(404) 후 수동 재시작 */
+  onRestart?: () => void;
   isStreaming: boolean;
   placeholder?: string;
   /** 화면 최상단 헤더 — 채널별 주입(쇼핑=AppHeader, 판매자=SellerHeader) */
@@ -25,6 +27,7 @@ interface ChatLayoutProps {
 export function ChatLayout({
   onSend,
   onRetry,
+  onRestart,
   isStreaming,
   placeholder,
   header,
@@ -42,6 +45,7 @@ export function ChatLayout({
           <ChatConversation
             onSend={onSend}
             onRetry={onRetry}
+            onRestart={onRestart}
             isStreaming={isStreaming}
             placeholder={placeholder}
             headerSlot={conversationHeader}

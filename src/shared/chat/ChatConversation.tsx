@@ -8,6 +8,8 @@ import { useChatStore } from "./store";
 interface ChatConversationProps {
   onSend: (message: string) => void;
   onRetry: () => void;
+  /** 세션 축출(404) 후 수동 재시작 — 축출 상태는 스토어에서 직접 읽는다. */
+  onRestart?: () => void;
   isStreaming: boolean;
   placeholder?: string;
   /** 대화 입력창 위 영역(조건 칩·추천 질문 등) — 채널별 주입 */
@@ -26,6 +28,7 @@ interface ChatConversationProps {
 export function ChatConversation({
   onSend,
   onRetry,
+  onRestart,
   isStreaming,
   placeholder,
   aboveInput,
@@ -34,6 +37,7 @@ export function ChatConversation({
   const messages = useChatStore((s) => s.messages);
   // 분석 진행 상태(판매자) — 최종 답변(token) 전 로딩 텍스트로 표시, token 오면 소멸
   const progress = useChatStore((s) => s.progress);
+  const sessionEnded = useChatStore((s) => s.sessionEnded);
 
   // 새 메시지·스트리밍·진행 표시 변화 시 대화 영역 하단으로 스크롤
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -51,6 +55,8 @@ export function ChatConversation({
           isStreaming={isStreaming}
           progress={progress}
           onRetry={onRetry}
+          sessionEnded={sessionEnded}
+          onRestart={onRestart}
         />
       </div>
 

@@ -33,9 +33,13 @@ interface ChatState {
   // 분석 리포트 — done{panel:replace}+lane:analysis 시 우측 패널에 표시할 리포트 본문.
   // 계약상 analysis 답변은 단일 token이라 results 카드가 아니라 이 문자열로 담는다.
   analysisReport: string | null;
+  // 다른 탭/기기에서 세션이 축출됨(404 SESSION_NOT_FOUND). 자동 재발급하면 서로 축출하는
+  // 탭 전쟁이 되므로, 안내를 띄우고 사용자가 직접 재시작하게 한다.
+  sessionEnded: boolean;
 
   setSessionId: (id: string) => void;
   setThreadId: (id: string) => void;
+  setSessionEnded: (v: boolean) => void;
   addMessage: (msg: ChatMessage) => void;
   appendToLastAssistant: (text: string) => void; // token 이벤트 누적
   failLastAssistant: (message: string) => void; // 마지막 assistant 말풍선을 에러 상태로
@@ -64,6 +68,7 @@ const initial = {
   lane: null,
   progress: null,
   analysisReport: null,
+  sessionEnded: false,
 };
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -71,6 +76,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setSessionId: (sessionId) => set({ sessionId }),
   setThreadId: (threadId) => set({ threadId }),
+  setSessionEnded: (sessionEnded) => set({ sessionEnded }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   appendToLastAssistant: (text) =>
     set((s) => {
@@ -127,6 +133,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setLane: (lane) => set({ lane }),
   setProgress: (progress) => set({ progress }),
   setAnalysisReport: (analysisReport) => set({ analysisReport }),
-  // 새 대화 — threadId 는 유지하지 않는다(reset은 대화 자체를 새로 시작할 때만 호출)
+  // 새 대화 — 화면 상태만 비운다. 방 id 는 sessionStorage(threadId.ts), 세션은
+  // 코디네이터가 들고 있어 여기서 지워지지 않는다("새 대화"=새 방, 세션 유지).
   reset: () => set({ ...initial }),
 }));
