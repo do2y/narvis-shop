@@ -84,7 +84,8 @@ export default function SellerChatPage() {
   // 분석은 meta 즉시 스켈레톤을 띄워야 해 effect 대신 렌더 중 파생으로 계산한다.
   const showResults = showResultsState || analysisLoading || !!analysisReport;
 
-  // 진입 시 새 대화 — 스토어가 채널 공용이라 이전 쇼핑 대화가 남아있을 수 있음.
+  // 진입 시 새 대화(새 방) — 스토어가 채널 공용이라 이전 쇼핑 대화가 화면에 남아있을 수 있음.
+  // 세션(접속)은 채널별로 분리 보관되므로 여기서 끊기지 않는다 — 화면 상태만 비운다.
   // 대시보드 히어로에서 넘어온 첫 메시지(?q=)가 있으면 초기화 직후 이어서 전송.
   //
   // ?q= 는 "한 번 쓰고 버리는" 값이라 소비 여부를 ref 로 기록한다. deps 를 [q] 로 두고

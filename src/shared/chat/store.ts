@@ -34,7 +34,7 @@ interface ChatState {
   // 계약상 analysis 답변은 단일 token이라 results 카드가 아니라 이 문자열로 담는다.
   analysisReport: string | null;
 
-  setSessionId: (id: string) => void;
+  setSessionId: (id: string | null) => void; // null = 만료된 세션 폐기(다음 전송 때 재발급)
   setThreadId: (id: string) => void;
   addMessage: (msg: ChatMessage) => void;
   appendToLastAssistant: (text: string) => void; // token 이벤트 누적
@@ -127,6 +127,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setLane: (lane) => set({ lane }),
   setProgress: (progress) => set({ progress }),
   setAnalysisReport: (analysisReport) => set({ analysisReport }),
-  // 새 대화 — threadId 는 유지하지 않는다(reset은 대화 자체를 새로 시작할 때만 호출)
+  // 새 대화 — 화면 상태만 비운다. 방 id 는 sessionStorage(threadId.ts), 세션은
+  // 코디네이터가 들고 있어 여기서 지워지지 않는다("새 대화"=새 방, 세션 유지).
   reset: () => set({ ...initial }),
 }));

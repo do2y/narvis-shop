@@ -5,10 +5,12 @@ import { track } from "@/shared/analytics/track";
 import { ApiError } from "@/shared/api/client";
 import { streamChat, StreamStartError } from "@/shared/chat/streamChat";
 import {
-  openChatSession,
-  openSellerSession,
-  reissueTicket,
-} from "@/shared/chat/sessions";
+  clearCachedSession,
+  ensureSession,
+  refreshTicket,
+  subscribeSession,
+} from "@/shared/chat/sessionCoordinator";
+import { getThreadId, newThreadId } from "@/shared/chat/threadId";
 import { fetchChatListGroup } from "@/shared/chat/lists";
 import type {
   ChatAction,
@@ -23,6 +25,18 @@ import { useChatStore } from "./store";
 
 function newId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * 세션 축출(404) 판정 — 출처가 둘이라 타입도 둘이다.
+ * 스트림 fetch 는 StreamStartError(status), 티켓 재발급은 ApiError(code/status).
+ */
+function isNotFound(err: unknown): boolean {
+  if (err instanceof StreamStartError) return err.status === 404;
+  if (err instanceof ApiError) {
+    return err.status === 404 || err.code === "SESSION_NOT_FOUND";
+  }
+  return false;
 }
 
 interface UseChatOptions {
@@ -79,35 +93,25 @@ export function useChat({
     getScreenContextRef.current = getScreenContext;
   });
 
-  // 채널별 세션 발급(CH-6/CH-1) — 새 대화 시작 시 세션 생성 + 첫 티켓.
-  const createSession = useCallback((): Promise<ChatSession> => {
-    return channel === "SELLER"
-      ? openSellerSession()
-      : openChatSession(channel);
+  // 스트림 진입 티켓 확보 — 티켓 TTL 이 30~60초로 짧아 매 전송 직전에 확보한다.
+  // 발급 자체는 코디네이터가 Web Locks 로 탭 간 단일화한다(접속당 CH-1 1회).
+  // sessionId 는 항상 발급 응답값을 쓴다(BE·Redis 발급, sliding TTL) — 클라이언트가 만들지 않는다.
+  const acquireTicket = useCallback((): Promise<ChatSession> => {
+    return ensureSession(channel, useChatStore.getState().sessionId);
   }, [channel]);
 
-  // 스트림 진입 티켓 확보 — 티켓 TTL 이 30~60초로 짧아 매 전송 직전에 확보한다.
-  // 기존 sessionId 가 있으면 재발급(CH-1b)으로 세션·맥락을 유지하고, 없으면 새로 발급한다.
-  // sessionId 는 항상 발급 응답값을 쓴다(BE·Redis 발급, sliding TTL) — 클라이언트가 만들지 않는다.
-  //
-  // 재발급 실패 중 아래 2종은 "이 sessionId 로는 더 못 쓴다"는 뜻이라 새 세션으로 폴백한다:
-  // - 404 SESSION_NOT_FOUND — 만료·미존재(로그인·로그아웃·"새 대화"로 정리된 경우 포함)
-  // - 403 SESSION_FORBIDDEN — 요청 신원 ≠ 세션 소유자. 로그인/로그아웃으로 신원이 바뀐 뒤
-  //   이전 신원의 sessionId 가 스토어에 남아 있으면 발생한다. 새로 받으면 풀리므로
-  //   오류로 띄우지 않는다(맥락은 끊기지만 대화는 이어갈 수 있다).
-  const acquireTicket = useCallback((): Promise<ChatSession> => {
-    const existing = useChatStore.getState().sessionId;
-    if (!existing) return createSession();
-    return reissueTicket(existing).catch((err: unknown) => {
-      if (
-        err instanceof ApiError &&
-        (err.code === "SESSION_NOT_FOUND" || err.code === "SESSION_FORBIDDEN")
-      ) {
-        return createSession();
-      }
-      throw err;
+  // 다른 탭이 세션을 발급·갱신하면 이 탭의 표시용 sessionId 도 따라간다.
+  // (정본은 코디네이터의 localStorage 캐시 — 여기선 스토어를 동기화만 한다.)
+  useEffect(() => {
+    return subscribeSession(channel, (s) => {
+      setSessionId(s.sessionId);
     });
-  }, [createSession]);
+  }, [channel, setSessionId]);
+
+  // 이 탭의 방 id 를 마운트 시 1회 확보한다(sessionStorage 정본).
+  useEffect(() => {
+    useChatStore.getState().setThreadId(getThreadId(channel));
+  }, [channel]);
 
   /**
    * 스트림 실행 공통부 — 일반 발화(send)와 승인(confirm)이 공유한다.
@@ -154,14 +158,14 @@ export function useChat({
       abortRef.current = controller;
 
       try {
-        // 1) 티켓 확보(Spring REST) — 기존 세션이면 재발급(CH-1b), 아니면 새 발급(CH-6/CH-1).
+        // 1) 티켓 확보(Spring REST) — 코디네이터가 캐시·락으로 탭 간 단일화해 돌려준다.
         //    sessionId 는 서버 발급값을 저장·사용(재발급도 같은 sessionId 를 돌려준다).
         const session = await acquireTicket();
         setSessionId(session.sessionId);
 
-        // threadId(계약 CH-2): 대화 스레드(방) 식별자, 필수. **MVP 는 sessionId 와 동일 값**을 싣는다
-        // (post-MVP 에 방이 분리되면 방마다 고유 값으로 분화 — 계약은 지금부터 이 필드를 유지).
-        const threadId = session.sessionId;
+        // threadId(계약 CH-2): 대화 스레드(방) 식별자, 필수.
+        // sessionId 는 탭 간 공유되므로 방 구분은 탭별 threadId 가 맡는다(sessionStorage).
+        const threadId = getThreadId(channel);
         useChatStore.getState().setThreadId(threadId);
 
         const body = buildBody({ sessionId: session.sessionId, threadId });
@@ -293,8 +297,10 @@ export function useChat({
             controller.signal,
           );
         } catch (err) {
+          // 401(티켓 만료) — 코디네이터 경유로 재발급(같은 락)하고 1회만 재시도.
+          // 갱신된 티켓은 브로드캐스트로 다른 탭에도 공유된다.
           if (err instanceof StreamStartError && err.status === 401) {
-            const fresh = await reissueTicket(session.sessionId);
+            const fresh = await refreshTicket(channel, session.sessionId);
             setSessionId(fresh.sessionId);
             await streamChat(
               fresh.llmSseUrl,
@@ -311,10 +317,25 @@ export function useChat({
         // 스트림이 끝나도 products.ready 의 CH-5 조회가 남아 있을 수 있다 — 함께 기다린다.
         // (각 조회는 내부에서 catch 하므로 여기서 예외로 실패 처리되지 않는다.)
         if (pendingFetches.length) await Promise.all(pendingFetches);
-      } catch {
-        // 자동 재시도 금지 — 해당 말풍선에 에러 표시, 재시도 버튼 제공.
-        // 세션 발급 실패(401/403/404)·티켓 재발급 실패도 여기로 떨어진다(스트림 시작 전 거부).
-        failLastAssistant("응답을 받지 못했어요. 다시 시도해 주세요.");
+      } catch (err) {
+        // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라
+        // 다른 탭/기기가 세션을 축출하는 일은 없다(CH-1 정본 2026-07-31) —
+        // 즉 404 는 "다른 곳에서 종료됨"이 아니라 단순 만료다.
+        //
+        // 명세 지시: FE 는 CH-1 로 새 세션을 받는다(대화 맥락은 끊긴다).
+        // 죽은 세션을 캐시에서 지워 두면 다음 전송의 ensureSession 이 새로 발급하므로,
+        // 여기서 자동 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지 원칙 유지).
+        if (isNotFound(err)) {
+          clearCachedSession(channel);
+          setSessionId(null);
+          failLastAssistant(
+            "대화가 만료되었어요. 다시 시도하면 새로 이어서 대화할 수 있어요.",
+          );
+        } else {
+          // 자동 재시도 금지 — 해당 말풍선에 에러 표시, 재시도 버튼 제공.
+          // 세션 발급 실패(401/403)·티켓 재발급 실패도 여기로 떨어진다(스트림 시작 전 거부).
+          failLastAssistant("응답을 받지 못했어요. 다시 시도해 주세요.");
+        }
       } finally {
         setStreaming(false);
         setProgress(null);
@@ -336,6 +357,7 @@ export function useChat({
       setProgress,
       setAnalysisReport,
       acquireTicket,
+      channel,
     ],
   );
 
@@ -409,12 +431,14 @@ export function useChat({
     [send],
   );
 
-  // 새 대화 — 세션·티켓은 다음 전송 때 새로 발급하므로 여기선 로컬 상태만 비운다.
-  // sessionId 는 BE 발급값이라 클라이언트가 미리 만들지 않는다(reset 이 null 로 되돌림).
+  // 새 대화 = **새 방**. 세션(접속)은 유지하고 thread_id 만 새로 판다 — BE 와 합의된 동작.
+  // 여기서 세션을 새로 발급하면 다른 탭의 세션을 축출해 멀티탭이 깨진다.
   const startNewChat = useCallback(() => {
     abortRef.current?.abort();
+    const threadId = newThreadId(channel);
     reset();
-  }, [reset]);
+    useChatStore.getState().setThreadId(threadId); // reset 이 initial 을 뿌린 뒤에 다시 심는다
+  }, [reset, channel]);
 
   return {
     send,
