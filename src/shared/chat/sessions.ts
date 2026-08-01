@@ -44,3 +44,27 @@ export async function reissueTicket(sessionId: string): Promise<ChatSession> {
   const res = await api.post<ChatSession>("/api/chat/tickets", { sessionId });
   return res.data;
 }
+
+/**
+ * 채팅 세션 승계(CH-7) — POST /api/chat/sessions/{sessionId}/claim.
+ * 채팅 화면에서 로그인·가입한 직후 게스트 접속을 회원으로 넘긴다. sessionId 는 유지되므로
+ * 대화 맥락이 끊기지 않는다. 승계하지 않으면 게스트 세션은 TTL 10분으로 소멸한다.
+ *
+ * body 없음 — sessionId 는 path, 회원 신원은 AT 에서 서버가 취한다.
+ * guest_id 쿠키도 보내지 않는다(로그인 시점에 이미 반납됐다) — 소유권은 서버가 귀속 기록으로 본다.
+ *
+ * 응답은 CH-1 과 같은 스키마이고 회원 신원의 새 티켓이 실려 온다. 승계 후 구 게스트 티켓은
+ * AI 가 403 으로 막으므로 반드시 이 응답의 티켓으로 교체해야 한다.
+ *
+ * 실패: 403 SESSION_FORBIDDEN(남의 게스트 세션·이미 회원 소유) / 404 SESSION_NOT_FOUND(만료)
+ * / 409 SESSION_ACTIVE(스트리밍 중) / 409 SESSION_CLAIM_CONFLICT(회원이 이미 그 채널 세션 보유)
+ * / 503 SESSION_CLAIM_UNAVAILABLE(AI 미응답).
+ */
+export async function claimChatSession(
+  sessionId: string,
+): Promise<ChatSession> {
+  const res = await api.post<ChatSession>(
+    `/api/chat/sessions/${sessionId}/claim`,
+  );
+  return res.data;
+}
