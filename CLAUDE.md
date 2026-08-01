@@ -44,7 +44,10 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
 
 ## 상태 구분
 - **서버 원본 데이터**(상품/장바구니/주문/찜/문의) → React Query. useState로 복제 금지
-- **클라이언트 상태** → Zustand: 인증(authStore — user만 localStorage persist, AT는 메모리 전용), 현재 챗봇 대화(persist 안 함 — 새로고침 소실이 의도된 동작), UI 상태
+- **클라이언트 상태** → Zustand: 인증(authStore — user만 localStorage persist, AT는 메모리 전용), 현재 챗봇 대화(sessionStorage에 탭 단위 저장 — `chatPersistence`), UI 상태
+  - 챗 대화를 **탭 단위**로 잡은 이유: 서버 맥락 TTL이 10분(sliding)이라 그보다 오래 남기면
+    화면엔 대화가 있는데 AI는 기억 못 하는 어긋난 상태가 길어진다. 탭 수명이 세션 수명과
+    대체로 겹쳐 그 간극이 가장 작다. "새 대화"는 저장소도 함께 비운다
 - **폼** → React Hook Form + Zod. 검증 규칙은 백엔드 필드 정의와 일치시킬 것
 
 ## React Query 규칙

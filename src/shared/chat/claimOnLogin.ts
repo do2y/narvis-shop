@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiError } from "@/shared/api/client";
-import { takeChatAfterLogin } from "./chatHandoff";
+import { loadChat, saveChat } from "./chatPersistence";
 import { claimSession, clearCachedSession } from "./sessionCoordinator";
 import { useChatStore } from "./store";
 import type { ChatChannel } from "@/shared/types/chat";
@@ -23,25 +23,16 @@ import type { ChatChannel } from "@/shared/types/chat";
 export async function claimChatSessionAfterLogin(
   channel: ChatChannel = "SHOPPING",
 ): Promise<void> {
-  // 맡겨 둔 대화를 되찾는다(읽는 즉시 지워진다). 스토어는 라우팅으로 이미 비었으므로
-  // 승계 대상 sessionId 도 여기서 나온다.
-  const handoff = takeChatAfterLogin();
-  if (!handoff) return;
-
-  const { messages, sessionId } = handoff;
-
-  if (!sessionId) {
-    // 대화는 있는데 세션이 없다 — 발급 전에 로그인한 경우. 말풍선만 되돌리고
-    // 다음 전송에서 회원 신원으로 새로 발급받는다.
-    if (messages.length) useChatStore.getState().setMessages(messages);
-    return;
-  }
+  // 저장된 대화에서 승계 대상 sessionId 를 얻는다. 화면 복원은 채팅 페이지가
+  // 마운트 시점에 따로 하므로(useRestoreChat) 여기선 세션만 갈아끼운다.
+  const saved = loadChat();
+  if (!saved?.sessionId) return; // 대화가 없거나 세션 발급 전이면 승계할 것도 없다
 
   try {
-    const session = await claimSession(channel, sessionId);
+    const session = await claimSession(channel, saved.sessionId);
     // 승계 성공 — 같은 sessionId 에 회원 티켓이 실려 온다. 대화가 그대로 이어진다.
     useChatStore.getState().setSessionId(session.sessionId);
-    if (messages.length) useChatStore.getState().setMessages(messages);
+    saveChat({ ...saved, sessionId: session.sessionId });
   } catch (err) {
     // 409 SESSION_ACTIVE 는 "스트리밍 종료 후 1회 재시도" 권장이지만, 로그인 직후엔
     // 스트림이 돌고 있을 여지가 거의 없고 여기서 기다리면 화면 전환이 늦어진다.
@@ -49,12 +40,12 @@ export async function claimChatSessionAfterLogin(
     //
     // 어느 쪽이든 낡은 세션을 캐시에 남기면 안 된다 — 승계 못 한 게스트 세션을 계속
     // 물고 있으면 구 게스트 티켓으로 스트림을 열다 AI 가 403 으로 막는다.
+    // 말풍선은 그대로 남는다(저장소를 지우지 않는다) — 서버 맥락은 끊겼어도
+    // 사용자가 하던 얘기는 보여야 "로그인했더니 대화가 사라졌다"가 되지 않는다.
     if (err instanceof ApiError) {
       clearCachedSession(channel);
       useChatStore.getState().setSessionId(null);
+      saveChat({ ...saved, sessionId: null });
     }
-    // 말풍선은 되돌린다 — 서버 맥락은 끊겼어도 사용자가 하던 얘기는 보여야
-    // "로그인했더니 대화가 사라졌다"가 되지 않는다.
-    if (messages.length) useChatStore.getState().setMessages(messages);
   }
 }

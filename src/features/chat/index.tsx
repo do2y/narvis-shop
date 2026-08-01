@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import { ChatLayout } from "@/shared/chat/ChatLayout";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
+import { useChatPersistence } from "@/shared/chat/useChatPersistence";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { fetchPopularAsCards } from "./api";
 import { ConditionChips } from "./components/ConditionChips";
@@ -20,6 +21,11 @@ export default function ChatPage() {
   // useSearchParams를 쓰지 않는 이유: 그 훅은 이 컴포넌트를 Suspense 경계에 묶어
   // SSR에서 화면 전체(헤더 포함)가 비워진다. 마운트 후 window에서 직접 읽는다.
   const sentInitialQuery = useRef(false);
+
+  // 대화를 탭에 살려 둔다 — 새로고침·탭 복구로 돌아온다.
+  // 아래 ?q= 이펙트보다 먼저 선언해 복원이 앞서게 한다(홈에서 온 새 질문은
+  // startNewChat 이 저장소까지 비우므로 복원분과 섞이지 않는다).
+  useChatPersistence();
 
   const { send, retry, removeCondition, applySuggestion, startNewChat, isStreaming } =
     useChat({
