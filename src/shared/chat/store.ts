@@ -37,7 +37,7 @@ interface ChatState {
   setSessionId: (id: string | null) => void; // null = 만료된 세션 폐기(다음 전송 때 재발급)
   setThreadId: (id: string) => void;
   addMessage: (msg: ChatMessage) => void;
-  /** 로그인 왕복 후 대화 복원(chatHandoff) — 그 외 용도로 통째 교체하지 않는다 */
+  /** 저장된 대화 복원(chatPersistence) — 그 외 용도로 통째 교체하지 않는다 */
   setMessages: (messages: ChatMessage[]) => void;
   appendToLastAssistant: (text: string) => void; // token 이벤트 누적
   failLastAssistant: (message: string) => void; // 마지막 assistant 말풍선을 에러 상태로

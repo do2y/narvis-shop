@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { saveChatForLogin } from "@/shared/chat/chatHandoff";
+import { saveChat } from "@/shared/chat/chatPersistence";
 import { useChatStore } from "@/shared/chat/store";
 import { useCartItemCount } from "@/shared/hooks/useCart";
 import { useLogout } from "@/shared/hooks/useLogout";
@@ -99,14 +99,15 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
 
   const handleLogout = useLogout();
 
-  // 로그인 후 원래 보던 화면으로 돌려보낸다. 채팅에서 떠나는 경우엔 대화를 맡겨 두고
-  // 가야 복귀 후 말풍선을 되돌릴 수 있다(스토어는 라우팅으로 비워진다).
+  // 로그인 후 원래 보던 화면으로 돌려보낸다.
+  // 채팅에서 떠날 땐 마지막 상태를 한 번 더 확정해 둔다 — 평소 저장은 useChatPersistence 가
+  // 하지만, 채팅 페이지가 언마운트되며 구독이 끊기는 타이밍과 겹칠 수 있다.
   const authHref = (path: string) =>
     `${path}?returnUrl=${encodeURIComponent(pathname)}`;
   const handleAuthNavigate = () => {
     if (!pathname.startsWith("/chat")) return;
-    const { messages, sessionId } = useChatStore.getState();
-    saveChatForLogin({ messages, sessionId });
+    const { messages, sessionId, results } = useChatStore.getState();
+    saveChat({ messages, sessionId, results });
   };
 
   return (

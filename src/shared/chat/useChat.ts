@@ -10,6 +10,7 @@ import {
   refreshTicket,
   subscribeSession,
 } from "@/shared/chat/sessionCoordinator";
+import { clearChat } from "@/shared/chat/chatPersistence";
 import { getThreadId, newThreadId } from "@/shared/chat/threadId";
 import { fetchChatListGroup } from "@/shared/chat/lists";
 import type {
@@ -461,6 +462,9 @@ export function useChat({
   const startNewChat = useCallback(() => {
     abortRef.current?.abort();
     const threadId = newThreadId(channel);
+    // 저장소를 먼저 비운다 — saveChat 은 빈 대화를 무시하므로(다른 탭 덮어쓰기 방지)
+    // reset() 만으로는 이전 대화가 저장소에 남아 새로고침 때 되살아난다.
+    clearChat();
     reset();
     useChatStore.getState().setThreadId(threadId); // reset 이 initial 을 뿌린 뒤에 다시 심는다
   }, [reset, channel]);
