@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { useCart, useCartMutations } from "./useCart";
 import { CartItemCard } from "./components/CartItemCard";
 import { CartSummary } from "./components/CartSummary";
-import { CartRecommendations } from "./components/CartRecommendations";
 import type { CartItem } from "./types";
 import type { CheckoutItem, CheckoutState } from "@/shared/types/checkout";
 import { setCheckoutState } from "@/shared/utils/checkoutHandoff";
@@ -228,8 +227,6 @@ export default function CartPage() {
                   />
                 ))}
               </div>
-
-              <CartRecommendations />
             </div>
 
             {/* 우: 주문 요약 (데스크탑 sticky) */}
