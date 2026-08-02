@@ -115,10 +115,12 @@ export default function CheckoutPage() {
   // 빈 주문서(직접 진입)는 결제 시작이 아니므로 제외한다.
   useEffect(() => {
     if (items.length === 0) return;
+    // productIds 는 판매자 퍼널 3단의 근거다(JSON_CONTAINS 로 판매자 귀속) —
+    // 개수만 남기면 산식이 깨진다(E-1 명세).
     track("checkout_start", {
       properties: {
-        itemCount: items.length,
         amount: itemsTotal - discount,
+        productIds: items.map((i) => i.product.productId),
       },
     });
     // 금액은 items에서 파생되므로 items 변경 시에만 재전송한다.
@@ -149,11 +151,13 @@ export default function CheckoutPage() {
   // 결제 성공 경로가 신규 주문·재결제 두 갈래라 양쪽에서 부른다
   // (한쪽만 넣으면 재결제로 성사된 주문이 집계에서 빠진다).
   const trackPurchase = (orderId: number) => {
+    // productId 는 대표 상품 1개다(명세) — 판매자 집계에는 쓰이지 않는다
+    // (order_item × product × brand 집계가 정본).
     track("purchase_complete", {
+      productId: items[0]?.product.productId,
       properties: {
         orderId,
         amount: itemsTotal - discount,
-        itemCount: items.length,
         method,
       },
     });

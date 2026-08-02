@@ -262,6 +262,9 @@ export function useChat({
                 }
               }
               if (action.type === "CART_ADDED") {
+                // 명세 필수 키(quantity·price)를 채우지 못한다 — CART_ADDED 페이로드가
+                // cartItemId·message 뿐이라 FE 가 수량·단가를 알 방법이 없다.
+                // 서버가 _incomplete 를 붙여 저장한다(E-1 원칙: 버리지 않고 표시).
                 track("add_to_cart", {
                   properties: { source: "chat", cartItemId: action.cartItemId },
                 });
