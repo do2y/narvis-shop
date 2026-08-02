@@ -1,16 +1,23 @@
 import type { ChatEvent, StreamChatBody } from '@/shared/types/chat';
 
 /**
- * SSE 연결 시작 실패(스트림 시작 전 거부). status 를 담아 호출부가 분기할 수 있게 한다.
+ * SSE 연결 시작 실패(스트림 시작 전 거부). status 와 code 를 담아 호출부가 분기한다.
  * 특히 401(티켓 만료·무효)은 호출부가 티켓 재발급 후 1회 재시도한다(계약 CH-2).
  * 스트림이 시작된 뒤(토큰 수신 중)의 오류는 이 에러가 아니라 SSE `error` 이벤트로 온다.
+ *
+ * code 를 함께 담는 이유: status 만으로는 계약이 정한 이름(TOKEN_EXPIRED·RATE_LIMITED 등)을
+ * 알 수 없어 호출부가 안내 문구를 가려 쓸 수 없다. 본문이 없거나 형식이 다르면 undefined 다.
  */
 export class StreamStartError extends Error {
   status: number;
-  constructor(status: number) {
-    super(`chat request failed: ${status}`);
+  code?: string;
+  requestId?: string;
+  constructor(status: number, code?: string, requestId?: string) {
+    super(`chat request failed: ${status}${code ? ` (${code})` : ''}`);
     this.name = 'StreamStartError';
     this.status = status;
+    this.code = code;
+    this.requestId = requestId;
   }
 }
 
@@ -41,7 +48,20 @@ export async function streamChat(
     signal,
   });
 
-  if (!res.ok || !res.body) throw new StreamStartError(res.status);
+  if (!res.ok || !res.body) {
+    // 스트림 시작 전 실패는 envelope 로 온다(계약 CH-2 §실패 응답).
+    // 본문이 없거나 JSON 이 아닐 수 있으므로 실패해도 status 만으로 진행한다.
+    let code: string | undefined;
+    let requestId: string | undefined;
+    try {
+      const body = await res.json();
+      code = body?.error?.code;
+      requestId = body?.error?.requestId;
+    } catch {
+      // 본문 없음·파싱 실패 — status 로만 분기한다
+    }
+    throw new StreamStartError(res.status, code, requestId);
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
