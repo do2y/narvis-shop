@@ -1,24 +1,12 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/shared/api/client";
-import {
-  fetchCartRecommendations,
-  removeCartItem,
-  updateCartQuantity,
-} from "./api";
+import { removeCartItem, updateCartQuantity } from "./api";
 import type { Cart } from "./types";
 
 // 담기(useAddCartItem)는 상세·챗봇·찜에서도 쓰므로 shared/hooks/useCart.ts로 승격됨.
 export { useCart, useCartItemCount } from "@/shared/hooks/useCart";
-
-export function useCartRecommendations() {
-  return useQuery({
-    queryKey: ["cart", "recommendations"],
-    queryFn: fetchCartRecommendations,
-    staleTime: 5 * 60 * 1000,
-  });
-}
 
 // 수량 변경·삭제 실패 메시지. 검증 실패는 필드 사유("수량은 99 이하여야 합니다.")를
 // 그대로 쓰고, 소유권·존재 오류는 상황을 설명하는 문구로 바꾼다.

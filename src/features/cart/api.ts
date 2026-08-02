@@ -1,14 +1,4 @@
 import { api } from "@/shared/api/client";
-import type { CartRecommendation } from "./types";
-
-export async function fetchCartRecommendations(): Promise<
-  CartRecommendation[]
-> {
-  const { data } = await api.get<{ products: CartRecommendation[] }>(
-    "/api/cart/recommendations",
-  );
-  return data.products;
-}
 
 // 담기(addCartItem)는 상세·챗봇·찜에서도 쓰므로 shared/api/cart.ts로 승격됨.
 
