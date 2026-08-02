@@ -103,7 +103,8 @@ export function ShippingSection({
           value={deliveryRequest}
           onChange={(e) => onDeliveryRequestChange(e.target.value)}
           placeholder="문 앞에 놓아주세요 (선택)"
-          maxLength={100}
+          // 서버 상한과 일치(O-1) — 더 좁게 잡으면 쓸 수 있는 길이를 부당하게 막는다
+          maxLength={200}
           className="h-11 rounded-sm"
         />
       </div>
