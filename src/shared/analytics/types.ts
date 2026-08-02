@@ -1,6 +1,7 @@
 // 행동 이벤트 수집 계약 — 백엔드 POST /api/events (E-1, 2026-07-17 확정)와 1:1.
 
-// 8종 화이트리스트. 그 외 타입은 서버가 버리므로(경고 로그) 타입으로 막는다.
+// 12종 화이트리스트. 그 외 타입은 서버가 버리므로(경고 로그) 타입으로 막는다.
+// recommendation_generated 는 서버(Spring) 전용이라 FE 가 보내지 않는다 — HTTP 로 들어오면 드롭된다.
 export type BehaviorEventType =
   | "session_start"
   | "page_view"
@@ -9,16 +10,65 @@ export type BehaviorEventType =
   | "add_to_cart"
   | "checkout_start"
   | "purchase_complete"
-  | "login";
+  | "login"
+  // 추천 성과 측정 4종(2026-07-28 추가)
+  | "recommendation_impression" // 추천 영역이 화면에 나타남
+  | "product_visible" // 개별 카드가 실제로 보임 (CTR 분모)
+  | "product_click" // 카드를 누름 (CTR 분자)
+  | "recommendation_dismiss"; // 추천을 닫음 = 명시적 비선호
+
+/**
+ * page_view 의 화면 종류 14종(구매자 10 · 판매자 4).
+ * 정본은 E-1 이며 CH-2·S-4 요청의 screen.pageType 이 이 어휘를 공유한다 —
+ * 화면을 가리키는 이름은 하나여야 한다.
+ */
+export type PageType =
+  // 구매자 10
+  | "home"
+  | "category"
+  | "search"
+  | "product_detail"
+  | "cart"
+  | "checkout"
+  | "order_complete"
+  | "my"
+  | "chat"
+  | "auth"
+  // 판매자 4
+  | "seller_dashboard"
+  | "seller_orders"
+  | "seller_products"
+  | "seller_chat";
 
 // properties에 개인정보를 넣지 않는다(명세). 식별자·금액·수량 등 집계용 값만.
-export type EventProperties = Record<string, string | number | boolean | null>;
+// 배열을 허용하는 이유: checkout_start.productIds[] 가 판매자 퍼널 3단의 근거라 필수다.
+export type EventProperties = Record<
+  string,
+  string | number | boolean | null | number[] | string[]
+>;
+
+/**
+ * 추천에서 비롯된 이벤트에만 싣는 선택 필드.
+ * 이 2개뿐이며 지면·순위는 서버가 listId 로 조회해 붙인다 — FE 가 보낸 값을 신뢰하지 않는다.
+ */
+export interface EventRecommendation {
+  recommendationRequestId: string;
+  listId: string;
+}
+
+/**
+ * 이벤트 스키마 버전. 필드 추가는 NULL 로 구분되지만 의미 변경은 구분이 안 되므로 남긴다.
+ * 전용 컬럼 없이 properties 에 담겨 저장된다(2026-07-30 확정).
+ */
+export const EVENT_SCHEMA_VERSION = 2;
 
 export interface BehaviorEvent {
-  id: string; // client_event_id — 서버 UNIQUE로 중복 영구 차단
+  id: string; // client_event_id — 서버 UNIQUE로 중복 영구 차단. 필수(빈 값이면 배치 전체 거부)
+  schemaVersion: number;
   sessionKey: string;
   eventType: BehaviorEventType;
   productId?: number;
+  recommendation?: EventRecommendation;
   properties?: EventProperties;
   occurredAt: string; // 발생 시각, ISO 8601 UTC(Z). 서버는 created_at을 수신 시각으로 별도 기록
 }

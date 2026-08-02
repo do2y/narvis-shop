@@ -185,7 +185,11 @@ export default function ProductPage({
             properties: {
               source: "detail",
               quantity,
-              unitPrice: (view?.price ?? 0) + (option?.extraPrice ?? 0),
+              // 명세 키는 price 다(구 unitPrice). 값은 판매가 + 옵션 추가금.
+              price: (view?.price ?? 0) + (option?.extraPrice ?? 0),
+              ...(option?.optionId !== undefined
+                ? { optionId: option.optionId }
+                : {}),
             },
           }),
         // 재고 부족만 다이얼로그로 알린다. 그 외 에러는 하단 인라인(errorMessage).

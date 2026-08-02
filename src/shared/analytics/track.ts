@@ -1,11 +1,23 @@
 import { getSessionKey } from "./sessionKey";
-import type { BehaviorEvent, BehaviorEventType, EventProperties } from "./types";
+import {
+  EVENT_SCHEMA_VERSION,
+  type BehaviorEvent,
+  type BehaviorEventType,
+  type EventProperties,
+  type EventRecommendation,
+} from "./types";
 
 // 행동 이벤트 배치 전송 (E-1). 버퍼 10건 or 5초 — 명세 값.
 // 수집은 부가 기능이므로 어떤 실패도 앱 동작을 막지 않는다(전부 무시하고 진행).
 
 const FLUSH_SIZE = 10;
 const FLUSH_MS = 5000;
+/**
+ * 배치 상한. 초과하면 서버가 400 으로 **배치 전체를 버리므로** 나눠 보낸다.
+ * 평시엔 FLUSH_SIZE(10)에서 나가지만, 오프라인·백그라운드로 큐가 밀렸다가
+ * 한꺼번에 flush 될 때 넘길 수 있다.
+ */
+const MAX_BATCH = 100;
 const ENDPOINT = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/events`;
 
 let queue: BehaviorEvent[] = [];
@@ -39,20 +51,30 @@ export function flush() {
   clearTimer();
   const batch = queue;
   queue = [];
-  send(batch);
+  // 100건 초과는 배치 전체가 거부되므로 나눠 보낸다
+  for (let i = 0; i < batch.length; i += MAX_BATCH) {
+    send(batch.slice(i, i + MAX_BATCH));
+  }
 }
 
 export function track(
   eventType: BehaviorEventType,
-  payload?: { productId?: number; properties?: EventProperties },
+  payload?: {
+    productId?: number;
+    properties?: EventProperties;
+    /** 추천에서 비롯된 이벤트에만 — 서버가 listId 로 지면·순위를 도출해 붙인다 */
+    recommendation?: EventRecommendation;
+  },
 ) {
   const { sessionKey } = getSessionKey();
 
   queue.push({
     id: crypto.randomUUID(),
+    schemaVersion: EVENT_SCHEMA_VERSION,
     sessionKey,
     eventType,
     ...(payload?.productId !== undefined ? { productId: payload.productId } : {}),
+    ...(payload?.recommendation ? { recommendation: payload.recommendation } : {}),
     ...(payload?.properties ? { properties: payload.properties } : {}),
     // UTC(Z) 고정 — 오프셋 없는 로컬 시각을 보내면 서버가 어긋난 줄도 모른 채 저장한다(명세 E-1)
     occurredAt: new Date().toISOString(),
