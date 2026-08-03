@@ -30,6 +30,15 @@ export function usePopularProducts(size?: number) {
   });
 }
 
+/**
+ * P-5 개인화 추천은 백엔드에 아직 구현이 없다(코드에 "Phase 5" 표기, 2026-08 대조).
+ * 호출하면 404 라 홈 추천 영역이 에러로 비어 보이므로 서버가 나올 때까지 꺼 둔다.
+ *
+ * 코드를 지우지 않고 플래그로 막는 이유: 계약(P-4와 동일한 카드 형식)이 확정돼 있어
+ * 서버가 준비되면 이 값만 되돌리면 된다.
+ */
+const P5_AVAILABLE = false;
+
 // 개인화 추천 — 로그인 상태에서만 호출한다.
 // 게스트로 호출하면 401 → 인터셉터가 홈에서 로그인 화면으로 튕겨버리므로 enabled 필수.
 // 사용자별 결과라 키에 userId를 넣어 계정 전환 시 이전 추천이 노출되지 않게 한다.
@@ -44,7 +53,7 @@ export function useRecommendedProducts() {
   return useQuery({
     queryKey: ["products", "recommended", userId],
     queryFn: fetchRecommendedProducts,
-    enabled: isAuthReady,
+    enabled: P5_AVAILABLE && isAuthReady,
     staleTime: THIRTY_MIN,
   });
 }
