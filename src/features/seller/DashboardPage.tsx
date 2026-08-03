@@ -10,6 +10,7 @@ import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerSummary } from "./api";
 import type { SellerOrderStatus, SellerSummary } from "./types";
 import { SellerHero } from "./components/SellerHero";
+import { SellerErrorState } from "./components/SellerErrorState";
 import { MetricCards } from "./components/MetricCards";
 import { AnalysisChart } from "./components/AnalysisChart";
 import type { SellerMetric } from "./types";
@@ -76,7 +77,7 @@ export default function DashboardPage() {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
 
-  const { data, isPending, isError, refetch } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["seller", "summary"],
     queryFn: () => fetchSellerSummary(),
     staleTime: 0, // 오늘 할 일·실시간 방문자 — 항상 최신
@@ -90,18 +91,11 @@ export default function DashboardPage() {
       {isPending && <DashboardSkeleton />}
 
       {isError && (
-        <div className="flex flex-col items-center gap-3 rounded-sm border py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            현황을 불러오지 못했어요.
-          </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="h-11 rounded-full border px-5 text-sm font-medium transition-all hover:bg-muted active:scale-95"
-          >
-            다시 시도
-          </button>
-        </div>
+        <SellerErrorState
+          error={error}
+          fallbackMessage="현황을 불러오지 못했어요."
+          onRetry={() => refetch()}
+        />
       )}
 
       {data && (

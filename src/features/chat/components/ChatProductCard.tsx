@@ -12,6 +12,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   const wished = useIsWished(product.productId);
   const { toggle, isPending } = useToggleWishlist();
   const addCart = useAddCartItem();
+  const { optionChoices } = addCart;
   const hasDiscount = product.originalPrice > product.price;
   const discountRate = hasDiscount
     ? Math.round((1 - product.price / product.originalPrice) * 100)
@@ -127,6 +128,33 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           <p className="text-xs text-destructive" role="alert">
             {addCart.errorMessage}
           </p>
+        )}
+
+        {/* 옵션 미선택으로 막혔으면 서버가 준 선택지를 그대로 띄운다(C-2 detail.options).
+            카드에는 옵션 UI 가 없어 문구만 보여주면 사용자가 뭘 골라야 할지 알 수 없다 —
+            상세로 되돌아가야 했던 흐름을 여기서 끝낸다. */}
+        {optionChoices && (
+          <div className="flex flex-wrap gap-1.5">
+            {optionChoices.map((opt) => (
+              <button
+                key={opt.optionId}
+                type="button"
+                onClick={() =>
+                  addCart.mutate({
+                    productId: product.productId,
+                    optionId: opt.optionId,
+                    quantity: 1,
+                    recommendationContext: product.recommendationContext,
+                  })
+                }
+                disabled={addCart.isPending}
+                className="rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                {opt.name}
+                {opt.extraPrice > 0 && ` +${formatPrice(opt.extraPrice)}`}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
