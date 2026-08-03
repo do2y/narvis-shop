@@ -303,12 +303,12 @@ export function useChat({
                 }
               }
               if (action.type === "CART_ADDED") {
-                // 명세 필수 키(quantity·price)를 채우지 못한다 — CART_ADDED 페이로드가
-                // cartItemId·message 뿐이라 FE 가 수량·단가를 알 방법이 없다.
+                // AI 가 대화 중 담은 경로 — 명세 필수 키(quantity·price)를 채우지 못한다.
+                // CART_ADDED 페이로드가 cartItemId·message 뿐이라 FE 가 수량·단가를 모르고,
+                // 어느 추천 목록에서 왔는지도 알 수 없어 recommendation 도 못 싣는다.
                 // 서버가 _incomplete 를 붙여 저장한다(E-1 원칙: 버리지 않고 표시).
-                track("add_to_cart", {
-                  properties: { source: "chat", cartItemId: action.cartItemId },
-                });
+                // 계약 표에 없는 키는 싣지 않는다 — 집계가 의존하는 이름만 보낸다.
+                track("add_to_cart");
               }
               onActionRef.current?.(action);
               break;
@@ -436,12 +436,17 @@ export function useChat({
       if (!trimmed && !conditionActions?.length) return;
 
       // 이 앱의 상품 검색은 챗봇이다. 단 칩 제거 같은 제어 요청은 사용자의 검색 의도가
-      // 아니므로 제외한다. 검색어 자체는 개인정보가 섞일 수 있어 보내지 않고
-      // 채널·길이만 싣는다(명세: properties에 개인정보 금지).
+      // 아니므로 제외한다.
+      //
+      // query 는 원문을 싣는다 — 발화는 LLM 진입 전에 개인정보가 필터링된다(2026-08 확인).
+      //
+      // resultsCount 는 발화 시점에 알 수 없어 싣지 못한다(products.ready → CH-5 조회가
+      // 수 초 뒤다). 결과를 기다렸다 쏘면 스트림이 실패한 검색이 통째로 유실돼
+      // "검색은 항상 성공한다"로 보이는 생존 편향이 생기므로 지금 쏜다.
+      // 결과 수는 서버가 적재하는 recommendation_generated.itemCount 가 정본이다 —
+      // 그쪽은 목록 저장 시점이라 개수를 알고 있다. search 행에는 _incomplete 가 붙는다.
       if (trimmed && !conditionActions?.length) {
-        track("search", {
-          properties: { channel, queryLength: trimmed.length },
-        });
+        track("search", { properties: { query: trimmed } });
       }
 
       // 전송 시점의 화면을 싣는다(사이드 채팅에서 목록을 옮겨다니며 대화하므로)
@@ -460,7 +465,7 @@ export function useChat({
         trimmed || null,
       );
     },
-    [channel, run],
+    [run],
   );
 
   // draft 승인 — 발화가 아니라 최상위 action/draftId 로 확정한다(발화≠동의, 계약 v2).

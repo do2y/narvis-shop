@@ -2,6 +2,7 @@
 
 import { Heart, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { track } from "@/shared/analytics/track";
 import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
 import { useAddCartItem } from "@/shared/hooks/useCart";
 import { formatPrice } from "@/shared/utils/formatPrice";
@@ -13,6 +14,38 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   const { toggle, isPending } = useToggleWishlist();
   const addCart = useAddCartItem();
   const { optionChoices } = addCart;
+
+  /**
+   * 담기 — 기본(옵션 없음)과 옵션 칩 선택이 같은 경로를 쓴다.
+   *
+   * 담기 성공 후에만 수집한다(명세: 실패 건은 세지 않음).
+   * recommendation 을 실으면 서버가 listId 로 추천 경유임을 검증해 귀속시킨다 —
+   * FE 가 "챗봇에서 담았다"고 주장하는 값보다 신뢰할 수 있다(계약 E-1).
+   * 인기상품 카드엔 recommendationContext 가 없어 필드째 빠진다.
+   */
+  const addToCart = (optionId?: number, extraPrice = 0) => {
+    addCart.mutate(
+      {
+        productId: product.productId,
+        ...(optionId !== undefined ? { optionId } : {}),
+        quantity: 1,
+        recommendationContext: product.recommendationContext,
+      },
+      {
+        onSuccess: () =>
+          track("add_to_cart", {
+            productId: product.productId,
+            recommendation: product.recommendationContext,
+            properties: {
+              quantity: 1,
+              // 단가는 판매가 + 옵션 추가금(상세 페이지와 같은 식)
+              price: product.price + extraPrice,
+              ...(optionId !== undefined ? { optionId } : {}),
+            },
+          }),
+      },
+    );
+  };
   const hasDiscount = product.originalPrice > product.price;
   const discountRate = hasDiscount
     ? Math.round((1 - product.price / product.originalPrice) * 100)
@@ -98,19 +131,12 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             )}
           </div>
 
-          {/* 담기 — 옵션이 필요한 상품은 서버가 400(CART_OPTION_REQUIRED)으로 알려주므로
-              카드에서는 기본 1개 담기만 시도하고 실패 사유를 안내한다. 자동 재시도 없음.
-              추천 카드면 출처를 함께 보내 전환을 귀속시킨다(C-2) — 인기상품 카드엔 없어
-              undefined 로 빠지고, api 함수가 필드 자체를 생략한다. */}
+          {/* 옵션이 필요한 상품은 서버가 400(CART_OPTION_REQUIRED)으로 알려주므로
+              먼저 1개 담기를 시도하고, 실패하면 아래 옵션 칩으로 고르게 한다.
+              자동 재시도 없음. */}
           <button
             type="button"
-            onClick={() =>
-              addCart.mutate({
-                productId: product.productId,
-                quantity: 1,
-                recommendationContext: product.recommendationContext,
-              })
-            }
+            onClick={() => addToCart()}
             disabled={addCart.isPending}
             aria-label="장바구니에 담기"
             className="flex size-9 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 disabled:opacity-50"
@@ -139,14 +165,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
               <button
                 key={opt.optionId}
                 type="button"
-                onClick={() =>
-                  addCart.mutate({
-                    productId: product.productId,
-                    optionId: opt.optionId,
-                    quantity: 1,
-                    recommendationContext: product.recommendationContext,
-                  })
-                }
+                onClick={() => addToCart(opt.optionId, opt.extraPrice)}
                 disabled={addCart.isPending}
                 className="rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-muted disabled:opacity-50"
               >

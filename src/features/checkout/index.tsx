@@ -153,12 +153,12 @@ export default function CheckoutPage() {
   const trackPurchase = (orderId: number) => {
     // productId 는 대표 상품 1개다(명세) — 판매자 집계에는 쓰이지 않는다
     // (order_item × product × brand 집계가 정본).
+    // properties 는 계약 표대로 orderId·amount 만. 선택 키는 없다(E-1).
     track("purchase_complete", {
       productId: items[0]?.product.productId,
       properties: {
         orderId,
         amount: itemsTotal - discount,
-        method,
       },
     });
   };
