@@ -8,6 +8,7 @@ import { fetchSellerOrders } from "../api";
 import type { SellerOrder, SellerOrderTab } from "../types";
 import { StatusTabs } from "./StatusTabs";
 import { Pagination } from "./Pagination";
+import { SellerErrorState } from "./SellerErrorState";
 
 // 목록 탭 4종 + 전체 (취소·반품은 CLAIM 한 탭으로 접음)
 const TABS: { key: SellerOrderTab; label: string; alert?: boolean }[] = [
@@ -73,7 +74,7 @@ export function OrderList({
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
 
-  const { data, isPending, isError, refetch } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["seller", "orders", { tab, page }],
     queryFn: () => fetchSellerOrders({ tab, page }),
     staleTime: 0,
@@ -90,18 +91,11 @@ export function OrderList({
       />
 
       {isError && (
-        <div className="flex flex-col items-center gap-3 rounded-sm border py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            목록을 불러오지 못했습니다.
-          </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="h-11 rounded-full border px-5 text-sm font-medium transition-all hover:bg-muted active:scale-95"
-          >
-            다시 시도
-          </button>
-        </div>
+        <SellerErrorState
+          error={error}
+          fallbackMessage="목록을 불러오지 못했습니다."
+          onRetry={() => refetch()}
+        />
       )}
 
       {isPending && <OrderTableSkeleton />}

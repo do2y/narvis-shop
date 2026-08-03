@@ -63,5 +63,15 @@ export function useAddCartItem() {
     errorMessage: mutation.error ? toAddCartMessage(mutation.error) : null,
     // 재고 부족은 인라인이 아니라 다이얼로그로 알린다(상세 페이지에서 분기).
     isStockError: isStockInsufficientError(mutation.error),
+    /**
+     * 옵션 미선택으로 막혔을 때 서버가 함께 준 선택지(C-2 detail.options).
+     * 명세는 "FE 는 이걸로 바로 옵션 선택을 띄우라"고 한다 — 옵션 UI 가 없는
+     * 화면(챗봇 카드 등)에서 문구만 보여주면 사용자가 고를 방법이 없다.
+     */
+    optionChoices:
+      mutation.error instanceof ApiError &&
+      mutation.error.code === "CART_OPTION_REQUIRED"
+        ? mutation.error.options
+        : undefined,
   };
 }

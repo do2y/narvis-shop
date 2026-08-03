@@ -56,6 +56,27 @@ export class ApiError extends Error {
     const value = this.detail?.availableStock;
     return typeof value === "number" ? value : undefined;
   }
+
+  /**
+   * 선택 가능한 옵션 — CART_OPTION_REQUIRED에 동반되는 detail.options (C-2·I-2).
+   * 명세는 "FE가 이걸로 바로 옵션 선택을 띄우라"고 한다 — 문구만 보여주면
+   * 사용자가 어떤 옵션이 있는지 알 수 없어 상세로 되돌아가야 한다.
+   *
+   * 타입을 features/product에서 가져오면 shared → features 역방향 의존이 되므로
+   * 필요한 모양만 여기서 좁힌다(구조가 같아 그대로 쓰인다).
+   */
+  get options(): { optionId: number; name: string; extraPrice: number }[] | undefined {
+    const value = this.detail?.options;
+    if (!Array.isArray(value)) return undefined;
+    const parsed = value.filter(
+      (o): o is { optionId: number; name: string; extraPrice: number } =>
+        typeof o === "object" &&
+        o !== null &&
+        typeof (o as { optionId?: unknown }).optionId === "number" &&
+        typeof (o as { name?: unknown }).name === "string",
+    );
+    return parsed.length ? parsed : undefined;
+  }
 }
 
 export const api = axios.create({
