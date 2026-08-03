@@ -64,6 +64,8 @@ export default function CheckoutPage() {
   // 결제 실패(PAYMENT_FAILED)는 HTTP 200이라 mutation 에러가 아니다.
   // 요청 자체가 거부된 경우와 구분해 따로 안내한다.
   const [paymentFailed, setPaymentFailed] = useState(false);
+  // 배송지 미선택 안내 — 결제 요청 전에 프론트가 막는 경우라 서버 에러와 구분해 담는다.
+  const [addressError, setAddressError] = useState<string | null>(null);
   // 결제만 실패한 주문(PAYMENT_FAILED)의 id. 주문 자체는 서버에 남아 있으므로
   // 다시 시도할 때는 새 주문을 만들지 않고 이 주문의 결제만 재시도한다.
   const [failedOrderId, setFailedOrderId] = useState<number | null>(null);
@@ -81,6 +83,7 @@ export default function CheckoutPage() {
       } else {
         const { addressId: newId } = await createAddress.mutateAsync(addr);
         setPickedId(newId); // 방금 추가한 배송지를 선택
+        setAddressError(null); // 추가했으니 안내를 걷는다
       }
       setAddrModalOpen(false);
       setEditingAddr(null);
@@ -164,9 +167,16 @@ export default function CheckoutPage() {
   };
 
   const handleSubmit = async () => {
-    const address = addresses.find((a) => a.addressId === addressId);
-    if (!address || createOrder.isPending || retryPayment.isPending) return;
+    if (createOrder.isPending || retryPayment.isPending) return;
 
+    // 배송지가 없거나 고르지 않았으면 알려준다 — 조용히 return 하면 버튼이 눌리는데도
+    // 아무 일이 없어 사용자가 이유를 알 수 없다(배송지 0건일 때 실제로 겪음).
+    const address = addresses.find((a) => a.addressId === addressId);
+    if (!address) {
+      setAddressError("배송지를 선택해주세요.");
+      return;
+    }
+    setAddressError(null);
     setPaymentFailed(false);
 
     // 이미 만들어진 주문의 결제만 실패한 경우 — 새 주문을 만들면 실패 주문이 쌓이므로
@@ -277,7 +287,10 @@ export default function CheckoutPage() {
             <ShippingSection
               addresses={addresses}
               selectedId={addressId}
-              onSelect={setPickedId}
+              onSelect={(id) => {
+                setPickedId(id);
+                setAddressError(null); // 고르면 안내를 걷는다
+              }}
               onAddClick={openAddAddress}
               onEditClick={openEditAddress}
               deliveryRequest={deliveryRequest}
@@ -328,11 +341,12 @@ export default function CheckoutPage() {
               discount={discount}
               canSubmit={agreed}
               paying={createOrder.isPending || retryPayment.isPending}
-              // 결제 승인 실패와 요청 거부를 각각 안내
+              // 배송지 미선택(프론트 차단) → 결제 승인 실패 → 요청 거부 순으로 안내
               error={
-                paymentFailed
+                addressError ??
+                (paymentFailed
                   ? "결제에 실패했어요. 결제 수단을 확인한 뒤 다시 시도해주세요."
-                  : createOrder.errorMessage
+                  : createOrder.errorMessage)
               }
               onSubmit={handleSubmit}
             />
