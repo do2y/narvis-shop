@@ -1,17 +1,44 @@
 import type { SeededProductCard } from "@/shared/types/product";
 import type { RecommendationContext } from "@/shared/types/cart";
+// 화면 어휘 정본은 E-1(analytics)이고 CH-2 는 참조만 한다 — 같은 이름을 두 벌 두지 않는다.
+import type { PageType } from "@/shared/analytics/types";
 
 /** 채팅 API 계약 타입 — 백엔드/LLM 스키마와 1:1. 변경 시 계약 문서와 함께 갱신 */
 export type ChatChannel = "SHOPPING" | "CS" | "SELLER";
 
 /**
- * 사용자가 지금 보고 있는 화면 — 사이드 채팅에서 "이거 왜 이래?" 같은 지시어를 해석하려면 필요.
- * TODO: 백엔드 협의 항목 (07-17 프론트 제안)
+ * 사용자가 지금 보고 있는 화면(계약 CH-2 §screen, 2026-07-28 확정).
+ * 우측 패널을 보며 "이거 담아줘"라고 하는 지시어를 해소하는 데 쓴다 —
+ * 무엇이 어떻게 보이고 있었는지는 FE 만 아는 사실이다.
+ *
+ * path·label 은 계약이 명시적으로 금지한다: 경로엔 검색어 등 개인정보가 실릴 수 있고,
+ * 한글 화면명은 AI 가 pageType→표시명 매핑을 config 로 갖는다(FE 가 관리하면 표현이 흔들린다).
  */
 export interface ChatScreenContext {
-  path: string; // "/seller/orders"
-  label: string; // "주문 목록" — LLM 프롬프트에 그대로 쓸 수 있는 한글 이름
-  filters?: Record<string, string>; // { status: "신규주문", page: "1" }
+  /**
+   * 우측 패널에 뜬 내용의 종류. 라우트가 아니다 — 채팅은 전용 페이지에만 있어
+   * 라우트를 실으면 항상 chat·seller_chat 이라 정보가 0이다.
+   * 어휘 정본은 E-1 이며 CH-2 가 참조한다(화면 이름은 하나여야 한다).
+   */
+  pageType: PageType;
+  /**
+   * 패널에 걸린 필터. 값은 enum 코드가 아니라 **화면에 보이는 한글 표시값**이다 —
+   * 프롬프트에 그대로 들어가므로 코드값(ORDERED)은 의미가 전달되지 않는다.
+   * 키는 status·sort·page 3종.
+   */
+  filters?: Record<string, string>;
+  /**
+   * 서버가 모르는 목록만 싣는다 — 기준은 "화면에 보이나"가 아니라 "서버가 이미 아나"다.
+   * 추천 카드(CH-5)는 listId 로 서버가 알고 있어 싣지 않는다(되돌려주면 위조 경로가 된다).
+   * 상한 20건, 초과분은 화면 순서대로 자른다.
+   */
+  products?: { productId: number; name: string }[];
+  /**
+   * 전송 시점 그리드 열 수 — 반응형이라 서버가 알 수 없다. 목록형은 1.
+   * "3번째 줄 2번째" 같은 좌표 지시를 index = (row-1) × columns + (col-1) 로 푼다.
+   * products 가 있으면 필수.
+   */
+  columns?: number;
 }
 
 /**
@@ -260,8 +287,9 @@ export type ChatEvent =
       type: "products.ready";
       data: { sessionId?: string; listIds?: string[]; listId?: string };
     }
-  // products: 카드를 직접 싣는 구버전/폴백 경로(경로 A). 목·초기 시딩에서 사용.
-  | { type: "products"; data: { groups: ProductGroup[] } }
+  // 구버전 products 이벤트(카드를 SSE 에 직접 싣던 경로 A)는 계약에서 폐기됐다 —
+  // 현행은 products.ready + CH-5 조회(경로 B)뿐이다. 인기상품 시딩은 SSE 가 아니라
+  // 화면이 P-4 를 직접 조회해 setResults 로 넣는다.
   | { type: "action"; data: ChatAction }
   // ── SELLER 전용 ──
   | { type: "meta"; data: { lane: SellerLane } }

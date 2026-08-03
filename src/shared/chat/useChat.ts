@@ -278,9 +278,6 @@ export function useChat({
               );
               break;
             }
-            case "products":
-              pushResult({ kind: "products", groups: e.data.groups });
-              break;
             case "draft":
               pushResult({ kind: "draft", draft: e.data });
               break;
