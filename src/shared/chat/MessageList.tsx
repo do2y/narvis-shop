@@ -64,13 +64,24 @@ export function MessageList({
             {msg.error ? (
               <div className="flex max-w-[80%] flex-col items-start gap-2 rounded-2xl rounded-tl-sm bg-destructive/10 px-4 py-2.5">
                 <span className="text-sm text-destructive">{msg.error}</span>
-                <button
-                  type="button"
-                  onClick={onRetry}
-                  className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive transition-all hover:bg-destructive/10 active:scale-95"
-                >
-                  다시 시도
-                </button>
+                {/* 재시도해도 같은 결과가 뻔한 실패(권한·과다 요청 등)에는 버튼을 주지 않는다 —
+                    누를수록 상황이 나빠지거나 무의미하다. 판단은 서버 retryable 을 따른다. */}
+                {msg.retryable !== false && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive transition-all hover:bg-destructive/10 active:scale-95"
+                  >
+                    다시 시도
+                  </button>
+                )}
+                {/* 문의 시 서버 로그에서 이 요청을 찾는 키. 눈에 띄지 않게 두되
+                    사용자가 복사해 전달할 수 있어야 한다. */}
+                {msg.requestId && (
+                  <span className="select-all text-[11px] text-destructive/60">
+                    오류 코드 {msg.requestId}
+                  </span>
+                )}
               </div>
             ) : (
               <span

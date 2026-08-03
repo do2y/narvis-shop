@@ -17,6 +17,14 @@ export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   error?: string; // 응답 실패 시 해당 말풍선에 표시할 에러 메시지
+  /**
+   * 재시도 버튼을 줄지. 서버가 retryable:false 를 주거나(계약 CH-2) 재시도해도
+   * 같은 결과가 뻔한 실패(429 과다 요청 등)면 false 로 둬 버튼을 감춘다.
+   * 기본값은 true — 판단 근거가 없으면 재시도할 수 있게 둔다.
+   */
+  retryable?: boolean;
+  /** 서버 로그 추적용 id. 사용자 신고 시 이 값으로 요청을 찾는다. */
+  requestId?: string;
 }
 
 interface ChatState {
@@ -40,7 +48,11 @@ interface ChatState {
   /** 저장된 대화 복원(chatPersistence) — 그 외 용도로 통째 교체하지 않는다 */
   setMessages: (messages: ChatMessage[]) => void;
   appendToLastAssistant: (text: string) => void; // token 이벤트 누적
-  failLastAssistant: (message: string) => void; // 마지막 assistant 말풍선을 에러 상태로
+  // 마지막 assistant 말풍선을 에러 상태로. opts 로 재시도 가능 여부·추적 id 를 함께 싣는다.
+  failLastAssistant: (
+    message: string,
+    opts?: { retryable?: boolean; requestId?: string },
+  ) => void;
   dropLastExchange: () => string | null; // 실패한 (user, assistant) 쌍 제거하고 user 텍스트 반환
   setResults: (results: ChatResult[]) => void;
   addResult: (result: ChatResult) => void;
@@ -84,12 +96,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       return { messages };
     }),
-  failLastAssistant: (message) =>
+  failLastAssistant: (message, opts) =>
     set((s) => {
       const messages = [...s.messages];
       const last = messages[messages.length - 1];
       if (last?.role === "assistant") {
-        messages[messages.length - 1] = { ...last, error: message };
+        messages[messages.length - 1] = {
+          ...last,
+          error: message,
+          // 판단 근거가 없으면 재시도 가능으로 둔다(구버전 서버·네트워크 오류 등)
+          retryable: opts?.retryable ?? true,
+          ...(opts?.requestId ? { requestId: opts.requestId } : {}),
+        };
       }
       return { messages };
     }),

@@ -233,7 +233,24 @@ export type ChatEvent =
       // finishReason: 구매자 stop|zero_result. panel: 판매자 우측 패널 조치.
       data: { finishReason: ChatFinishReason; panel?: SellerPanel };
     }
-  | { type: "error"; data: { code: ChatErrorCode; message: string } }
+  | {
+      type: "error";
+      data: {
+        code: ChatErrorCode;
+        message: string;
+        /**
+         * 이 요청의 추적 id(2026-07-28 신설). 사용자가 "오류 났어요"라고 신고했을 때
+         * 서버 로그에서 그 요청을 찾는 유일한 키다.
+         */
+        requestId?: string;
+        /**
+         * 재시도를 권할지(2026-07-28 신설). code 로는 복원할 수 없다 —
+         * 같은 LLM_UNAVAILABLE 이라도 "미구성"(재시도 무의미)과 "일시 불가"(유효)가
+         * 섞이므로 emit 지점이 값을 정한다. 생략되면 재시도 가능으로 본다(구버전 호환).
+         */
+        retryable?: boolean;
+      };
+    }
   // ── SHOPPING/CS 전용 ──
   | { type: "conditions"; data: { chips: ConditionChip[] } }
   | { type: "suggestions"; data: { chips: SuggestionChip[] } }

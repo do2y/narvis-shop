@@ -42,6 +42,49 @@ function isNotFound(err: unknown): boolean {
   return false;
 }
 
+/**
+ * 스트림 시작 전 거부를 사용자 안내로 옮긴다(계약 CH-2 §실패 응답).
+ * 상태별로 재시도가 의미 있는지가 달라 retryable 을 함께 정한다.
+ */
+function describeStreamStartError(err: StreamStartError): {
+  message: string;
+  retryable: boolean;
+} {
+  switch (err.status) {
+    case 403:
+      // 티켓은 유효하나 scope 불일치(예: 판매자 티켓으로 구매자 스트림).
+      // 같은 티켓으로 다시 걸어도 결과가 같다.
+      return {
+        message: "이 대화를 열 권한이 없어요. 새로고침 후 다시 시도해 주세요.",
+        retryable: false,
+      };
+    case 409:
+      // STREAM_IN_PROGRESS — 같은 방에 활성 스트림이 있다.
+      // 진행 중인 응답이 끝나야 풀리므로 즉시 재시도는 또 409 다.
+      return {
+        message: "다른 대화가 진행 중이에요. 잠시 후 다시 시도해 주세요.",
+        retryable: false,
+      };
+    case 429:
+      // RATE_LIMITED — 재시도 버튼을 주면 사용자가 눌러 상황을 더 악화시킨다.
+      return {
+        message: "요청이 많아요. 잠시 후 다시 시도해 주세요.",
+        retryable: false,
+      };
+    case 504:
+      // UPSTREAM_TIMEOUT(first-token) — 일시적이라 재시도가 유효하다.
+      return {
+        message: "응답이 지연되고 있어요. 다시 시도해 주세요.",
+        retryable: true,
+      };
+    default:
+      return {
+        message: "응답을 받지 못했어요. 다시 시도해 주세요.",
+        retryable: true,
+      };
+  }
+}
+
 interface UseChatOptions {
   channel: ChatChannel;
   /** 채널별 액션 후처리(장바구니 invalidate 등). 안내 문구 표시는 공통 처리. */
@@ -297,9 +340,16 @@ export function useChat({
               break;
             }
             case "error":
-              // 종결 이벤트 — 해당 말풍선에 에러 표시(재시도 버튼). code별 분기는 불필요,
-              // message가 사용자 노출 문구다(계약 §error).
-              failLastAssistant(e.data.message);
+              // 종결 이벤트 — 해당 말풍선에 에러 표시. code 별 분기는 불필요하고
+              // message 가 사용자 노출 문구다(계약 §error).
+              //
+              // 재시도 여부는 code 가 아니라 retryable 로 판단한다 — 같은 LLM_UNAVAILABLE
+              // 이라도 "미구성"(재시도 무의미)과 "일시 불가"(유효)가 섞여 있어
+              // emit 지점만이 안다. requestId 는 사용자 신고 시 서버 로그 추적에 쓴다.
+              failLastAssistant(e.data.message, {
+                retryable: e.data.retryable,
+                requestId: e.data.requestId,
+              });
               break;
           }
         };
@@ -348,16 +398,13 @@ export function useChat({
           failLastAssistant(
             "대화가 만료되었어요. 다시 시도하면 새로 이어서 대화할 수 있어요.",
           );
-        } else if (err instanceof StreamStartError && err.status === 409) {
-          // 409 STREAM_IN_PROGRESS — 같은 방에 이미 활성 스트림이 있다.
-          // 계약상 락 키는 threadId(방)지만 AI 가 아직 sessionId 로 잠근다. 탭이 세션을
-          // 공유하므로 방이 달라도 다른 탭의 스트리밍에 걸린다 — FE 로는 회피 못 한다.
-          failLastAssistant(
-            "다른 대화가 진행 중이에요. 잠시 후 다시 시도해 주세요.",
-          );
+        } else if (err instanceof StreamStartError) {
+          // 스트림 시작 전 거부(계약 CH-2 §실패 응답) — 상태별로 안내와 재시도 여부가 다르다.
+          // 자동 재시도는 하지 않는다(중복 담기 방지) — 재시도는 버튼으로만.
+          const { message, retryable } = describeStreamStartError(err);
+          failLastAssistant(message, { retryable, requestId: err.requestId });
         } else {
-          // 자동 재시도 금지 — 해당 말풍선에 에러 표시, 재시도 버튼 제공.
-          // 세션 발급 실패(401/403)·티켓 재발급 실패도 여기로 떨어진다(스트림 시작 전 거부).
+          // 세션 발급·티켓 재발급 실패(axios 경로) 등 나머지
           failLastAssistant("응답을 받지 못했어요. 다시 시도해 주세요.");
         }
       } finally {
