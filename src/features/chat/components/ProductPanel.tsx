@@ -13,6 +13,8 @@ interface ProductPanelProps {
   isStreaming: boolean;
 }
 
+// 열 수를 바꾸면 useScreenContext 의 currentColumns 도 함께 고쳐야 한다 —
+// CH-2 screen.columns 가 좌표 지시("3번째 줄 2번째")를 푸는 값이라 어긋나면 조용히 틀린다.
 const GRID = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3";
 
 export function ProductPanel({ results, isStreaming }: ProductPanelProps) {

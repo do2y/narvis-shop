@@ -8,6 +8,7 @@ import { ChatLayout } from "@/shared/chat/ChatLayout";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { useChatPersistence } from "@/shared/chat/useChatPersistence";
+import { useScreenContext } from "./useScreenContext";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { fetchPopularAsCards } from "./api";
 import { ConditionChips } from "./components/ConditionChips";
@@ -27,9 +28,18 @@ export default function ChatPage() {
   // startNewChat 이 저장소까지 비우므로 복원분과 섞이지 않는다).
   useChatPersistence();
 
+  const { messages, results, setResults, conditions, suggestions } =
+    useChatStore();
+  const hasResults = results.length > 0;
+
+  // 전송 시점의 우측 패널을 실어 "이거 담아줘" 같은 지시어를 AI 가 풀 수 있게 한다.
+  // 인기상품만 대상이다 — 추천 카드는 서버가 listId 로 이미 안다(계약 CH-2 §screen).
+  const getScreenContext = useScreenContext(results);
+
   const { send, retry, removeCondition, applySuggestion, startNewChat, isStreaming } =
     useChat({
       channel: "SHOPPING",
+      getScreenContext,
       // 챗봇 장바구니 담기 → 헤더 뱃지 전역 동기화 (CLAUDE.md)
       onAction: (action) => {
         if (action.type === "CART_ADDED") {
@@ -37,10 +47,6 @@ export default function ChatPage() {
         }
       },
     });
-
-  const { messages, results, setResults, conditions, suggestions } =
-    useChatStore();
-  const hasResults = results.length > 0;
 
   // 초기 인기상품 — 명세(P-4)에 카테고리 필터가 없어 항상 전체 인기상품이다.
   // (카테고리별로 보여주려면 백엔드에 categoryId 파라미터 추가가 선행되어야 함)
