@@ -10,6 +10,9 @@ function toOrderErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "CART_OPTION_INVALID")
       return "선택한 옵션을 찾을 수 없어요. 상품을 다시 선택해주세요.";
+    // 옵션 있는 상품인데 optionId 없이 주문한 경우. 상세에서 다시 골라야 한다.
+    if (error.code === "CART_OPTION_REQUIRED")
+      return "옵션을 선택하지 않은 상품이 있어요. 상품 페이지에서 옵션을 골라주세요.";
     // 담아둔 뒤 판매가 중지된 상품이 섞인 경우(O-1). 품절은 여기가 아니라
     // 200 PAYMENT_FAILED로 갈라지므로, 이 코드는 "판매 중지"만 뜻한다.
     // 서버가 어떤 상품인지 알려주지 않아 장바구니에서 확인하도록 안내한다.
@@ -17,6 +20,20 @@ function toOrderErrorMessage(error: unknown): string {
       return "판매가 중지된 상품이 포함되어 있어요. 장바구니에서 확인해주세요.";
     if (error.code === "AUTH_FORBIDDEN")
       return "이 주문을 처리할 권한이 없어요.";
+
+    // 404 3종 — 원인마다 사용자가 할 일이 달라 뭉뚱그리지 않는다(O-1).
+    // 장바구니에서 넘어온 주문은 그 사이 항목이 지워졌을 수 있다(다른 탭·만료).
+    if (error.code === "CART_ITEM_NOT_FOUND")
+      return "장바구니에서 사라진 상품이 있어요. 장바구니를 다시 확인해주세요.";
+    // 결제 화면을 열어둔 사이 다른 탭에서 배송지를 지운 경우.
+    if (error.code === "ADDRESS_NOT_FOUND")
+      return "선택한 배송지가 삭제됐어요. 다른 배송지를 선택해주세요.";
+    // 바로 구매 경로에서 상품 자체가 내려간 경우.
+    if (error.code === "PRODUCT_NOT_FOUND")
+      return "판매가 종료된 상품이 있어요. 상품을 다시 확인해주세요.";
+    // 신원은 있으나 회원 행이 없는 경우 — 재로그인이 필요하다.
+    if (error.code === "MEMBER_NOT_FOUND")
+      return "계정 정보를 찾을 수 없어요. 다시 로그인해주세요.";
     // 검증 실패는 필드 사유가 더 구체적(품절·수량 등)
     if (error.displayMessage) return error.displayMessage;
   }

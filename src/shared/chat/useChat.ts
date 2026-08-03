@@ -267,11 +267,22 @@ export function useChat({
                   if (usable.length) {
                     pushResult({ kind: "products", groups: usable });
                   }
+
                   // 404 RESOURCE_NOT_FOUND(listId 만료·미존재)가 대표 사유다.
                   // TTL 만료는 재시도해도 계속 404이므로 "다시 시도"를 권하지 않는다.
-                  if (usable.length < listIds.length) {
+                  //
+                  // 하나도 못 가져왔으면 패널을 건드리지 않는다 — pushResult 를 부르지
+                  // 않았으므로 이전 턴의 카드가 그대로 남는다. 명세가 "오류 화면을 띄우지
+                  // 말고 가지고 있던 카드를 그대로 보여주라"고 한 지점이다(CH-5).
+                  // 답변 자체는 정상 종료됐으므로 말풍선에도 실패로 표시하지 않는다.
+                  if (!usable.length) {
                     appendToLastAssistant(
-                      "\n\n추천 목록을 불러오지 못했어요. 다시 물어봐 주세요.",
+                      "\n\n추천 카드를 새로 불러오지 못해 이전 결과를 그대로 두었어요.",
+                    );
+                  } else if (usable.length < listIds.length) {
+                    // 일부만 실패 — 가져온 묶음은 이미 패널에 넣었고 빠진 게 있다는 사실만 알린다
+                    appendToLastAssistant(
+                      "\n\n일부 추천 묶음을 불러오지 못했어요.",
                     );
                   }
                 }),
