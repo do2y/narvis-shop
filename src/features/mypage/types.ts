@@ -112,10 +112,10 @@ export type ClaimType =
   | "CANCEL" // 취소 (배송 전)
   | "RETURN"; // 반품(환불)
 
-// 신청 처리 상태 (스크린샷: 처리중 / 완료)
+// 신청 처리 상태 — 서버 enum 3종(O-5·O-6)과 일치.
+// 시안에 있던 PROCESSING(처리중)은 서버에 없는 값이라 제거했다(2026-08 대조).
 export type ClaimStatus =
   | "REQUESTED" // 접수
-  | "PROCESSING" // 처리중
   | "COMPLETED" // 완료
   | "REJECTED"; // 반려
 
