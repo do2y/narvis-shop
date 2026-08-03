@@ -1,5 +1,9 @@
+"use client";
+
 import { MessagesSquare } from "lucide-react";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { track } from "@/shared/analytics/track";
+import { useVisibleOnce } from "@/shared/analytics/useVisibleOnce";
 import type { ChatResult, ProductGroup } from "@/shared/types/chat";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { ChatProductCard } from "./ChatProductCard";
@@ -44,22 +48,48 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
   return (
     <div className="flex flex-col gap-8 p-4 sm:p-6">
       {groups.map((group) => (
-        <section
-          key={group.title}
-          className="flex animate-in flex-col gap-4 duration-300 fade-in slide-in-from-bottom-2"
-        >
-          <div className="flex flex-col gap-2">
-            <h2 className="text-lg font-bold tracking-tight">{group.title}</h2>
-            <RecommendationSummary recommendation={group.recommendation} />
-          </div>
-          <div className={GRID}>
-            {group.items.map((product) => (
-              <ChatProductCard key={product.productId} product={product} />
-            ))}
-          </div>
-        </section>
+        <ProductGroupSection key={group.title} group={group} />
       ))}
     </div>
+  );
+}
+
+/**
+ * 추천 묶음 하나. 영역이 화면에 들어오면 recommendation_impression 을 1회 발화한다 —
+ * 추천 퍼널의 2단이라 "생성됐는데 노출은 안 됐다"(위치 문제)를 잡아낸다.
+ *
+ * 목록 단위 이벤트라 productId 가 없고, 인기상품 묶음은 recommendationContext 가
+ * 없어 발화하지 않는다(귀속시킬 목록이 없다).
+ *
+ * 별도 컴포넌트로 뺀 이유: 훅은 map 콜백 안에서 호출할 수 없다.
+ */
+function ProductGroupSection({ group }: { group: ProductGroup }) {
+  // 묶음의 추천 출처는 카드마다 동일하므로 첫 카드에서 읽는다(CH-5 가 목록 단위로 부여).
+  const rec = group.items[0]?.recommendationContext;
+
+  const sectionRef = useVisibleOnce<HTMLElement>(
+    () => {
+      if (!rec) return;
+      track("recommendation_impression", { recommendation: rec });
+    },
+    rec?.listId,
+  );
+
+  return (
+    <section
+      ref={sectionRef}
+      className="flex animate-in flex-col gap-4 duration-300 fade-in slide-in-from-bottom-2"
+    >
+      <div className="flex flex-col gap-2">
+        <h2 className="text-lg font-bold tracking-tight">{group.title}</h2>
+        <RecommendationSummary recommendation={group.recommendation} />
+      </div>
+      <div className={GRID}>
+        {group.items.map((product) => (
+          <ChatProductCard key={product.productId} product={product} />
+        ))}
+      </div>
+    </section>
   );
 }
 
