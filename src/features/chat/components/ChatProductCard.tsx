@@ -3,6 +3,11 @@
 import { Heart, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { track } from "@/shared/analytics/track";
+import {
+  useVisibleOnce,
+  VISIBLE_MS,
+  VISIBLE_RATIO,
+} from "@/shared/analytics/useVisibleOnce";
 import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
 import { useAddCartItem } from "@/shared/hooks/useCart";
 import { formatPrice } from "@/shared/utils/formatPrice";
@@ -14,6 +19,36 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   const { toggle, isPending } = useToggleWishlist();
   const addCart = useAddCartItem();
   const { optionChoices } = addCart;
+
+  /**
+   * 노출·클릭은 추천 성과(CTR) 측정용이라 추천 카드에만 붙인다 —
+   * 인기상품 카드는 recommendationContext 가 없어 귀속시킬 목록이 없다.
+   * 서버도 recommendation 문맥이 없으면 지면·순위를 도출하지 못한다.
+   */
+  const rec = product.recommendationContext;
+
+  // CTR 분모. 같은 목록 안에서는 재발화하지 않는다(listId+productId 로 관찰 대상을 고정).
+  const cardRef = useVisibleOnce<HTMLDivElement>(
+    () => {
+      if (!rec) return;
+      track("product_visible", {
+        productId: product.productId,
+        recommendation: rec,
+        properties: { visibleRatio: VISIBLE_RATIO, visibleMs: VISIBLE_MS },
+      });
+    },
+    rec ? `${rec.listId}:${product.productId}` : undefined,
+  );
+
+  // CTR 분자. clickTarget 으로 카드 본문과 담기 버튼을 구분한다(계약 E-1).
+  const trackClick = (clickTarget: "card" | "button") => {
+    if (!rec) return;
+    track("product_click", {
+      productId: product.productId,
+      recommendation: rec,
+      properties: { clickTarget },
+    });
+  };
 
   /**
    * 담기 — 기본(옵션 없음)과 옵션 칩 선택이 같은 경로를 쓴다.
@@ -58,12 +93,16 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   const detailHref = `/products/${product.productId}`;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-sm border bg-background transition-shadow duration-200 hover:shadow-md">
+    <div
+      ref={cardRef}
+      className="group flex flex-col overflow-hidden rounded-sm border bg-background transition-shadow duration-200 hover:shadow-md"
+    >
       <div className="relative aspect-square overflow-hidden bg-muted">
         <a
           href={detailHref}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackClick("card")}
           aria-label={`${product.name} 상세 보기 (새 탭)`}
           className="block size-full"
         >
@@ -102,6 +141,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             href={detailHref}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackClick("card")}
             className="text-left hover:underline"
           >
             {product.name}
@@ -136,7 +176,11 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
               자동 재시도 없음. */}
           <button
             type="button"
-            onClick={() => addToCart()}
+            onClick={() => {
+              // 클릭 자체가 CTR 분자다 — 담기 성공 여부와 무관하게 누른 시점에 발화한다
+              trackClick("button");
+              addToCart();
+            }}
             disabled={addCart.isPending}
             aria-label="장바구니에 담기"
             className="flex size-9 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 disabled:opacity-50"
