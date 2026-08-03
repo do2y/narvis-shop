@@ -303,12 +303,12 @@ export function useChat({
                 }
               }
               if (action.type === "CART_ADDED") {
-                // 명세 필수 키(quantity·price)를 채우지 못한다 — CART_ADDED 페이로드가
-                // cartItemId·message 뿐이라 FE 가 수량·단가를 알 방법이 없다.
+                // AI 가 대화 중 담은 경로 — 명세 필수 키(quantity·price)를 채우지 못한다.
+                // CART_ADDED 페이로드가 cartItemId·message 뿐이라 FE 가 수량·단가를 모르고,
+                // 어느 추천 목록에서 왔는지도 알 수 없어 recommendation 도 못 싣는다.
                 // 서버가 _incomplete 를 붙여 저장한다(E-1 원칙: 버리지 않고 표시).
-                track("add_to_cart", {
-                  properties: { source: "chat", cartItemId: action.cartItemId },
-                });
+                // 계약 표에 없는 키는 싣지 않는다 — 집계가 의존하는 이름만 보낸다.
+                track("add_to_cart");
               }
               onActionRef.current?.(action);
               break;

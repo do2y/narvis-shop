@@ -79,9 +79,10 @@ export default function ProductPage({
   // 상세 응답 도착 후 1회. 아래 조기 반환들보다 위에 둬야 훅 순서가 깨지지 않는다.
   useEffect(() => {
     if (!detail) return;
+    // properties 는 계약 표에 있는 것만 싣는다 — price 필수, 선택 없음(E-1).
     track("product_view", {
       productId: detail.id,
-      properties: { price: detail.price, brandId: detail.brand.id },
+      properties: { price: detail.price },
     });
   }, [detail]);
 
@@ -183,7 +184,6 @@ export default function ProductPage({
           track("add_to_cart", {
             productId: id,
             properties: {
-              source: "detail",
               quantity,
               // 명세 키는 price 다(구 unitPrice). 값은 판매가 + 옵션 추가금.
               price: (view?.price ?? 0) + (option?.extraPrice ?? 0),
