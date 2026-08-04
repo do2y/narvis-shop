@@ -8,6 +8,7 @@ import {
   clearCachedSession,
   ensureSession,
   refreshTicket,
+  SessionClaimPendingError,
   subscribeSession,
 } from "@/shared/chat/sessionCoordinator";
 import { clearChat } from "@/shared/chat/chatPersistence";
@@ -142,8 +143,11 @@ export function useChat({
   // 스트림 진입 티켓 확보 — 티켓 TTL 이 30~60초로 짧아 매 전송 직전에 확보한다.
   // 발급 자체는 코디네이터가 Web Locks 로 탭 간 단일화한다(접속당 CH-1 1회).
   // sessionId 는 항상 발급 응답값을 쓴다(BE·Redis 발급, sliding TTL) — 클라이언트가 만들지 않는다.
+  // 승계 실패가 미해결이면 새 세션 발급을 막는다(allowCreate=false) — 조용히 새로
+  // 만들면 화면엔 이전 대화가 있는데 AI 는 기억 못 하는 어긋남이 생긴다.
   const acquireTicket = useCallback((): Promise<ChatSession> => {
-    return ensureSession(channel, useChatStore.getState().sessionId);
+    const { sessionId, claimFailure } = useChatStore.getState();
+    return ensureSession(channel, sessionId, !claimFailure);
   }, [channel]);
 
   // 다른 탭이 세션을 발급·갱신하면 이 탭의 표시용 sessionId 도 따라간다.
@@ -400,7 +404,14 @@ export function useChat({
         // 세션을 축출하는 일은 없으므로 "다른 곳에서 종료됨"이 아니라 단순 만료다.
         // 캐시를 비워 두면 다음 전송의 ensureSession 이 새로 발급한다 — 여기서 자동
         // 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지).
-        if (isNotFound(err)) {
+        if (err instanceof SessionClaimPendingError) {
+          // 승계 실패가 미해결 — 배너가 이미 떠 있고 사용자가 재시도/새 대화를
+          // 골라야 한다. 말풍선의 재시도 버튼은 감춘다(같은 이유로 또 막힌다).
+          failLastAssistant(
+            "이전 대화를 이어받지 못해 메시지를 보낼 수 없어요. 위 안내에서 다시 시도하거나 새 대화를 시작해 주세요.",
+            { retryable: false },
+          );
+        } else if (isNotFound(err)) {
           clearCachedSession(channel);
           setSessionId(null);
           failLastAssistant(
@@ -528,6 +539,8 @@ export function useChat({
     // 저장소를 먼저 비운다 — saveChat 은 빈 대화를 무시하므로(다른 탭 덮어쓰기 방지)
     // reset() 만으로는 이전 대화가 저장소에 남아 새로고침 때 되살아난다.
     clearChat();
+    // reset() 이 claimFailure 도 initial(null) 로 되돌린다 — 새 대화는 승계할
+    // 이전 맥락 자체가 없으므로 배너가 남으면 안 된다.
     reset();
     useChatStore.getState().setThreadId(threadId); // reset 이 initial 을 뿌린 뒤에 다시 심는다
   }, [reset, channel]);

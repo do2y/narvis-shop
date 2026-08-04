@@ -17,6 +17,11 @@ interface ChatConversationProps {
    * "새 대화" 버튼 위치가 화면마다 달라서(사용자 챗봇은 헤더) 부모가 정한다.
    */
   headerSlot?: React.ReactNode;
+  /**
+   * 메시지 목록 위 고정 안내(승계 실패 배너 등) — 스크롤과 함께 밀리지 않는다.
+   * 채널별로 필요 여부가 달라 부모가 주입한다.
+   */
+  noticeSlot?: React.ReactNode;
 }
 
 /**
@@ -30,6 +35,7 @@ export function ChatConversation({
   placeholder,
   aboveInput,
   headerSlot,
+  noticeSlot,
 }: ChatConversationProps) {
   const messages = useChatStore((s) => s.messages);
   // 분석 진행 상태(판매자) — 최종 답변(token) 전 로딩 텍스트로 표시, token 오면 소멸
@@ -41,17 +47,27 @@ export function ChatConversation({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, isStreaming, progress]);
 
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {headerSlot}
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        <MessageList
-          messages={messages}
-          isStreaming={isStreaming}
-          progress={progress}
-          onRetry={onRetry}
-        />
+      {/* 대화 영역과 그 위에 떠 있는 안내를 겹치기 위한 기준면 —
+          안내는 흐름을 밀어내지 않고 얹힌다(§12 floating layer) */}
+      <div className="relative min-h-0 flex-1">
+        <div ref={scrollRef} className="h-full overflow-y-auto p-4 sm:p-6">
+          <MessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            progress={progress}
+            onRetry={onRetry}
+          />
+        </div>
+
+        {/* 안내는 대화를 가린 채 덮는다 — 미해결 동안은 전송이 막혀 있어
+            뒤의 대화가 지금 손댈 수 있는 상태가 아니다. 나란히 두면 공존하는
+            것처럼 보이지만 실제로는 결정을 먼저 해야 하는 관문이다(§12 dim to focus). */}
+        <div className="absolute inset-x-0 top-0">{noticeSlot}</div>
       </div>
 
       <div className="flex flex-col gap-3 border-t p-4">

@@ -11,6 +11,8 @@ interface ChatLayoutProps {
   header: React.ReactNode;
   /** 대화 컬럼 상단 바 — "새 대화" 버튼 위치가 화면마다 달라 부모가 정한다 */
   conversationHeader?: React.ReactNode;
+  /** 메시지 목록 위 고정 안내(승계 실패 배너 등) */
+  notice?: React.ReactNode;
   /** 대화 입력창 위 영역(조건 칩·추천 질문 등) — 채널별 주입 */
   aboveInput?: React.ReactNode;
   /** 우측(모바일에선 하단) 결과 패널 — 채널별 주입 */
@@ -29,6 +31,7 @@ export function ChatLayout({
   placeholder,
   header,
   conversationHeader,
+  notice,
   aboveInput,
   resultPanel,
 }: ChatLayoutProps) {
@@ -45,6 +48,7 @@ export function ChatLayout({
             isStreaming={isStreaming}
             placeholder={placeholder}
             headerSlot={conversationHeader}
+            noticeSlot={notice}
             aboveInput={aboveInput}
           />
         </div>

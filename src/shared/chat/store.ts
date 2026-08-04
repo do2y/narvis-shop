@@ -27,9 +27,25 @@ export interface ChatMessage {
   requestId?: string;
 }
 
+/**
+ * 로그인 승계(CH-7) 실패 상태 — 게스트 대화를 회원으로 넘기지 못했을 때.
+ *
+ * 화면엔 이전 대화가 남아 있지만 서버 맥락은 끊긴 상태다. 조용히 새 세션으로
+ * 폴백하면 "AI가 방금 한 얘기를 기억 못 하는" 어긋남이 생기므로, 사용자에게
+ * 알리고 재시도/새 대화를 명시적으로 고르게 한다.
+ */
+export interface ClaimFailure {
+  /** 승계를 시도했던 게스트 sessionId — 재시도 대상 */
+  sessionId: string;
+  /** 재시도가 진행 중인지(버튼 중복 클릭·이중 요청 방지) */
+  retrying: boolean;
+}
+
 interface ChatState {
   sessionId: string | null;
   threadId: string | null; // 판매자 챗 계약: 대화 스레드 식별자(목록 전환·패널 변경에 불변)
+  /** 승계 실패 안내. null 이면 정상(배너 없음). */
+  claimFailure: ClaimFailure | null;
   messages: ChatMessage[];
   results: ChatResult[]; // 최신 응답의 결과 카드(상품·diff)
   conditions: ConditionChip[]; // AI 추출 조건 칩(구매자) — field로 제거 왕복
@@ -44,6 +60,9 @@ interface ChatState {
 
   setSessionId: (id: string | null) => void; // null = 만료된 세션 폐기(다음 전송 때 재발급)
   setThreadId: (id: string) => void;
+  /** 승계 실패 표시(=배너 노출). 재시도 성공·새 대화 시 null 로 해제한다. */
+  setClaimFailure: (f: ClaimFailure | null) => void;
+  setClaimRetrying: (retrying: boolean) => void;
   addMessage: (msg: ChatMessage) => void;
   /** 저장된 대화 복원(chatPersistence) — 그 외 용도로 통째 교체하지 않는다 */
   setMessages: (messages: ChatMessage[]) => void;
@@ -70,6 +89,7 @@ interface ChatState {
 const initial = {
   sessionId: null,
   threadId: null,
+  claimFailure: null,
   messages: [],
   results: [],
   conditions: [],
@@ -85,6 +105,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setSessionId: (sessionId) => set({ sessionId }),
   setThreadId: (threadId) => set({ threadId }),
+  setClaimFailure: (claimFailure) => set({ claimFailure }),
+  setClaimRetrying: (retrying) =>
+    set((s) =>
+      s.claimFailure ? { claimFailure: { ...s.claimFailure, retrying } } : {},
+    ),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   setMessages: (messages) => set({ messages }),
   appendToLastAssistant: (text) =>
