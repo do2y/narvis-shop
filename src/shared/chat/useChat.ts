@@ -9,6 +9,7 @@ import {
   ensureSession,
   refreshTicket,
   SessionClaimPendingError,
+  subscribeOwnershipChange,
   subscribeSession,
 } from "@/shared/chat/sessionCoordinator";
 import { clearChat } from "@/shared/chat/chatPersistence";
@@ -157,6 +158,14 @@ export function useChat({
       setSessionId(s.sessionId);
     });
   }, [channel, setSessionId]);
+
+  // 다른 탭에서 로그인하면 이 탭이 들고 있는 게스트 티켓은 그 순간 무효다
+  // (AI 가 403 으로 막는다). 캐시를 비워 두면 다음 전송의 ensureSession 이
+  // 회원 신원으로 재발급받아 그대로 통과한다 — 사용자는 아무것도 눈치채지 못한다.
+  //
+  // 전송을 막고 새로고침을 요구하지 않는 이유: 실제로 깨지는 구간은 방송이
+  // 도착하기 전 수십 ms 뿐인데, 막아 두면 멀쩡히 이어질 대화까지 중단시킨다.
+  useEffect(() => subscribeOwnershipChange(channel), [channel]);
 
   // 이 탭의 방 id 를 마운트 시 1회 확보한다(sessionStorage 정본).
   useEffect(() => {
