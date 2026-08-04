@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import axios from "axios";
 import { fetchMe } from "@/shared/api/auth";
-import type { ApiEnvelope } from "@/shared/api/client";
 import { useAuthStore } from "@/shared/stores/authStore";
 
 /**
@@ -30,29 +29,25 @@ async function restore(): Promise<void> {
     });
   }
 
-  const { user, setAccessToken, setUser, clearAuth } = useAuthStore.getState();
+  const { user, setUser, clearAuth } = useAuthStore.getState();
 
   // 로그인한 적이 없으면 이을 세션이 없다 → refresh를 부르지 않는다.
   // 부르면 RT가 없어 401이 정상 응답인데, 게스트가 앱을 열 때마다 콘솔에 에러가 쌓인다.
   if (!user) return;
 
-  let token: string;
   try {
-    const res = await axios.post<ApiEnvelope<{ accessToken: string }>>(
+    // 새 AT는 Set-Cookie로 내려온다 — body에서 꺼낼 토큰이 없다.
+    // 이 호출이 성공했다는 사실 자체가 "AT 쿠키가 심겼다"는 신호다.
+    await axios.post(
       `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/auth/refresh`,
       null,
       { withCredentials: true },
     );
-    const issued = res.data.data?.accessToken;
-    if (!issued) throw new Error("no accessToken in refresh response");
-    token = issued;
   } catch {
     // RT 없음/만료 = 비로그인 상태. 캐시된 user를 지워 가드가 통과시키지 않게 한다.
     clearAuth();
     return;
   }
-
-  setAccessToken(token);
 
   try {
     setUser(await fetchMe());

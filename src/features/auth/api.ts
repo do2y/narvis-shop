@@ -2,9 +2,8 @@ import { api } from "@/shared/api/client";
 import type { AuthUser } from "@/shared/stores/authStore";
 
 // 로그인/회원가입 응답 계약 (봉투 언래핑 후) — 백엔드 A-1/A-2 DTO 기준.
-// AT는 body로, RT는 httpOnly 쿠키로 옴(응답 body에 없음). user는 `member` 키.
+// AT·RT 모두 httpOnly 쿠키로 옴(응답 body에 토큰 없음). user는 `member` 키.
 export interface AuthResponse {
-  accessToken: string;
   member: AuthUser;
 }
 

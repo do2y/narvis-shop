@@ -81,17 +81,12 @@ export class ApiError extends Error {
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
-  // RT는 httpOnly 쿠키(Path=/api/auth)로 오가므로 자격증명 동봉 필요
+  // AT(Path=/)·RT(Path=/api/auth) 모두 httpOnly 쿠키로 오가므로 자격증명 동봉 필요.
+  // 브라우저가 자동 첨부하므로 Authorization 헤더를 다는 요청 인터셉터는 없다.
   withCredentials: true,
 });
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-let refreshing: Promise<string> | null = null;
+let refreshing: Promise<void> | null = null;
 
 // 동시 401이 여러 건일 때 리다이렉트가 중복 실행되는 것을 막는다.
 // (refresh 프라미스를 공유해도 각 요청이 개별적으로 실패 경로를 타므로 필요)
@@ -181,25 +176,21 @@ api.interceptors.response.use(
     if (status === 401 && code === "AUTH_TOKEN_EXPIRED" && original && !original._retry) {
       original._retry = true;
       try {
-        // refresh는 body 없이 RT 쿠키로 식별 → withCredentials로 쿠키 동봉
+        // refresh는 body 없이 RT 쿠키로 식별 → withCredentials로 쿠키 동봉.
+        // 새 AT는 응답 body가 아니라 Set-Cookie로 내려오므로 FE가 토큰을 다룰 일이 없다.
+        // 재시도 요청에도 브라우저가 갱신된 쿠키를 자동으로 실어 보낸다.
         refreshing ??= axios
-          .post<ApiEnvelope<{ accessToken: string }>>(
+          .post(
             `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/auth/refresh`,
             null,
             { withCredentials: true },
           )
-          .then((r) => {
-            const token = r.data.data?.accessToken;
-            if (!token) throw new Error("no accessToken in refresh response");
-            useAuthStore.getState().setAccessToken(token);
-            return token;
-          })
+          .then(() => undefined)
           .finally(() => {
             refreshing = null;
           });
 
-        const token = await refreshing;
-        original.headers.Authorization = `Bearer ${token}`;
+        await refreshing;
         return api(original);
       } catch {
         // refresh도 401(AUTH_REQUIRED) → 재발급 여지 없음, 로그인 유도
