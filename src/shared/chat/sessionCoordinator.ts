@@ -51,11 +51,19 @@ interface CachedSession {
   storedAt: number;
 }
 
-interface SessionBroadcast {
-  type: "session";
-  channel: ChatChannel;
-  session: ChatSession;
-}
+/**
+ * 탭 간 방송 메시지.
+ *
+ * session — 세션·티켓이 갱신됐다(발급·재발급). 받는 탭은 표시용 sessionId 만 맞춘다.
+ * ownership — 세션의 주인이 게스트에서 회원으로 바뀌었다(다른 탭에서 로그인).
+ *
+ * 둘을 나누는 이유: 받는 쪽이 "티켓이 새로 왔다"와 "내 자격이 무효가 됐다"를
+ * 구분할 수 있어야 한다. session 하나로만 알리면 후자를 판단할 수 없어,
+ * 방송 도착 전에 시작된 전송이 구 게스트 티켓으로 나가 AI 에서 403 을 맞는다.
+ */
+type SessionBroadcast =
+  | { type: "session"; channel: ChatChannel; session: ChatSession }
+  | { type: "ownership"; channel: ChatChannel; sessionId: string };
 
 // BroadcastChannel 미지원(구형 브라우저)이면 null — degrade 경로가 받는다.
 const bc: BroadcastChannel | null =
@@ -115,6 +123,30 @@ export function subscribeSession(
     if (e.data?.type === "session" && e.data.channel === channel) {
       cb(e.data.session);
     }
+  };
+  bc.addEventListener("message", onMessage);
+  return () => bc.removeEventListener("message", onMessage);
+}
+
+/**
+ * 다른 탭에서 세션 주인이 회원으로 바뀌었을 때, 이 탭에 남은 구 게스트 티켓을 버린다.
+ *
+ * 그 티켓으로 스트림을 열면 AI 가 403 으로 막으므로, 캐시를 비워 다음 전송의
+ * ensureSession 이 회원 신원으로 재발급받게 한다 — 전송을 막는 대신 자연스럽게
+ * 넘어가는 쪽이다(§16.2 Agency: 실패하지도 않은 흐름을 끊지 않는다).
+ *
+ * 무조건 비우지 않는 이유: claim 한 탭이 회원 티켓을 먼저 심으므로(publish),
+ * 그냥 지우면 방금 심긴 유효한 티켓까지 날려 재발급이 한 번 더 난다.
+ * 캐시에 든 세션이 승계된 그 세션이면 이미 회원 티켓이므로 그대로 둔다.
+ */
+export function subscribeOwnershipChange(channel: ChatChannel): () => void {
+  if (!bc) return () => {};
+  const onMessage = (e: MessageEvent<SessionBroadcast>) => {
+    if (e.data?.type !== "ownership" || e.data.channel !== channel) return;
+    const cached = readCache(channel);
+    // 캐시가 없거나(이미 만료) 승계된 세션의 회원 티켓이면 건드릴 게 없다.
+    if (!cached || cached.sessionId === e.data.sessionId) return;
+    clearCachedSession(channel);
   };
   bc.addEventListener("message", onMessage);
   return () => bc.removeEventListener("message", onMessage);
@@ -241,7 +273,15 @@ export async function claimSession(
 ): Promise<ChatSession> {
   return withLock(keyFor(channel), async () => {
     const session = await claimChatSession(sessionId);
+    // 회원 티켓을 먼저 심고(publish) 나서 주인이 바뀐 사실을 알린다.
+    // 받는 쪽은 캐시가 이 sessionId 면 회원 티켓으로 보고 그대로 두므로,
+    // publish 가 먼저여야 방금 심은 티켓이 살아남는다.
     publish(channel, session);
+    bc?.postMessage({
+      type: "ownership",
+      channel,
+      sessionId: session.sessionId,
+    } satisfies SessionBroadcast);
     return session;
   });
 }
