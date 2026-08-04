@@ -41,8 +41,8 @@ function useAuthSuccess(method: "login" | "signup") {
     // 폼 전체가 Suspense 경계에 묶여 SSR에서 로그인 화면이 통째로 비워진다.
     // 이 콜백은 클라이언트에서만 실행되므로 window에서 직접 읽는다.
     const params = new URLSearchParams(window.location.search);
-    // 응답 member → authStore user. RT는 쿠키라 저장 안 함.
-    setAuth({ user: res.member, accessToken: res.accessToken });
+    // 응답 member → authStore user. AT·RT는 쿠키라 저장할 토큰이 없다.
+    setAuth({ user: res.member });
     // 8종 화이트리스트에 signup이 없어 가입(자동 로그인)도 login으로 보내고
     // 구분은 properties.method로 남긴다. 개인정보는 싣지 않는다(명세).
     track("login", { properties: { method, role: res.member.role } });

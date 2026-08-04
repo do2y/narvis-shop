@@ -93,10 +93,10 @@ export default function SellerChatPage() {
   // startNewChat() 이 방금 띄운 스트림을 abort·reset 해 메시지가 사라진다.
   // (대시보드에서 전송 → 채팅 화면에서 말풍선이 떴다 사라지던 원인)
   //
-  // 전송은 AT 가 준비된 뒤에만 한다(selectIsAuthReady = 복원완료 + AT 보유).
-  // RequireRole 은 `user`만 보는데 user 는 localStorage persist·AT 는 메모리라,
-  // 새로고침 직후엔 "가드는 통과했지만 AT 는 아직 없는" 구간이 있다. 그때 세션 발급을
-  // 보내면 Authorization 없이 나가 401 → 로그인으로 튕긴다(CLAUDE.md 인증 규칙).
+  // 전송은 인증이 준비된 뒤에만 한다(selectIsAuthReady = 복원완료 + user 보유).
+  // RequireRole 은 persist 된 `user`만 보므로 새로고침 직후엔 "가드는 통과했지만
+  // 세션 복원(refresh)은 아직 안 끝난" 구간이 있다. 그때 세션 발급을 보내면
+  // 만료된 AT 쿠키로 나가 401 → 로그인으로 튕긴다(CLAUDE.md 인증 규칙).
   const isAuthReady = useAuthStore(selectIsAuthReady);
   const consumedQRef = useRef(false);
   useEffect(() => {
