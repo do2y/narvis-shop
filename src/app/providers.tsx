@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useRestoreSession } from "@/shared/hooks/useRestoreSession";
+import { useAuthSync } from "@/shared/hooks/useAuthSync";
 import { AnalyticsProvider } from "@/shared/analytics/AnalyticsProvider";
 import { SellerIsolation } from "@/shared/auth/SellerIsolation";
 
-// AT는 메모리에만 두므로 새로고침 시 RT 쿠키로 세션을 복원한다(원본 App.tsx와 동일 역할).
+// 새로고침 시 RT 쿠키로 세션을 복원하고(원본 App.tsx와 동일 역할),
+// 다른 탭의 로그인·로그아웃도 이 탭에 반영한다.
 function SessionRestorer() {
   useRestoreSession();
+  useAuthSync();
   return null;
 }
 
