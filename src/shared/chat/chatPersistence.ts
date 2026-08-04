@@ -23,6 +23,14 @@ export interface PersistedChat {
   sessionId: string | null;
   /** 우측 패널 카드(추천 목록 등). 없으면 빈 배열 */
   results: ChatResult[];
+  /**
+   * 승계에 실패한 게스트 sessionId — 재시도 대상.
+   *
+   * sessionId 와 따로 두는 이유: 승계 실패 시 sessionId 는 null 로 비워야 하지만
+   * (구 게스트 티켓으로 스트림을 열면 AI 가 403 으로 막는다) 재시도하려면 그 값을
+   * 알아야 한다. 여기 남겨 두면 새로고침 후에도 배너와 재시도가 살아남는다.
+   */
+  claimFailedSessionId?: string | null;
 }
 
 /**
@@ -55,6 +63,7 @@ export function loadChat(): PersistedChat | null {
       messages: parsed.messages,
       sessionId: parsed.sessionId ?? null,
       results: Array.isArray(parsed.results) ? parsed.results : [],
+      claimFailedSessionId: parsed.claimFailedSessionId ?? null,
     };
   } catch {
     clearChat();

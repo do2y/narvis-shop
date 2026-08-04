@@ -5,6 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Plus } from "lucide-react";
 import { ChatLayout } from "@/shared/chat/ChatLayout";
+import { ClaimFailureBanner } from "@/shared/chat/ClaimFailureBanner";
+import {
+  dismissClaimFailure,
+  retryClaimChatSession,
+} from "@/shared/chat/claimOnLogin";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { useChatPersistence } from "@/shared/chat/useChatPersistence";
@@ -114,6 +119,16 @@ export default function ChatPage() {
               <Plus className="size-4" />새 대화
             </button>
           }
+        />
+      }
+      /* 로그인 승계 실패 안내 — 미해결이면 전송이 막히므로 여기서 진로를 고른다 */
+      notice={
+        <ClaimFailureBanner
+          onRetry={() => {
+            void retryClaimChatSession("SHOPPING");
+          }}
+          onContinue={dismissClaimFailure}
+          onStartNew={startNewChat}
         />
       }
       /* AI 추출 조건 칩(제거 가능) + 완화·되돌리기 제안 칩. 스트리밍 중엔 왕복 비활성 */

@@ -19,6 +19,20 @@ import type { ChatChannel, ChatSession } from "@/shared/types/chat";
  * 락은 발급/재발급만 감싼다. 장시간 SSE 스트림까지 감싸면 그동안 다른 탭의 발급이 막힌다.
  */
 
+/**
+ * 승계(CH-7) 실패가 미해결인 상태에서 새 세션 발급이 필요해졌을 때 던진다.
+ *
+ * 자동으로 새 세션을 만들면 화면엔 이전 대화가 남았는데 AI 는 기억하지 못하는
+ * 어긋남이 생긴다. 호출부가 이 에러를 잡아 "승계 실패" 안내를 띄우고,
+ * 사용자가 재시도/새 대화를 고른 뒤에야 발급이 재개된다.
+ */
+export class SessionClaimPendingError extends Error {
+  constructor() {
+    super("chat session claim is pending user decision");
+    this.name = "SessionClaimPendingError";
+  }
+}
+
 /** 락·localStorage 키는 채널별로 분리 — SHOPPING 과 SELLER 는 서로 다른 접속이다. */
 const keyFor = (channel: ChatChannel) => `jarvis:chat:session:${channel}`;
 
@@ -139,6 +153,15 @@ export async function ensureSession(
   channel: ChatChannel,
   /** 알고 있는 기존 sessionId — 있으면 세션·맥락을 유지한 채 티켓만 재발급한다. */
   knownSessionId?: string | null,
+  /**
+   * 세션이 없을 때 새로 만들지 여부(기본 true).
+   *
+   * false 면 새 세션을 만드는 대신 SessionClaimPendingError 를 던진다.
+   * 승계 실패 직후가 그 경우다 — 여기서 조용히 새 세션을 만들면 화면엔 이전 대화가
+   * 있는데 AI 는 기억하지 못하는 어긋남이 생긴다. 사용자가 재시도/새 대화를
+   * 고르기 전까지는 발급을 막는다.
+   */
+  allowCreate = true,
 ): Promise<ChatSession> {
   const cached = readCache(channel);
   if (cached) return cached;
@@ -147,8 +170,10 @@ export async function ensureSession(
     const again = readCache(channel);
     if (again) return again; // 락 안에서 재확인 — 대기 중 다른 탭이 발급했을 수 있다
 
+    if (!knownSessionId && !allowCreate) throw new SessionClaimPendingError();
+
     const session = knownSessionId
-      ? await reissueOrCreate(channel, knownSessionId)
+      ? await reissueOrCreate(channel, knownSessionId, allowCreate)
       : await createSession(channel);
 
     publish(channel, session);
@@ -167,6 +192,8 @@ export async function ensureSession(
 async function reissueOrCreate(
   channel: ChatChannel,
   sessionId: string,
+  /** false 면 폴백 대신 SessionClaimPendingError — 승계 실패 미해결 상태에서 쓴다. */
+  allowCreate = true,
 ): Promise<ChatSession> {
   try {
     return await reissueTicket(sessionId);
@@ -175,6 +202,9 @@ async function reissueOrCreate(
       isApiCode(err, "SESSION_FORBIDDEN") ||
       isApiCode(err, "SESSION_NOT_FOUND")
     ) {
+      // 승계 실패 직후엔 조용히 새 세션을 만들지 않는다 — 맥락이 끊긴 사실을
+      // 사용자가 모른 채 대화를 이어가게 되기 때문이다.
+      if (!allowCreate) throw new SessionClaimPendingError();
       return createSession(channel);
     }
     throw err;

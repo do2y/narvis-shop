@@ -21,6 +21,14 @@ export function useChatPersistence(): void {
       s.setMessages(saved.messages);
       s.setResults(saved.results);
       if (saved.sessionId) s.setSessionId(saved.sessionId);
+      // 승계 실패 미해결 상태로 새로고침된 경우 배너를 되살린다 — 안 그러면
+      // 전송만 막히고(allowCreate=false) 이유를 알 길이 없다.
+      if (saved.claimFailedSessionId) {
+        s.setClaimFailure({
+          sessionId: saved.claimFailedSessionId,
+          retrying: false,
+        });
+      }
     }
     restored.current = true;
   }, []);
@@ -35,6 +43,9 @@ export function useChatPersistence(): void {
         messages: state.messages,
         sessionId: state.sessionId,
         results: state.results,
+        // 스토어가 정본이므로 함께 써 준다 — 빠뜨리면 다음 저장이 재시도 대상을
+        // 지워 새로고침 후 배너만 남고 "다시 시도"가 동작하지 않는다.
+        claimFailedSessionId: state.claimFailure?.sessionId ?? null,
       });
     });
   }, []);
