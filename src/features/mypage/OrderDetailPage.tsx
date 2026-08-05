@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,8 @@ import { useOrder } from "./useOrders";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { OrderStatusBadge } from "./components/OrderStatusBadge";
 import { PageTitle, ErrorState } from "./components/PageState";
-import type { OrderDetailItem } from "./types";
+import { ClaimRequestModal } from "./components/ClaimRequestModal";
+import type { ClaimType, OrderDetailItem } from "./types";
 
 function InfoRow({
   label,
@@ -37,10 +39,12 @@ function DetailItem({
   item,
   reviewable,
   onReview,
+  onClaim,
 }: {
   item: OrderDetailItem;
   reviewable: boolean;
   onReview: (item: OrderDetailItem) => void;
+  onClaim: (item: OrderDetailItem, type: ClaimType) => void;
 }) {
   return (
     <div className="flex gap-4 py-4">
@@ -64,18 +68,43 @@ function DetailItem({
         </p>
         <p className="mt-0.5 text-sm font-bold">{formatPrice(item.price)}</p>
       </div>
-      {reviewable && (
-        <button
-          type="button"
-          onClick={() => onReview(item)}
-          className="h-9 shrink-0 self-center rounded-full border px-4 text-sm font-medium transition-all hover:bg-muted active:scale-[0.97]"
-        >
-          후기 작성
-        </button>
-      )}
+      {/* 상세는 아이템마다 서버가 canCancel·canReturn 을 준다 — 목록처럼 상태로
+          추정하지 않고 그 값을 그대로 쓴다(줄마다 판정이 다를 수 있다). */}
+      <div className="flex shrink-0 flex-col justify-center gap-2">
+        {reviewable && (
+          <button
+            type="button"
+            onClick={() => onReview(item)}
+            className={detailActionClass}
+          >
+            후기 작성
+          </button>
+        )}
+        {item.canCancel && (
+          <button
+            type="button"
+            onClick={() => onClaim(item, "CANCEL")}
+            className={detailActionClass}
+          >
+            주문 취소
+          </button>
+        )}
+        {item.canReturn && (
+          <button
+            type="button"
+            onClick={() => onClaim(item, "RETURN")}
+            className={detailActionClass}
+          >
+            반품 신청
+          </button>
+        )}
+      </div>
     </div>
   );
 }
+
+const detailActionClass =
+  "h-9 whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-all hover:bg-muted active:scale-[0.97]";
 
 function Section({
   title,
@@ -108,6 +137,11 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: order, isPending, isError, refetch } = useOrder(numericOrderId);
+  // 열린 신청 모달의 대상·종류. null 이면 닫힘.
+  const [claim, setClaim] = useState<{
+    orderItemId: number;
+    type: ClaimType;
+  } | null>(null);
 
   // 서버가 금액 분해(상품금액/할인)를 주지 않아 아이템 스냅샷으로 계산한다.
   // 총액은 서버 값(order.totalAmount)을 그대로 쓴다 — 클라이언트 계산을 신뢰하지 않음.
@@ -130,6 +164,11 @@ export default function OrderDetailPage() {
       `/mypage/reviews/new?orderItemId=${item.orderItemId}&productId=${item.productId}`,
     );
   };
+
+  // 신청 대상 아이템과 종류를 함께 잡는다 — 상세는 줄마다 버튼이 있어
+  // 어느 줄에서 눌렀는지가 곧 대상이다(모달에서 다시 고르지 않는다).
+  const openClaim = (item: OrderDetailItem, type: ClaimType) =>
+    setClaim({ orderItemId: item.orderItemId, type });
 
   return (
     <div>
@@ -200,6 +239,7 @@ export default function OrderDetailPage() {
                     item={item}
                     reviewable={item.canReview}
                     onReview={goToReview}
+                    onClaim={openClaim}
                   />
                 ))}
               </div>
@@ -223,6 +263,17 @@ export default function OrderDetailPage() {
                 </p>
               </div>
             </Section>
+
+            {/* 취소·반품 신청 모달 — 대상은 누른 줄로 고정된다 */}
+            {claim && (
+              <ClaimRequestModal
+                open
+                onOpenChange={(next) => !next && setClaim(null)}
+                order={order}
+                type={claim.type}
+                orderItemId={claim.orderItemId}
+              />
+            )}
           </div>
         )}
       </div>

@@ -115,6 +115,21 @@ export type ClaimType =
   | "CANCEL" // 취소 (배송 전)
   | "RETURN"; // 반품(환불)
 
+/**
+ * 이 상태의 주문 상품에 해당 신청을 걸 수 있는가 — 버튼 노출 판정.
+ *
+ * 최종 허용은 서버가 정한다(FE 판정을 통과해도 CLAIM_NOT_ALLOWED 가 올 수 있다).
+ * 여기서 거르는 목적은 **눌러도 반드시 거부될 버튼을 처음부터 안 보이게** 하는 것이다.
+ *
+ * 경계는 배송이다: 아직 안 갔으면 취소, 받았으면 반품. 배송중(SHIPPING)은 둘 다
+ * 불가라 어느 쪽 버튼도 뜨지 않는다 — 이 구간은 서버 매트릭스도 막는다.
+ * PENDING·PAYMENT_FAILED 는 결제가 성립하지 않아 취소할 결제가 없다.
+ */
+export function canClaimItem(status: OrderStatus, type: ClaimType): boolean {
+  if (type === "CANCEL") return status === "ORDERED";
+  return status === "DELIVERED" || status === "CONFIRMED";
+}
+
 // 신청 처리 상태 — 서버 enum 3종(O-5·O-6)과 일치.
 // 시안에 있던 PROCESSING(처리중)은 서버에 없는 값이라 제거했다(2026-08 대조).
 export type ClaimStatus =

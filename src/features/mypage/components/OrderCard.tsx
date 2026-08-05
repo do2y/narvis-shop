@@ -9,7 +9,13 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
-import type { Order, OrderItem, OrderStatus } from "../types";
+import {
+  canClaimItem,
+  type ClaimType,
+  type Order,
+  type OrderItem,
+  type OrderStatus,
+} from "../types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { ClaimRequestModal } from "./ClaimRequestModal";
 
@@ -18,12 +24,8 @@ function canWriteReview(status: OrderStatus): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }
 
-// 반품 신청 가능 상태 — 배송완료 후(구매확정 포함).
-// CLAIM_IN_PROGRESS·COMPLETED는 이미 클레임이 걸렸거나 종결된 주문이라 제외한다
-// (중복 신청 방지).
-function canClaim(status: OrderStatus): boolean {
-  return status === "DELIVERED" || status === "CONFIRMED";
-}
+// 취소·반품 판정은 canClaimItem(types.ts)이 한다 — 여기서 다시 쓰지 않는다.
+// CLAIM_IN_PROGRESS·COMPLETED는 이미 클레임이 걸렸거나 종결돼 어느 쪽도 통과하지 않는다.
 
 // 액션 버튼 공통 스타일 (칩 형태).
 const actionButtonClass = cn(
@@ -55,12 +57,16 @@ export function OrderCard({ order }: { order: Order }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const reviewable = canWriteReview(order.representativeStatus);
-  const claimable = canClaim(order.representativeStatus);
+  // 신청은 상품 단위다 — 대표 상태로 판정하면 한 주문에 배송중과 배송완료가 섞였을 때
+  // 실제로 신청 가능한 줄이 있는데도 버튼이 사라지거나 그 반대가 된다.
+  const cancelable = order.items.some((i) => canClaimItem(i.status, "CANCEL"));
+  const returnable = order.items.some((i) => canClaimItem(i.status, "RETURN"));
   // 배송중에만 노출되는 준비 중 액션(배송 조회) 클릭 시 하단에 한 줄 안내.
   const showTracking = order.representativeStatus === "SHIPPING";
   const [notice, setNotice] = useState(false);
-  // 반품 신청 모달 열림 여부.
-  const [claimOpen, setClaimOpen] = useState(false);
+  // 열린 신청 모달의 종류. null 이면 닫힘 — 취소·반품이 같은 모달을 공유하므로
+  // 열림 여부와 종류를 한 상태로 둔다(따로 두면 둘이 어긋날 수 있다).
+  const [claimType, setClaimType] = useState<ClaimType | null>(null);
 
   // 후기 작성 — 대상 상품(첫 항목) 정보를 상세 캐시에 시딩해 작성 화면에서 즉시 표시.
   const goToReview = () => {
@@ -103,17 +109,26 @@ export function OrderCard({ order }: { order: Order }) {
       </div>
 
       {/* 하단 액션 — 후기 작성·반품은 실제 연결, 배송 조회는 준비 중 안내 */}
-      {(reviewable || claimable || showTracking || notice) && (
+      {(reviewable || cancelable || returnable || showTracking || notice) && (
         <div className="flex flex-wrap items-center gap-2 border-t px-5 py-4">
           {reviewable && (
             <button type="button" onClick={goToReview} className={actionButtonClass}>
               후기 작성
             </button>
           )}
-          {claimable && (
+          {cancelable && (
             <button
               type="button"
-              onClick={() => setClaimOpen(true)}
+              onClick={() => setClaimType("CANCEL")}
+              className={actionButtonClass}
+            >
+              주문 취소
+            </button>
+          )}
+          {returnable && (
+            <button
+              type="button"
+              onClick={() => setClaimType("RETURN")}
               className={actionButtonClass}
             >
               반품 신청
@@ -136,12 +151,13 @@ export function OrderCard({ order }: { order: Order }) {
         </div>
       )}
 
-      {/* 반품 신청 모달 */}
-      {claimOpen && (
+      {/* 취소·반품 신청 모달 — 종류만 바꿔 공유한다 */}
+      {claimType && (
         <ClaimRequestModal
-          open={claimOpen}
-          onOpenChange={setClaimOpen}
+          open
+          onOpenChange={(next) => !next && setClaimType(null)}
           order={order}
+          type={claimType}
         />
       )}
     </article>

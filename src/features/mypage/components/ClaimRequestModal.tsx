@@ -16,25 +16,50 @@ import {
   type ClaimRequestFormValues,
 } from "../claimSchema";
 import { useCreateClaim } from "../useClaims";
-import type { Order } from "../types";
+import { canClaimItem, type ClaimType, type Order } from "../types";
 
-// 반품(환불) 신청 — 주문 내역에서 접수하는 유일한 신청 종류.
-const RETURN_REASONS = [
-  "단순 변심",
-  "사이즈·색상이 기대와 달라요",
-  "상품이 파손·불량이에요",
-  "다른 상품이 배송됐어요",
-  "배송이 너무 늦어요",
-];
+// 사유는 종류마다 다르다 — 취소는 배송 전이라 상품을 받아보지 못한 상태고,
+// 반품은 받아본 뒤라 파손·오배송 같은 사유가 성립한다.
+const REASONS: Record<ClaimType, string[]> = {
+  CANCEL: [
+    "단순 변심",
+    "다른 상품으로 다시 주문할래요",
+    "주문 실수(수량·옵션)예요",
+    "배송이 너무 늦어요",
+  ],
+  RETURN: [
+    "단순 변심",
+    "사이즈·색상이 기대와 달라요",
+    "상품이 파손·불량이에요",
+    "다른 상품이 배송됐어요",
+    "배송이 너무 늦어요",
+  ],
+};
+
+// 문구도 종류마다 갈린다. 한 곳에 모아 화면·모달이 같은 말을 쓰게 한다.
+const COPY: Record<ClaimType, { title: string; done: string }> = {
+  CANCEL: { title: "주문 취소", done: "주문 취소가 접수됐어요" },
+  RETURN: { title: "반품 신청", done: "반품 신청이 접수됐어요" },
+};
 
 export function ClaimRequestModal({
   open,
   onOpenChange,
   order,
+  type,
+  orderItemId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  order: Order;
+  /** 목록의 Order 와 상세의 OrderDetail 이 함께 쓴다 — 필요한 건 items 뿐이다 */
+  order: Pick<Order, "items">;
+  /** 취소(배송 전) | 반품(배송 후) — 사유 목록·문구·전송 body 가 갈린다 */
+  type: ClaimType;
+  /**
+   * 신청 대상 아이템. 상품 단위로 신청하므로 호출부가 지정한다.
+   * 없으면 신청 가능한 첫 아이템으로 시작한다(주문 카드에서 연 경우).
+   */
+  orderItemId?: number;
 }) {
   const router = useRouter();
   const {
@@ -46,6 +71,12 @@ export function ClaimRequestModal({
     reset: resetMutation,
   } = useCreateClaim();
 
+  // 신청 대상은 이 종류로 신청 가능한 아이템뿐이다 — 한 주문에 배송중과 배송완료가
+  // 섞이면 전체를 다 보여줄 경우 서버가 거부할 줄까지 고르게 된다.
+  const targets = order.items.filter((item) => canClaimItem(item.status, type));
+  const initialId =
+    orderItemId ?? targets[0]?.orderItemId ?? order.items[0]?.orderItemId;
+
   const {
     register,
     handleSubmit,
@@ -55,19 +86,15 @@ export function ClaimRequestModal({
     // 폼 필드는 문자열(input) → coerce 후 orderItemId: number(output)로 검증.
     // 3번째 제네릭(output)으로 handleSubmit 콜백이 변환된 값을 받게 한다.
     resolver: zodResolver(claimRequestSchema),
-    defaultValues: {
-      orderItemId: order.items[0]?.orderItemId,
-      reason: "",
-      detail: "",
-    },
+    defaultValues: { orderItemId: initialId, reason: "", detail: "" },
   });
 
-  // 열릴 때마다 폼·뮤테이션 상태 초기화 (첫 상품 선택, 사유 비움, 완료 화면 해제).
+  // 열릴 때마다 폼·뮤테이션 상태 초기화 (대상 재지정, 사유 비움, 완료 화면 해제).
   useEffect(() => {
     if (!open) return;
     resetMutation();
-    reset({ orderItemId: order.items[0]?.orderItemId, reason: "", detail: "" });
-  }, [open, order, reset, resetMutation]);
+    reset({ orderItemId: initialId, reason: "", detail: "" });
+  }, [open, initialId, reset, resetMutation]);
 
   // zodResolver가 input→output 변환을 마친 값을 넘겨준다(orderItemId: number).
   const submit = (values: ClaimRequestFormValues) => {
@@ -75,26 +102,27 @@ export function ClaimRequestModal({
     const reason = values.detail
       ? `${values.reason} - ${values.detail}`
       : values.reason;
-    mutate({
-      orderItemId: values.orderItemId,
-      body: { type: "RETURN", reason },
-    });
+    mutate({ orderItemId: values.orderItemId, body: { type, reason } });
     // 성공 시 모달을 닫지 않고 완료 화면(isSuccess)으로 전환 — 아래 렌더 분기.
   };
 
-  const single = order.items.length === 1;
+  // 대상이 하나면 고를 게 없다 — 호출부가 아이템을 지정했거나 신청 가능한 줄이 하나뿐인 경우.
+  const fixed = orderItemId !== undefined || targets.length <= 1;
+  const fixedItem =
+    order.items.find((i) => i.orderItemId === initialId) ?? order.items[0];
+  const copy = COPY[type];
 
   // 신청 접수 완료 — 피드백 화면. '내역 보기'로 이동하거나 닫기.
   if (isSuccess) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
-          <DialogTitle className="sr-only">반품 신청 완료</DialogTitle>
+          <DialogTitle className="sr-only">{copy.title} 완료</DialogTitle>
           <div className="flex flex-col items-center py-4 text-center">
             <span className="flex size-14 items-center justify-center rounded-full bg-green-50 text-green-600">
               <Check className="size-7" />
             </span>
-            <p className="mt-4 text-base font-bold">반품 신청이 접수됐어요</p>
+            <p className="mt-4 text-base font-bold">{copy.done}</p>
             <p className="mt-1.5 text-sm text-muted-foreground">
               처리 현황은 취소·반품 내역에서 확인할 수 있어요.
             </p>
@@ -127,7 +155,7 @@ export function ClaimRequestModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle>반품 신청</DialogTitle>
+        <DialogTitle>{copy.title}</DialogTitle>
 
         <form
           onSubmit={handleSubmit(submit)}
@@ -137,15 +165,16 @@ export function ClaimRequestModal({
           {/* 대상 상품 — 단일 상품이면 표시만, 여러 개면 선택 */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="claim-product">신청 상품</Label>
-            {single ? (
+            {fixed ? (
               <>
                 <p className="rounded-sm border bg-muted/40 px-4 py-3 text-sm">
-                  {order.items[0].productName}
+                  {fixedItem?.productName}
+                  {fixedItem?.optionName ? ` (${fixedItem.optionName})` : ""}
                 </p>
                 <input
                   type="hidden"
                   {...register("orderItemId")}
-                  value={order.items[0].orderItemId}
+                  value={initialId}
                 />
               </>
             ) : (
@@ -159,7 +188,7 @@ export function ClaimRequestModal({
                 {...register("orderItemId")}
               >
                 {/* 옵션이 다르면 같은 상품도 별개 줄이므로 옵션명을 함께 보여준다 */}
-                {order.items.map((item) => (
+                {targets.map((item) => (
                   <option key={item.orderItemId} value={item.orderItemId}>
                     {item.productName}
                     {item.optionName ? ` (${item.optionName})` : ""}
@@ -190,7 +219,7 @@ export function ClaimRequestModal({
               <option value="" disabled>
                 사유를 선택해주세요
               </option>
-              {RETURN_REASONS.map((r) => (
+              {REASONS[type].map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
