@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -89,9 +89,21 @@ export function ClaimRequestModal({
     defaultValues: { orderItemId: initialId, reason: "", detail: "" },
   });
 
-  // 열릴 때마다 폼·뮤테이션 상태 초기화 (대상 재지정, 사유 비움, 완료 화면 해제).
+  // 초기화는 "열리는 순간"에만. 열려 있는 동안 값이 바뀌어도 다시 돌리지 않는다.
+  //
+  // initialId 를 의존성에 넣으면 안 된다: 신청이 성공하면 ['orders'] 가 무효화되고,
+  // 재조회된 목록에서 방금 신청한 줄이 targets 에서 빠지면서 initialId 가 다음
+  // 아이템으로 바뀐다. 그 변화가 이 이펙트를 다시 돌려 resetMutation() 이 isSuccess 를
+  // 지우고, 완료 화면 대신 "다음 상품 신청 폼"이 열린 것처럼 보인다.
+  // (2개 주문 중 1개만 취소했을 때 실제로 겪은 증상)
+  const openedRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      openedRef.current = false;
+      return;
+    }
+    if (openedRef.current) return;
+    openedRef.current = true;
     resetMutation();
     reset({ orderItemId: initialId, reason: "", detail: "" });
   }, [open, initialId, reset, resetMutation]);
