@@ -3,7 +3,14 @@
 import type { PurchaseState } from "@/shared/types/product";
 
 export interface ProductOption {
-  optionId: number;
+  /**
+   * 문자열이다 — 숫자가 아니다(2026-08-06 계약 변경).
+   * 서버 ID가 64비트라 JS number 로 담으면 MAX_SAFE_INTEGER(9,007,199,254,740,991)를
+   * 넘는 값에서 끝자리가 조용히 바뀐다. 실제로 134494416241190242 가
+   * 134494416241190240 으로 파싱돼 담기가 CART_OPTION_INVALID 로 거부됐다.
+   * 경고 없이 값만 틀어지므로 절대 number 로 되돌리지 말 것.
+   */
+  optionId: string;
   name: string; // "화이트/M" — 옵션값 조합
   extraPrice: number; // 옵션 추가금. 선택 시 단가 = price + extraPrice
 }

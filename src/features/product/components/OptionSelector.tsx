@@ -28,7 +28,7 @@ export function OptionSelector({
   // 사용자가 고른 값만 담는다. 초기값을 options[0]으로 잡으면 상세 도착 전 첫 렌더에서
   // null로 굳어(초기화 함수는 재실행되지 않음) select에는 첫 옵션이 보이는데
   // 실제 선택은 비어 있는 상태가 된다.
-  const [pickedId, setPickedId] = useState<number | null>(null);
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
 
   // 미선택이면 첫 옵션을 기본값으로 본다 — select의 표시값과 항상 일치시킨다.
@@ -57,7 +57,9 @@ export function OptionSelector({
           <div className="relative">
             <select
               value={optionId ?? ""}
-              onChange={(e) => setPickedId(Number(e.target.value))}
+              // Number() 로 바꾸지 말 것 — optionId 는 64비트 ID라 숫자로 만들면
+              // 끝자리가 조용히 바뀌어 서버가 CART_OPTION_INVALID 로 거부한다.
+              onChange={(e) => setPickedId(e.target.value)}
               aria-label="옵션 선택"
               className="h-11 w-full appearance-none rounded-sm border bg-background px-4 pr-10 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >

@@ -13,7 +13,8 @@ export async function fetchCart(): Promise<Cart> {
 // 상품 상세·챗봇 카드·찜 목록이 함께 쓰므로 shared에 둔다.
 export async function addCartItem(body: {
   productId: number;
-  optionId?: number | null;
+  // 문자열이다 — 64비트 ID라 number 로 다루면 끝자리가 바뀐다(ProductOption 주석 참조)
+  optionId?: string | null;
   quantity: number;
   // 추천 카드에서 담을 때만 싣는다(C-2). 서버가 담기 시점의 출처를 저장해
   // 주문 시 order_item 스냅샷으로 복사하므로, 이게 빠지면 추천 전환이 집계에서 사라진다.
