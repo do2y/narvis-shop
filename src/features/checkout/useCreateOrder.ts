@@ -2,7 +2,39 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/shared/api/client";
+import { withJosa } from "@/shared/utils/josa";
 import { createOrder, retryPayment } from "./api";
+
+// 상품명 나열 — 많으면 앞 2개만 쓰고 나머지는 개수로 접는다(문구가 길어지면 안 읽힌다).
+function joinNames(names: string[]): string {
+  if (names.length <= 2) return names.join(", ");
+  return `${names.slice(0, 2).join(", ")} 외 ${names.length - 2}개`;
+}
+
+/**
+ * 주문 불가 항목 안내(O-1 400 detail.unavailableItems, 2026-08-05).
+ *
+ * 품절과 판매중지는 사용자가 할 일이 다르다 — 품절은 기다리면 되고 판매중지는 빼야 한다.
+ * 그래서 섞여 오면 뭉뚱그리지 않고 사유별로 나눠 말한다.
+ * detail이 없는 경우(구버전 응답·파싱 실패)는 종전 문구로 물러난다.
+ */
+function toUnavailableMessage(
+  items: { name: string; reason: "SOLD_OUT" | "HIDDEN" }[] | undefined,
+): string {
+  if (!items?.length)
+    return "구매할 수 없는 상품이 포함되어 있어요. 장바구니에서 확인해주세요.";
+
+  const soldOut = items.filter((i) => i.reason === "SOLD_OUT").map((i) => i.name);
+  const hidden = items.filter((i) => i.reason === "HIDDEN").map((i) => i.name);
+
+  const parts: string[] = [];
+  if (soldOut.length)
+    parts.push(`${withJosa(joinNames(soldOut), "은")} 품절됐어요.`);
+  if (hidden.length)
+    parts.push(`${withJosa(joinNames(hidden), "은")} 판매가 중지됐어요.`);
+
+  return `${parts.join(" ")} 장바구니에서 빼고 다시 시도해주세요.`;
+}
 
 // 주문 실패 메시지 — 결제 실패(PAYMENT_FAILED)는 200이라 여기 오지 않는다.
 // 여기 오는 건 요청이 거부된 경우(검증·권한·품절 등).
@@ -13,11 +45,11 @@ function toOrderErrorMessage(error: unknown): string {
     // 옵션 있는 상품인데 optionId 없이 주문한 경우. 상세에서 다시 골라야 한다.
     if (error.code === "CART_OPTION_REQUIRED")
       return "옵션을 선택하지 않은 상품이 있어요. 상품 페이지에서 옵션을 골라주세요.";
-    // 담아둔 뒤 판매가 중지된 상품이 섞인 경우(O-1). 품절은 여기가 아니라
-    // 200 PAYMENT_FAILED로 갈라지므로, 이 코드는 "판매 중지"만 뜻한다.
-    // 서버가 어떤 상품인지 알려주지 않아 장바구니에서 확인하도록 안내한다.
+    // 담아둔 뒤 못 사게 된 상품이 섞인 경우(O-1). 2026-08-05 재고 선검증이 붙으면서
+    // 품절도 여기로 온다 — 그전까지는 200 PAYMENT_FAILED로 갈라져 이 코드가
+    // "판매 중지"만 뜻했다. 이제 사유가 둘이라 detail.unavailableItems로 구분한다.
     if (error.code === "ORDER_PRODUCT_UNAVAILABLE")
-      return "판매가 중지된 상품이 포함되어 있어요. 장바구니에서 확인해주세요.";
+      return toUnavailableMessage(error.unavailableItems);
     if (error.code === "AUTH_FORBIDDEN")
       return "이 주문을 처리할 권한이 없어요.";
 

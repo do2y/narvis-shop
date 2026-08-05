@@ -13,6 +13,7 @@ import type { Address, AddressInput } from "@/shared/types/address";
 import type {
   CreateOrderRequest,
   OrderCompleteState,
+  PaymentFailureReason,
   PaymentMethod,
 } from "./types";
 import { PAYMENT_METHODS } from "./placeholder";
@@ -63,7 +64,10 @@ export default function CheckoutPage() {
 
   // 결제 실패(PAYMENT_FAILED)는 HTTP 200이라 mutation 에러가 아니다.
   // 요청 자체가 거부된 경우와 구분해 따로 안내한다.
-  const [paymentFailed, setPaymentFailed] = useState(false);
+  // 사유(failureReason)까지 담는다 — 재고 부족이면 재결제가 절대 성공하지 않아
+  // 버튼을 그대로 두면 사용자가 무한히 다시 누르게 된다(2026-08-05 O-1·O-2).
+  const [paymentFailed, setPaymentFailed] =
+    useState<{ reason: PaymentFailureReason | null } | null>(null);
   // 배송지 미선택 안내 — 결제 요청 전에 프론트가 막는 경우라 서버 에러와 구분해 담는다.
   const [addressError, setAddressError] = useState<string | null>(null);
   // 결제만 실패한 주문(PAYMENT_FAILED)의 id. 주문 자체는 서버에 남아 있으므로
@@ -166,6 +170,17 @@ export default function CheckoutPage() {
     });
   };
 
+  // 결제 실패 안내 — 사유마다 사용자가 할 일이 다르다(2026-08-05 failureReason).
+  // 재고 부족은 재결제가 무의미하므로 장바구니로, 거절은 결제 수단을 바꿔 재시도로 보낸다.
+  // 사유가 없으면(구버전 응답) 종전의 뭉뚱그린 문구로 물러난다.
+  const paymentFailedMessage = !paymentFailed
+    ? null
+    : paymentFailed.reason === "OUT_OF_STOCK"
+      ? "재고가 부족해 결제되지 않았어요. 장바구니에서 수량을 조정해주세요."
+      : paymentFailed.reason === "MOCK_DECLINED"
+        ? "결제가 거절됐어요. 결제 수단을 확인한 뒤 다시 시도해주세요."
+        : "결제에 실패했어요. 결제 수단을 확인한 뒤 다시 시도해주세요.";
+
   const handleSubmit = async () => {
     if (createOrder.isPending || retryPayment.isPending) return;
 
@@ -177,7 +192,7 @@ export default function CheckoutPage() {
       return;
     }
     setAddressError(null);
-    setPaymentFailed(false);
+    setPaymentFailed(null);
 
     // 이미 만들어진 주문의 결제만 실패한 경우 — 새 주문을 만들면 실패 주문이 쌓이므로
     // 결제 수단만 바꿔 이 주문을 다시 결제한다.
@@ -188,7 +203,10 @@ export default function CheckoutPage() {
           paymentMethod: method,
         });
         if (retried.status === "PAYMENT_FAILED") {
-          setPaymentFailed(true);
+          // 재고 부족이면 재결제는 몇 번을 해도 실패한다 — 사유를 담아 결제 버튼을
+          // 막고 장바구니로 유도한다(failedOrderId는 그대로 둔다. 지우면 다음 제출이
+          // 새 주문 경로로 가서 실패 주문이 하나 더 쌓인다).
+          setPaymentFailed({ reason: retried.failureReason ?? null });
           return;
         }
         trackPurchase(retried.orderId);
@@ -246,8 +264,9 @@ export default function CheckoutPage() {
       const result = await createOrder.mutateAsync(body);
 
       // 결제 실패도 200 — status로 구분한다. 자동 재시도하지 않고 안내만.
+      // 선검증(O-1)이 붙은 뒤에도 재고 경합은 남아 OUT_OF_STOCK이 여기로 올 수 있다.
       if (result.status === "PAYMENT_FAILED") {
-        setPaymentFailed(true);
+        setPaymentFailed({ reason: result.failureReason ?? null });
         setFailedOrderId(result.orderId);
         return;
       }
@@ -300,8 +319,9 @@ export default function CheckoutPage() {
               method={method}
               onMethodChange={(m) => {
                 setMethod(m);
-                setPaymentFailed(false); // 수단 변경 시 이전 실패 안내 제거
+                setPaymentFailed(null); // 수단 변경 시 이전 실패 안내 제거
                 createOrder.reset();
+                retryPayment.reset(); // 재결제 거부 사유도 화면에 노출되므로 함께 지운다
               }}
             />
 
@@ -341,13 +361,17 @@ export default function CheckoutPage() {
               discount={discount}
               canSubmit={agreed}
               paying={createOrder.isPending || retryPayment.isPending}
-              // 배송지 미선택(프론트 차단) → 결제 승인 실패 → 요청 거부 순으로 안내
+              // 배송지 미선택(프론트 차단) → 결제 승인 실패 → 요청 거부 순으로 안내.
+              // 재결제 경로의 거부 사유(retryPayment)도 함께 본다 — 재결제 중이면
+              // createOrder는 호출되지 않아 그쪽 메시지는 비어 있다.
               error={
                 addressError ??
-                (paymentFailed
-                  ? "결제에 실패했어요. 결제 수단을 확인한 뒤 다시 시도해주세요."
-                  : createOrder.errorMessage)
+                paymentFailedMessage ??
+                createOrder.errorMessage ??
+                retryPayment.errorMessage
               }
+              // 재고 부족은 재결제해도 실패하므로 결제 버튼 자체를 장바구니 이동으로 바꾼다
+              unrecoverable={paymentFailed?.reason === "OUT_OF_STOCK"}
               onSubmit={handleSubmit}
             />
           </div>
