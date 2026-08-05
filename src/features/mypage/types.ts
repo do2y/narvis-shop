@@ -124,10 +124,14 @@ export type ClaimType =
  * 경계는 배송이다: 아직 안 갔으면 취소, 받았으면 반품. 배송중(SHIPPING)은 둘 다
  * 불가라 어느 쪽 버튼도 뜨지 않는다 — 이 구간은 서버 매트릭스도 막는다.
  * PENDING·PAYMENT_FAILED 는 결제가 성립하지 않아 취소할 결제가 없다.
+ *
+ * CONFIRMED(구매확정)에는 반품도 뜨지 않는다 — 확정은 "이 거래를 끝냈다"는
+ * 사용자 선언이라 되돌릴 대상이 아니다. 후기는 확정 뒤에도 쓸 수 있어
+ * canReviewItemStatus 와 허용 상태가 갈린다(같아 보여도 합치지 말 것).
  */
 export function canClaimItem(status: OrderStatus, type: ClaimType): boolean {
   if (type === "CANCEL") return status === "ORDERED";
-  return status === "DELIVERED" || status === "CONFIRMED";
+  return status === "DELIVERED";
 }
 
 /**
