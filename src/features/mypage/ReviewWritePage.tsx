@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, ImagePlus, X } from "lucide-react";
 import type { ProductCard } from "@/shared/types/chat";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { Button } from "@/shared/ui/button";
 import { Label } from "@/shared/ui/label";
 import { cn } from "@/lib/utils";
@@ -86,7 +87,7 @@ export default function ReviewWritePage() {
       {/* 대상 상품 요약 — 시딩 캐시 있으면 표시 */}
       {product && (
         <div className="mt-5 flex gap-4 rounded-sm border bg-background p-4">
-          <img
+          <ProductImage
             src={product.imageUrl}
             alt=""
             className="size-16 shrink-0 rounded-sm bg-muted object-cover"

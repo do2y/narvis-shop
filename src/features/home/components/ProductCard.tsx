@@ -1,6 +1,7 @@
 "use client";
 
 import { Star } from "lucide-react";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
 import type { PopularProduct } from "../types";
 import { formatPrice } from "@/shared/utils/formatPrice";
@@ -20,10 +21,9 @@ export function ProductCard({ product }: { product: PopularProduct }) {
       className="group flex flex-col overflow-hidden rounded-sm border bg-background text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md active:translate-y-0 active:scale-[0.99]"
     >
       <div className="aspect-[4/3] overflow-hidden bg-muted">
-        <img
+        <ProductImage
           src={product.imageUrl}
           alt={product.name}
-          loading="lazy"
           className="size-full object-cover transition-transform duration-300 will-change-transform group-hover:scale-105"
         />
       </div>

@@ -2,6 +2,7 @@
 
 import { Check, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { isPurchasable, unavailableLabel } from "@/shared/types/product";
 import type { CartItem } from "../types";
@@ -59,7 +60,7 @@ export function CartItemCard({
         )}
       </button>
 
-      <img
+      <ProductImage
         src={item.imageUrl}
         alt=""
         className={cn(

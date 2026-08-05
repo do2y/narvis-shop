@@ -1,6 +1,7 @@
 "use client";
 
 import { Heart, ShoppingCart } from "lucide-react";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { useAddCartItem } from "@/shared/hooks/useCart";
 import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
@@ -29,10 +30,9 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
           aria-label={`${product.name} 상세 보기`}
           className="block size-full"
         >
-          <img
+          <ProductImage
             src={product.imageUrl}
             alt={product.name}
-            loading="lazy"
             className="size-full object-cover transition-transform group-hover:scale-105"
           />
         </button>

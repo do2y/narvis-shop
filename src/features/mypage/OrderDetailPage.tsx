@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { cn } from "@/lib/utils";
 import { useOrder } from "./useOrders";
 import { formatPrice } from "@/shared/utils/formatPrice";
@@ -44,7 +45,7 @@ function DetailItem({
   return (
     <div className="flex gap-4 py-4">
       <Link href={`/products/${item.productId}`} className="shrink-0">
-        <img
+        <ProductImage
           src={item.imageUrl}
           alt=""
           className="size-20 rounded-sm bg-muted object-cover ring-1 ring-black/5 transition-transform hover:scale-[1.03]"
