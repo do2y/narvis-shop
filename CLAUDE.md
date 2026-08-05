@@ -9,7 +9,7 @@
 ## 명령어
 - `npm run dev` — 개발 서버 (**포트 3000 고정** — 백엔드 CORS가 `http://localhost:3000`만 허용)
 - `npm run build` — 프로덕션 빌드. **이게 진짜 게이트다** (타입 검사 포함)
-- `npm run start` — 프로덕션 서버 / `npm run lint`
+- `npm run start` — 프로덕션 서버 / `npm run lint` / `npm run test` (vitest)
 > 변경 후 검증: `npm run build`. tsc만으로는 놓치는 에러가 있다
 
 ## 기능 명세
@@ -32,7 +32,6 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
   - **`src/pages/`는 쓰지 않는다** — Next의 Pages Router 예약 디렉토리라, 그 이름을 쓰면
     안의 파일이 클라이언트 번들 대상이 되어 `server-only` import 시 빌드가 깨진다
 - `src/shared/`(ui·chat·address·api·auth·hooks·stores·types·utils) — **2개 이상 페이지가 쓰는 것만 승격**
-- `src/mocks/` — MSW. 현재 미사용(백엔드 연동 완료). 필요해지면 복구
 - **원칙**: 같이 수정될 것들은 같이 둔다. 페이지 전용은 페이지 폴더에, 공용이 된 순간에만 shared로 옮긴다
 
 ## 컴포넌트 (2계층)
@@ -80,7 +79,6 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
 - 복원 중(`isRestoring`)에는 가드가 판정을 보류 — 없으면 새로고침마다 로그인으로 튕긴다
 - **인증 필요 쿼리의 `enabled`는 `selectIsAuthReady`(복원완료+AT보유) 필수**
 - 복원 경로의 401은 리다이렉트 대상이 아님 — `fetchMe`는 `NO_AUTH_REDIRECT`로 호출
-- 상세 배경은 `docs/auth-token-strategy.md`
 
 ## 배포 구조 (03 D-분산4)
 ```
@@ -94,14 +92,22 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
   로컬에는 nginx가 없어 이 핸들러가 그 역할을 대신하고, dev에서 Set-Cookie의 `Secure`를 떼어
   로컬 http에서도 refresh가 되게 한다
 - 환경변수: `NEXT_PUBLIC_API_BASE_URL`(브라우저, 빌드 시점 주입·빈 값=상대경로) / `API_PROXY_TARGET`(로컬 프록시 대상)
+- `/internal`은 nginx가 프록시 중 — AI 서버가 ALB 경유로 호출해서, 차단하면 상품 검색이 죽는다.
+  내부망 직행으로 바꾸려면 보안그룹 작업이 선행되므로 임의로 막지 않는다
 
 ## 챗봇 공통 모듈 (src/shared/chat, 타입: src/shared/types/chat.ts)
 - 3개 챗봇은 단일 API를 `channel`(SHOPPING|CS|SELLER)만 바꿔 공유. 공통 모듈 + 채널별 렌더러 주입
-- 응답은 **SSE 이벤트 6종** `token`(append) / `conditions`(제거 가능 칩) / `products`(카드) / `action`(CART_ADDED 등) / `done` / `error` + **판매자 전용 4종**
+- 와이어는 `data: {"type":..,"data":{..}}` envelope 한 줄 — **`event:` 줄을 쓰지 않는다**. 이름이 아니라 `payload.type`으로 분기
+- 구매자 이벤트 **8종**: `progress`(0~1회, 첫 프레임) / `token`(append) / `conditions`(제거 가능 칩) / `suggestions`(완화 제안) / `action` / `products.ready`(상관키) / `done` / `error` + **판매자 전용 `meta`·`draft`**
+  - **`progress`는 채널별로 페이로드가 다르다** — 구매자 `{stage,message?}`(어휘 `analyzing` 1종) / 판매자 `{text}`. 수신부가 분기해야 한다
+  - **`progress` 도착을 전제하지 않는다** — 0회인 턴이 있고(첫 프레임이 `error`이거나 스트림이 안 열림), AI 서버도 아직 기본 off다
 - **SSE는 nginx·Next를 타지 않는다** — 세션 발급(`POST /api/chat/sessions`)으로 받은 `llmSseUrl`(AI 서버 절대 URL)에 `streamChat`이 직접 fetch한다. AI 서버가 이 앱 오리진에 CORS를 열어줘야 한다
 - **EventSource 금지** — POST+body이므로 `streamChat`의 fetch 스트리밍으로 파싱
-- 조건 칩 X 제거 = 후속 메시지 `"[조건 제거] <조건명>"` 전송 (별도 API 없음)
-- 카드는 완전한 데이터 포함 → 상세 캐시 시딩용. 카드 표시 위한 재조회 금지
+- 조건 칩 X 제거 = 요청 body의 **`conditionActions`** 배열(`{op:"remove",field}`). 규약 문자열(`[조건 제거] …`) 왕복은 폐기됨
+- **카드는 SSE에 없다(경로 B)** — `products.ready`의 `listIds`(항상 배열)로 CH-5를 목록별 조회한다. 조회한 카드는 완전한 데이터라 상세 캐시 시딩용 — 카드 표시 위한 재조회 금지
+- `action.type` **10종** — 장바구니 담기·삭제·수량변경, 찜 추가·해제(각 성공/실패) + 판매자 수정 2종.
+  성공 시 해당 쿼리 무효화(`['cart']`·`['wishlist']`) — 판정은 `isCartMutatingAction`/`isWishlistMutatingAction`(shared/types/chat) 경유.
+  **찜 이벤트엔 productId가 없다**(경로 B) → 목록 재조회만 가능. `message`는 AI가 조립한 노출 문구라 그대로 표시하고 파싱·하드코딩 금지
 - **자동 재시도 금지**(중복 담기 방지) — 실패 시 재시도 버튼 제공
 - sessionId: 백엔드 발급, 10분 sliding TTL
 
@@ -133,12 +139,11 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
 - 시안에 없는 상태(로딩/에러/빈 상태)는 기존 페이지 패턴을 따라 통일
 
 ## 반응형 (모바일 우선)
-- **모든 페이지는 모바일(≥360px)부터 데스크탑까지 대응.** 시안이 데스크탑 기준이어도 좁은 화면에서 깨지지 않게 구현
-- 기본값은 모바일, 넓어질 때 `sm:`/`md:`/`lg:`로 확장. breakpoint는 Tailwind 기본값 사용
-- 컨테이너 폭은 `w-full` + `max-w-*`로 좁은 화면에선 꽉 차고 넓은 화면에선 상한을 둔다
-- 여백은 모바일에서 과하지 않게 반응형으로: 예 `p-6 sm:p-8`, `py-10 sm:py-20`
-- 가로 스크롤 금지. 넘칠 수 있는 요소는 `overflow-x-auto`로 자체 스크롤
-- 터치 타겟은 최소 높이 확보(대략 `h-11` 이상), 화면 가장자리에 요소가 붙지 않게 좌우 여백 유지
+- **모든 페이지는 모바일(≥360px)부터 대응.** 시안이 데스크탑 기준이어도 좁은 화면에서 깨지지 않게 구현
+- 기본값은 모바일, 넓어질 때 `sm:`/`md:`/`lg:`로 확장 (Tailwind 기본 breakpoint)
+- 컨테이너는 `w-full` + `max-w-*` / 여백도 반응형으로 (`p-6 sm:p-8`)
+- 가로 스크롤 금지 — 넘칠 수 있는 요소는 `overflow-x-auto`
+- 터치 타겟 최소 `h-11`, 화면 가장자리에 붙지 않게 좌우 여백 유지
 
 ## 코딩 컨벤션
 - 함수형 컴포넌트+훅만 (클래스 금지)
@@ -154,12 +159,9 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
 - 미정 정책(sessionId 만료 처리, 판매자/관리자 계정 생성 방식 등)은 임의로 정하지 말고 질문
 - 다중 파일·구조 변경(폴더 이동, 라이브러리 교체)은 실행 전 계획부터 제시
 - 결제·인증·배포 관련 코드는 위험을 먼저 설명하고 수정
-- **인프라 구조(nginx·컨테이너·워크플로)는 팀 아키텍처 문서(`03-architecture.md`)를 먼저 확인하고,
-  바꿔야 한다면 반드시 먼저 묻는다** — 이식 중 nginx를 임의로 제거해 3중 방어가 깨진 적 있음
+- **인프라 구조(nginx·컨테이너·워크플로)는 바꾸기 전에 반드시 먼저 묻는다**
+  — 이식 중 nginx를 임의로 제거해 3중 방어가 깨진 적 있음 (팀 아키텍처 문서는 레포 밖에 있음)
 
 ## 미확정 (정해지면 이 문서 갱신)
 - sessionId 10분 TTL 만료 시 응답/재발급 스펙
 - 판매자/관리자 계정 생성 방식 (별도 가입 vs DB 시드)
-- `/internal` 경계: 문서(03 §4)는 "nginx 차단"이지만 실제 nginx.conf는 프록시 중.
-  AI 서버가 ALB 경유로 호출하는 구조라 차단하면 상품 검색이 죽는다.
-  내부망 직행(프라이빗 IP)으로 바꾸려면 보안그룹 작업이 선행 — 팀 논의 필요

@@ -13,6 +13,10 @@ import {
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { useChatPersistence } from "@/shared/chat/useChatPersistence";
+import {
+  isCartMutatingAction,
+  isWishlistMutatingAction,
+} from "@/shared/types/chat";
 import { useScreenContext } from "./useScreenContext";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { fetchPopularAsCards } from "./api";
@@ -45,10 +49,16 @@ export default function ChatPage() {
     useChat({
       channel: "SHOPPING",
       getScreenContext,
-      // 챗봇 장바구니 담기 → 헤더 뱃지 전역 동기화 (CLAUDE.md)
+      // 챗봇이 서버 상태를 바꾸면 해당 쿼리를 무효화한다 — 헤더 뱃지·목록 화면이
+      // 같은 캐시를 보므로 여기서 한 번 무효화하면 전역이 따라온다 (CLAUDE.md).
+      // 실패 액션은 서버 상태가 그대로라 재조회하지 않는다.
       onAction: (action) => {
-        if (action.type === "CART_ADDED") {
+        if (isCartMutatingAction(action)) {
           queryClient.invalidateQueries({ queryKey: ["cart"] });
+        }
+        // 찜 이벤트는 productId 를 싣지 않는다(경로 B) — type 만 보고 목록을 재조회한다.
+        if (isWishlistMutatingAction(action)) {
+          queryClient.invalidateQueries({ queryKey: ["wishlist"] });
         }
       },
     });

@@ -6,7 +6,7 @@ import type { ChatMessage } from "./store";
 interface MessageListProps {
   messages: ChatMessage[];
   isStreaming: boolean;
-  /** 분석 진행 상태(판매자 progress 이벤트). 답변 전 로딩 표시용 */
+  /** 진행 상태 문구(progress 이벤트, 구매자·판매자 공용). 답변 전 로딩 표시용 */
   progress?: string | null;
   onRetry: () => void;
 }
