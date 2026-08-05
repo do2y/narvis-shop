@@ -1,6 +1,8 @@
 // 장바구니 데이터 계약 — 백엔드 GET /api/cart 명세와 1:1.
 // 헤더 뱃지·장바구니 페이지·상품 상세(담기)에서 함께 쓰므로 shared에 둔다.
 
+import type { PurchaseState } from "./product";
+
 /**
  * 추천 출처 — 추천 카드에서 담기(C-2)·바로 구매(O-1) 할 때만 싣는다.
  * 서버가 이 2개로 지면·순위를 조회해 붙이므로 FE는 더 보내지 않는다.
@@ -28,7 +30,8 @@ export interface CartItem {
   quantity: number;
   price: number; // 현재가(담은 시점 가격 아님)
   originalPrice: number; // 정가 — 할인 표시·합산용
-  purchasable: boolean; // HIDDEN 상품은 false — 목록 유지하되 합계·주문에서 제외
+  // 품절·판매종료 상품도 목록에 남는다 — 합계·주문에서만 제외된다
+  purchaseState: PurchaseState;
   /**
    * 수량 스테퍼 상한 — 서버가 min(재고, 담기 상한 99)을 계산해 내린다(C-1, 2026-08-05).
    * 재고 숫자를 받아 FE가 99와 비교하면 서버 규칙을 FE가 아는 게 되므로 계산된 값을 받는다.

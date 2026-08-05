@@ -5,6 +5,7 @@ import { formatPrice } from "@/shared/utils/formatPrice";
 import { useAddCartItem } from "@/shared/hooks/useCart";
 import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
 import { useRemoveWishlistItem } from "../useWishlist";
+import { isPurchasable, unavailableLabel } from "@/shared/types/product";
 import type { WishlistProduct } from "@/shared/types/wishlist";
 
 export function WishlistCard({ product }: { product: WishlistProduct }) {
@@ -14,6 +15,10 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
 
   // WishlistProduct는 시딩 계약을 전부 갖고 있어 그대로 승계한다.
   const goToDetail = () => goToProduct(product);
+
+  // 찜한 뒤 품절·판매종료될 수 있다 — 사유에 따라 안내와 권하는 행동이 다르다.
+  const purchasable = isPurchasable(product.purchaseState);
+  const unavailable = unavailableLabel(product.purchaseState);
 
   return (
     <article className="group flex h-full flex-col">
@@ -65,16 +70,22 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
         onClick={() =>
           addCart.mutate({ productId: product.productId, quantity: 1 })
         }
-        disabled={!product.purchasable || addCart.isPending}
+        disabled={!purchasable || addCart.isPending}
         className="mt-3 inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-sm border text-sm font-medium transition-all hover:bg-muted active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
       >
         <ShoppingCart className="size-4" />
-        {!product.purchasable
-          ? "판매 중지"
-          : addCart.isPending
-            ? "담는 중…"
-            : "장바구니 담기"}
+        {unavailable ?? (addCart.isPending ? "담는 중…" : "장바구니 담기")}
       </button>
+
+      {/* 못 사는 이유에 따라 다음 행동이 다르다 — 품절은 기다리면 되지만
+          판매 종료는 돌아오지 않으므로 찜에서 빼도록 권한다. */}
+      {unavailable && (
+        <p className="mt-2 text-xs text-muted-foreground" role="status">
+          {product.purchaseState === "SOLD_OUT"
+            ? "품절됐어요. 재입고되면 다시 담을 수 있어요."
+            : "판매가 종료된 상품이에요. 찜에서 빼는 걸 권해요."}
+        </p>
+      )}
 
       {addCart.isSuccess && (
         <p className="mt-2 text-xs text-muted-foreground" role="status">

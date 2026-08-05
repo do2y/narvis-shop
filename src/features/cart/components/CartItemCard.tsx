@@ -3,6 +3,7 @@
 import { Check, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/shared/utils/formatPrice";
+import { isPurchasable, unavailableLabel } from "@/shared/types/product";
 import type { CartItem } from "../types";
 
 export function CartItemCard({
@@ -28,8 +29,9 @@ export function CartItemCard({
     .map((v) => v.trim())
     .filter(Boolean);
 
-  // 품절/숨김 상품은 선택·수량 변경을 막고 삭제만 남긴다(서버 합계에서도 제외됨)
-  const disabled = !item.purchasable;
+  // 품절/판매종료 상품은 선택·수량 변경을 막고 삭제만 남긴다(서버 합계에서도 제외됨)
+  const unavailable = unavailableLabel(item.purchaseState);
+  const disabled = !isPurchasable(item.purchaseState);
 
   // 수량 상한 — 서버가 min(재고, 99)로 계산해 내린다(C-1 maxQuantity, 2026-08-05).
   // 이게 없으면 사용자가 재고보다 많이 올려본 뒤 400을 받고서야 상한을 알게 된다.
@@ -70,8 +72,13 @@ export function CartItemCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{item.name}</p>
-            {disabled && (
-              <p className="mt-0.5 text-xs text-red-500">현재 구매할 수 없는 상품이에요</p>
+            {/* 품절은 기다리면 되고 판매 종료는 빼야 한다 — 할 일이 다르니 문구도 나눈다 */}
+            {unavailable && (
+              <p className="mt-0.5 text-xs text-red-500">
+                {item.purchaseState === "SOLD_OUT"
+                  ? "품절됐어요 — 재입고되면 구매할 수 있어요"
+                  : "판매가 종료된 상품이에요 — 빼주세요"}
+              </p>
             )}
           </div>
           <button

@@ -10,7 +10,7 @@ import type { ProductDetail } from "./types";
  * `cachedGet`으로 감싸 generateMetadata와 page가 같은 상품을 각각 불러도
  * 요청당 API 호출이 1회가 되게 한다.
  *
- * 캐시하지 않는다(revalidate 미지정 = no-store): 재고·가격·purchasable이 실시간이어야
+ * 캐시하지 않는다(revalidate 미지정 = no-store): 재고·가격·purchaseState가 실시간이어야
  * 하고, 상세 화면이 "품절인데 구매 가능"으로 보이면 안 된다.
  * ISR 전환은 갱신 빈도를 확인한 뒤 결정한다(계획서 6장 열린 질문).
  */

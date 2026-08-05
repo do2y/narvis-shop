@@ -4,6 +4,7 @@ import { Heart, Star } from "lucide-react";
 import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
 import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
 import { formatPrice } from "@/shared/utils/formatPrice";
+import { unavailableLabel } from "@/shared/types/product";
 import { cn } from "@/lib/utils";
 import type { BrandProduct } from "../types";
 
@@ -19,7 +20,9 @@ export function BrandProductCard({ product }: { product: BrandProduct }) {
   const discountRate = hasDiscount
     ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
-  const soldOut = product.purchasable === false;
+  // P-6은 재고를 거르지 않아 SOLD_OUT이 섞여 온다. HIDDEN은 목록에서 빠지지만
+  // 사유별 라벨을 그대로 쓴다 — 화면마다 문구가 갈리지 않게 한 곳에서 판정한다.
+  const unavailable = unavailableLabel(product.purchaseState);
 
   return (
     <div className="group relative flex flex-col">
@@ -39,12 +42,12 @@ export function BrandProductCard({ product }: { product: BrandProduct }) {
             loading="lazy"
             className={cn(
               "size-full object-cover transition-transform duration-300 will-change-transform group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100",
-              soldOut && "opacity-50",
+              unavailable && "opacity-50",
             )}
           />
-          {soldOut && (
+          {unavailable && (
             <span className="absolute inset-x-0 bottom-0 bg-foreground/80 py-1.5 text-center text-xs font-semibold text-background backdrop-blur">
-              품절
+              {unavailable}
             </span>
           )}
         </div>

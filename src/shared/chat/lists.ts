@@ -45,7 +45,6 @@ export async function fetchChatListGroup(
       rating: item.rating,
       reviewCount: item.reviewCount,
       reason: item.reason ?? "",
-      purchasable: item.purchasable,
       recommendationContext,
     })),
     recommendation: {

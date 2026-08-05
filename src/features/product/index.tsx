@@ -23,6 +23,7 @@ import {
   useAddCartItem,
 } from "@/shared/hooks/useCart";
 import { formatPrice } from "@/shared/utils/formatPrice";
+import { isPurchasable } from "@/shared/types/product";
 import { setCheckoutState } from "@/shared/utils/checkoutHandoff";
 import { ImageGallery } from "./components/ImageGallery";
 import { OptionSelector, type OptionSelection } from "./components/OptionSelector";
@@ -160,10 +161,11 @@ export default function ProductPage({
   // 값 모양이 섞여 오므로(문자열/null/배열/메타 객체) 표시 가능한 것만 남긴다.
   const specRows = toSpecRows(detail?.attributes);
 
-  // HIDDEN·품절 상품도 200으로 조회된다(직링크·찜 목록 대응) → purchasable로 구매 차단.
+  // HIDDEN·품절 상품도 200으로 조회된다(직링크·찜 목록 대응) → purchaseState로 구매 차단.
   // 상세 도착 전(시딩 렌더)에는 아직 알 수 없으므로 구매 가능으로 둔다.
-  const purchasable = detail ? detail.purchasable : true;
-  const soldOut = detail ? detail.stockQuantity <= 0 : false;
+  // 재고에서 직접 파생하지 않는다 — 숨김이 품절보다 우선하는 판정은 서버가 갖는다.
+  const purchasable = isPurchasable(detail?.purchaseState);
+  const soldOut = detail?.purchaseState === "SOLD_OUT";
 
   // 장바구니 담기 — 게스트도 가능(CLAUDE.md). 옵션 있는 상품은 선택 필수라
   // 서버 400(CART_OPTION_REQUIRED) 전에 프론트에서 먼저 막는다.
