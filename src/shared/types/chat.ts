@@ -80,7 +80,8 @@ export interface ChatSession {
 // 시딩 계약(SeededProductCard)에 AI 추천 이유만 더한 형태 — 상세 캐시 승계 호환 유지
 export interface ProductCard extends SeededProductCard {
   reason: string; // AI 추천 이유 한 줄(CH-5는 없으면 null → FE에서 "")
-  purchasable?: boolean; // 재고·판매 가능 여부(CH-5). 목록은 이미 품절 드롭이라 대개 true
+  // 구매 가능 여부 필드는 없다 — 못 사는 상품은 BE가 목록에서 드롭하므로(itemsDropped로
+  // 개수만 온다) 남은 카드는 항상 살 수 있다. P-4·P-5도 같은 이유로 이 필드가 없다.
   /**
    * 이 카드가 나온 추천 목록의 출처 — 담기(C-2) 시 그대로 돌려보내 전환을 귀속시킨다.
    * 카드 자체에 붙여 둔다: 담기 버튼은 카드 안에 있고, 화면에 여러 목록이 동시에 뜰 수 있어
@@ -112,7 +113,7 @@ export interface ProductGroup {
 /**
  * CH-5 추천 목록 조회 응답(GET /api/chat/lists/{listId}) 데이터부.
  * CH-2 SSE 의 products.ready{listId} 수신 후 조회한다. items 는 플랫 배열(순서 유지).
- * BE 가 카드 완결 필드를 최신값으로 부착(상품명·가격·정가·이미지·rating·reviewCount·purchasable).
+ * BE 가 카드 완결 필드를 최신값으로 부착(상품명·가격·정가·이미지·rating·reviewCount).
  * HIDDEN·품절은 BE 가 드롭. listId TTL=세션 TTL(10분), 만료·미존재 404 RESOURCE_NOT_FOUND.
  */
 export interface ChatListResponse {
@@ -133,7 +134,6 @@ export interface ChatListResponse {
   withinBudget?: boolean | null;
   items: (SeededProductCard & {
     reason: string | null; // I-21 콜백 reasons echo, 없으면 null
-    purchasable: boolean;
   })[];
 }
 

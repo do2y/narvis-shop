@@ -1,5 +1,7 @@
 // 상품 상세 데이터 계약 — 백엔드 GET /api/products/{id} 응답과 1:1.
 
+import type { PurchaseState } from "@/shared/types/product";
+
 export interface ProductOption {
   optionId: number;
   name: string; // "화이트/M" — 옵션값 조합
@@ -71,5 +73,7 @@ export interface ProductDetail {
   rating: ProductRating;
   status: string; // ON_SALE 등
   stockQuantity: number;
-  purchasable: boolean;
+  // status·stockQuantity로 FE가 파생할 수도 있지만, 화면마다 판정이 갈리지 않게
+  // 서버가 계산한 값을 쓴다(P-2는 원자료도 함께 내려준다)
+  purchaseState: PurchaseState;
 }

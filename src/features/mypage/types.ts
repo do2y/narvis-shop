@@ -1,5 +1,7 @@
 // 마이페이지 데이터 계약 — mocks/handlers.ts와 1:1. 변경 시 목과 함께 갱신.
 
+import type { PurchaseState } from "@/shared/types/product";
+
 // 주문 상태 — 아이템 단위 상태. 주문 대표 상태(representativeStatus)도 같은 값을 쓴다.
 // 명세에는 한국어 표시 문자열("배송중")로 적혀 있으나 실제 응답은 영문 enum이라
 // 여기에 맞추고 표시 문자열은 프론트에서 매핑한다(ORDER_STATUS_LABEL).
@@ -102,7 +104,8 @@ export interface RecentProduct {
   imageUrl: string;
   rating: number;
   reviewCount: number;
-  purchasable: boolean; // HIDDEN 상품도 목록에 유지되므로 false일 수 있다
+  // 본 뒤 품절·판매종료된 상품도 목록에 남는다
+  purchaseState: PurchaseState;
 }
 
 // 찜 타입은 상품 상세·챗봇과 공유 — shared/types/wishlist.ts 참조.

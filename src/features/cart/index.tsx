@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useCart, useCartMutations } from "./useCart";
 import { CartItemCard } from "./components/CartItemCard";
 import { CartSummary } from "./components/CartSummary";
+import { isPurchasable } from "@/shared/types/product";
 import type { CartItem } from "./types";
 import type { CheckoutItem, CheckoutState } from "@/shared/types/checkout";
 import { setCheckoutState } from "@/shared/utils/checkoutHandoff";
@@ -48,9 +49,9 @@ export default function CartPage() {
   // 해제한 항목만 기억해 새 항목은 자동 선택되게 한다(제외 집합 방식).
   const [deselected, setDeselected] = useState<Set<number>>(new Set());
 
-  // 구매 불가(HIDDEN) 상품은 서버 합계에서도 빠지므로 선택 대상에서 제외한다.
+  // 구매 불가(품절·판매종료) 상품은 서버 합계에서도 빠지므로 선택 대상에서 제외한다.
   const isSelected = (item: CartItem) =>
-    item.purchasable && !deselected.has(item.cartItemId);
+    isPurchasable(item.purchaseState) && !deselected.has(item.cartItemId);
   const toggle = (id: number) =>
     setDeselected((prev) => {
       const next = new Set(prev);
@@ -60,7 +61,7 @@ export default function CartPage() {
     });
 
   const selectableItems = useMemo(
-    () => (items ?? []).filter((it) => it.purchasable),
+    () => (items ?? []).filter((it) => isPurchasable(it.purchaseState)),
     [items],
   );
   const selectedItems = useMemo(

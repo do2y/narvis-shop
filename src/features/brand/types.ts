@@ -1,6 +1,9 @@
 // 브랜드 홈 데이터 계약 — 백엔드 GET /api/brands/{id} (인증 불필요).
 // mocks/handlers/brands.ts와 1:1. 변경 시 목과 함께 갱신.
-import type { SeededProductCard } from "@/shared/types/product";
+import type {
+  PurchaseState,
+  SeededProductCard,
+} from "@/shared/types/product";
 
 // 브랜드가 판매 중인 상품의 소분류 — 카테고리 필터 축(07-17 확정).
 // 필터 쿼리는 name이 아니라 id로 보낸다.
@@ -23,7 +26,8 @@ export interface Brand {
 // 특히 brandName은 카드에 표시하지 않아(브랜드 홈은 전부 같은 브랜드) 불필요해 보이지만,
 // 지우면 useGoToProduct 시딩이 깨져 상세 렌더가 무너진다 — 확장으로 삭제를 막는다.
 export interface BrandProduct extends SeededProductCard {
-  purchasable?: boolean;
+  // P-6은 재고를 거르지 않아 SOLD_OUT이 섞여 온다(HIDDEN은 브랜드 목록에서 빠진다)
+  purchaseState?: PurchaseState;
 }
 
 // 백엔드 페이지 응답

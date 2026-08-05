@@ -15,7 +15,7 @@ export function useCart() {
   });
 }
 
-// 헤더 뱃지용 총 수량. 구매 불가(purchasable=false) 항목도 장바구니에 담겨 있으므로
+// 헤더 뱃지용 총 수량. 구매 불가(품절·판매종료) 항목도 장바구니에 담겨 있으므로
 // 개수에는 포함한다(합계 금액에서만 서버가 제외).
 export function useCartItemCount(): number {
   const { data } = useCart();
