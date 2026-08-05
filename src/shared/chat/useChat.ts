@@ -15,6 +15,7 @@ import {
 import { clearChat } from "@/shared/chat/chatPersistence";
 import { getThreadId, newThreadId } from "@/shared/chat/threadId";
 import { fetchChatListGroup } from "@/shared/chat/lists";
+import { BUYER_PROGRESS_LABEL } from "@/shared/types/chat";
 import type {
   ChatAction,
   ChatChannel,
@@ -238,8 +239,19 @@ export function useChat({
               if (e.data.lane === "analysis") setAnalysisReport(null);
               break;
             case "progress":
-              // 분석 진행 상태(최종 답변 아님)
-              setProgress(e.data.text);
+              // 진행 상태(최종 답변 아님). 두 스트림의 페이로드가 다르다 —
+              // 구매자 {stage, message?} / 판매자 {text}. 쉐이프를 맞추는 건 후속 과제라
+              // 지금은 수신부가 분기한다(계약 CH-2 §progress, 2026-08-05 #289).
+              //
+              // 구매자는 message 가 없으면 stage 로 자체 문구를 매핑한다 —
+              // 서버가 빈 값이면 키 자체를 싣지 않기로 계약이 위임한 지점이다.
+              setProgress(
+                "stage" in e.data
+                  ? (e.data.message ??
+                      BUYER_PROGRESS_LABEL[e.data.stage] ??
+                      null)
+                  : e.data.text,
+              );
               break;
             case "token":
               setProgress(null); // 실제 답변이 시작되면 진행 표시 제거
@@ -306,7 +318,9 @@ export function useChat({
               pushResult({ kind: "draft", draft: e.data });
               break;
             case "action": {
-              // CART_ADDED·PRODUCT_UPDATED 등 — 안내 문구를 대화에 덧붙임
+              // 장바구니 담기·삭제·수량변경, 찜 추가·해제, 판매자 수정 결과(계약 CH-2 §action).
+              // message 는 AI 가 조립한 사용자 노출 안전 문구다 — 그대로 붙이고
+              // 문구를 하드코딩하거나 파싱하지 않는다. 분기는 type·reason 으로만.
               const action = e.data;
               appendToLastAssistant(`\n\n${action.message}`);
               // 수정 결과면 해당 draft 카드를 확정 상태로 잠금
@@ -326,6 +340,11 @@ export function useChat({
                   settleDraft(pending.draft.draftId, action);
                 }
               }
+              // 행동 이벤트는 CART_ADDED 하나만 쏜다. 나머지 9종에 대응하는 eventType 이
+              // E-1 화이트리스트 12종에 없기 때문이다 — 삭제·수량변경·찜에 해당하는
+              // 이름이 아예 정의돼 있지 않다. 없는 이름을 지어 보내면 서버가 드롭하고
+              // 경고 로그만 쌓이므로(analytics/types.ts) 빠뜨린 게 아니라 안 보내는 것이다.
+              // E-1 에 이름이 추가되면 그때 여기에 붙인다.
               if (action.type === "CART_ADDED") {
                 // AI 가 대화 중 담은 경로 — 명세 필수 키(quantity·price)를 채우지 못한다.
                 // CART_ADDED 페이로드가 cartItemId·message 뿐이라 FE 가 수량·단가를 모르고,
