@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { cn } from "@/lib/utils";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerSummary } from "./api";
@@ -176,10 +177,9 @@ export default function DashboardPage() {
                       key={p.productId}
                       className="flex items-center gap-3 rounded-sm border p-3"
                     >
-                      <img
+                      <ProductImage
                         src={p.imageUrl}
                         alt=""
-                        loading="lazy"
                         className="size-11 shrink-0 rounded-sm bg-muted object-cover"
                       />
                       <div className="flex min-w-0 flex-col">

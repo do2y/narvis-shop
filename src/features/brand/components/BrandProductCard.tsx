@@ -1,6 +1,7 @@
 "use client";
 
 import { Heart, Star } from "lucide-react";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
 import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
 import { formatPrice } from "@/shared/utils/formatPrice";
@@ -36,10 +37,9 @@ export function BrandProductCard({ product }: { product: BrandProduct }) {
         className="flex flex-col text-left transition-transform duration-100 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
       >
         <div className="relative aspect-square overflow-hidden rounded-sm bg-muted">
-          <img
+          <ProductImage
             src={product.imageUrl}
             alt={product.name}
-            loading="lazy"
             className={cn(
               "size-full object-cover transition-transform duration-300 will-change-transform group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100",
               unavailable && "opacity-50",

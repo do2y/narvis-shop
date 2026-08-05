@@ -1,7 +1,8 @@
 "use client";
 
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { track } from "@/shared/analytics/track";
 import {
   useVisibleOnce,
@@ -106,10 +107,9 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           aria-label={`${product.name} 상세 보기 (새 탭)`}
           className="block size-full"
         >
-          <img
+          <ProductImage
             src={product.imageUrl}
             alt={product.name}
-            loading="lazy"
             className="size-full object-cover transition-transform group-hover:scale-105"
           />
         </a>
@@ -147,6 +147,16 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             {product.name}
           </a>
         </h3>
+        {/* 홈·브랜드 카드와 같은 표기(별 + 평점 + 리뷰수). 리뷰가 0건이면
+            "0 (0)"이 신뢰도를 깎아 보이게 하므로 줄 자체를 그리지 않는다. */}
+        {product.reviewCount > 0 && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
+            <span className="font-medium text-foreground">{product.rating}</span>
+            <span>({product.reviewCount.toLocaleString("ko-KR")})</span>
+          </div>
+        )}
+
         {/* 인기상품(단순 집계) 카드는 추천 이유가 없어 영역 자체를 그리지 않음 */}
         {product.reason && (
           <p className="line-clamp-2 text-sm text-muted-foreground">

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import type { Order, OrderItem, OrderStatus } from "../types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
@@ -33,7 +34,7 @@ const actionButtonClass = cn(
 function ItemRow({ item }: { item: OrderItem }) {
   return (
     <div className="flex gap-4 py-4">
-      <img
+      <ProductImage
         src={item.imageUrl}
         alt=""
         className="size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20"

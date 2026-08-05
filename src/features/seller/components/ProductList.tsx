@@ -2,6 +2,7 @@
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { cn } from "@/lib/utils";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerProducts } from "../api";
@@ -144,10 +145,9 @@ export function ProductList({
                     <tr key={p.productId} className="border-b last:border-0">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img
+                          <ProductImage
                             src={p.imageUrl}
                             alt=""
-                            loading="lazy"
                             className="size-10 shrink-0 rounded-sm bg-muted object-cover"
                           />
                           <span className="min-w-0 truncate font-medium">

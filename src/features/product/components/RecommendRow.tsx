@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPrice } from "@/shared/utils/formatPrice";
+import { ProductImage } from "@/shared/ui/ProductImage";
 
 interface RecommendItem {
   productId: number;
@@ -40,10 +41,9 @@ export function RecommendRow({
               className="flex gap-3 rounded-sm border bg-background p-4"
             >
               <div className="size-16 shrink-0 overflow-hidden rounded-sm bg-muted">
-                <img
+                <ProductImage
                   src={item.imageUrl}
                   alt={item.name}
-                  loading="lazy"
                   className="size-full object-cover"
                 />
               </div>
@@ -67,10 +67,9 @@ export function RecommendRow({
           {items.map((item) => (
             <div key={item.productId} className="flex flex-col gap-2">
               <div className="aspect-square overflow-hidden rounded-sm bg-muted">
-                <img
+                <ProductImage
                   src={item.imageUrl}
                   alt={item.name}
-                  loading="lazy"
                   className="size-full object-cover"
                 />
               </div>

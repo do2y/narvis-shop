@@ -2,6 +2,7 @@
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { cn } from "@/lib/utils";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerOrders } from "../api";
@@ -132,10 +133,9 @@ export function OrderList({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img
+                          <ProductImage
                             src={o.representativeProduct.imageUrl}
                             alt=""
-                            loading="lazy"
                             className="size-9 shrink-0 rounded-sm bg-muted object-cover"
                           />
                           <div className="flex min-w-0 flex-col">

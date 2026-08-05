@@ -1,4 +1,5 @@
 import { formatPrice } from "@/shared/utils/formatPrice";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import type { CheckoutItem } from "../types";
 
 // 주문 상품 목록 — 이미지·브랜드·이름·선택옵션·수량·가격.
@@ -19,7 +20,7 @@ export function OrderItems({ items }: { items: CheckoutItem[] }) {
                 .filter(Boolean);
           return (
             <li key={`${product.productId}-${i}`} className="flex gap-4">
-              <img
+              <ProductImage
                 src={product.imageUrl}
                 alt={product.name}
                 className="size-20 shrink-0 rounded-sm border object-cover"

@@ -1,5 +1,6 @@
 "use client";
 
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
 import type { RecentProduct } from "../types";
@@ -18,10 +19,9 @@ export function RecentProductCard({ product }: { product: RecentProduct }) {
       className="group flex flex-col text-left"
     >
       <div className="aspect-square overflow-hidden rounded-sm bg-muted ring-1 ring-black/5">
-        <img
+        <ProductImage
           src={product.imageUrl}
           alt={product.name}
-          loading="lazy"
           className="size-full object-cover transition-transform group-hover:scale-105"
         />
       </div>
