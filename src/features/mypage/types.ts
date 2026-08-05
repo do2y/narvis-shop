@@ -130,6 +130,18 @@ export function canClaimItem(status: OrderStatus, type: ClaimType): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }
 
+/**
+ * 이 상태의 주문 상품에 후기를 쓸 수 있는가 — 목록 카드의 버튼 노출 판정.
+ *
+ * 상세는 이걸 쓰지 않는다. 서버가 아이템마다 주는 `canReview` 가 정본이고,
+ * 그쪽은 "이미 작성함"까지 반영한다(상태만으로는 알 수 없다).
+ * 목록 응답에는 그 필드가 없어 상태로 근사할 수밖에 없다 — 그래서 목록 버튼은
+ * 작성 화면이 아니라 주문 상세로 보낸다.
+ */
+export function canReviewItemStatus(status: OrderStatus): boolean {
+  return status === "DELIVERED" || status === "CONFIRMED";
+}
+
 // 신청 처리 상태 — 서버 enum 3종(O-5·O-6)과 일치.
 // 시안에 있던 PROCESSING(처리중)은 서버에 없는 값이라 제거했다(2026-08 대조).
 export type ClaimStatus =

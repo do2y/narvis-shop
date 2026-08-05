@@ -2,27 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import {
   canClaimItem,
+  canReviewItemStatus,
   type Order,
   type OrderItem,
-  type OrderStatus,
 } from "../types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 
-// 후기 작성 가능 상태(배송완료/구매확정)인지. 후기만 실제 페이지로 연결.
-function canWriteReview(status: OrderStatus): boolean {
-  return status === "DELIVERED" || status === "CONFIRMED";
-}
-
-// 취소·반품 판정은 canClaimItem(types.ts)이 한다 — 여기서 다시 쓰지 않는다.
+// 후기·취소·반품 판정은 전부 types.ts 가 한다 — 여기서 다시 쓰지 않는다.
 // CLAIM_IN_PROGRESS·COMPLETED는 이미 클레임이 걸렸거나 종결돼 어느 쪽도 통과하지 않는다.
 
 // 액션 버튼 공통 스타일 (칩 형태).
@@ -52,31 +45,15 @@ function ItemRow({ item }: { item: OrderItem }) {
 }
 
 export function OrderCard({ order }: { order: Order }) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const reviewable = canWriteReview(order.representativeStatus);
-  // 신청은 상품 단위다 — 대표 상태로 판정하면 한 주문에 배송중과 배송완료가 섞였을 때
-  // 실제로 신청 가능한 줄이 있는데도 버튼이 사라지거나 그 반대가 된다.
+  // 후기·신청 모두 상품 단위다 — 대표 상태로 판정하면 한 주문에 배송중과 배송완료가
+  // 섞였을 때 실제로 가능한 줄이 있는데도 버튼이 사라지거나 그 반대가 된다.
+  const reviewable = order.items.some((i) => canReviewItemStatus(i.status));
   const cancelable = order.items.some((i) => canClaimItem(i.status, "CANCEL"));
   const returnable = order.items.some((i) => canClaimItem(i.status, "RETURN"));
   // 배송중에만 노출되는 준비 중 액션(배송 조회) 클릭 시 하단에 한 줄 안내.
   const showTracking = order.representativeStatus === "SHIPPING";
   const [notice, setNotice] = useState(false);
   const detailHref = `/mypage/orders/${order.orderId}`;
-
-  // 후기 작성 — 대상 상품(첫 항목) 정보를 상세 캐시에 시딩해 작성 화면에서 즉시 표시.
-  const goToReview = () => {
-    const target = order.items[0];
-    queryClient.setQueryData(["products", target.productId], {
-      productId: target.productId,
-      name: target.productName,
-      price: target.price,
-      imageUrl: target.imageUrl,
-    });
-    router.push(
-      `/mypage/reviews/new?orderItemId=${target.orderItemId}&productId=${target.productId}`,
-    );
-  };
 
   return (
     <article className="overflow-hidden rounded-sm border bg-background">
@@ -104,19 +81,21 @@ export function OrderCard({ order }: { order: Order }) {
         ))}
       </div>
 
-      {/* 하단 액션 — 후기 작성·반품은 실제 연결, 배송 조회는 준비 중 안내 */}
+      {/* 하단 액션 — 후기·취소·반품은 주문 상세로, 배송 조회는 준비 중 안내 */}
       {(reviewable || cancelable || returnable || showTracking || notice) && (
         <div className="flex flex-wrap items-center gap-2 border-t px-5 py-4">
-          {reviewable && (
-            <button type="button" onClick={goToReview} className={actionButtonClass}>
-              후기 작성
-            </button>
-          )}
-          {/* 신청은 상품 단위라 대상을 골라야 한다. 그 선택은 주문 상세에서 한다 —
-              거기엔 이미지·옵션·가격이 함께 있어 잘못 고를 일이 없다.
-              목록에서 모달로 고르게 하면 상품명만 나열돼 식별 단서가 사라진다.
+          {/* 후기·취소·반품 모두 대상 상품을 골라야 하고, 그 선택은 주문 상세에서 한다 —
+              거기엔 이미지·옵션·가격이 함께 있어 잘못 고를 일이 없다. 목록에서 처리하면
+              첫 상품으로 고정되거나(후기) 상품명만 나열돼(모달) 식별 단서가 사라진다.
+              후기는 특히 "이미 작성함"을 목록 응답만으로 알 수 없다 — 서버의 canReview 를
+              쓰는 상세로 보내야 쓴 상품에 버튼이 다시 뜨지 않는다.
               상품이 하나뿐이어도 상세로 보낸다 — 같은 버튼이 주문에 따라 다르게
               동작하면 다음에 무슨 일이 생길지 예측할 수 없다. */}
+          {reviewable && (
+            <Link href={detailHref} className={actionButtonClass}>
+              후기 작성
+            </Link>
+          )}
           {cancelable && (
             <Link href={detailHref} className={actionButtonClass}>
               주문 취소
