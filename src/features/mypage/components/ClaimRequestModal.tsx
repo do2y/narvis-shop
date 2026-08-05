@@ -16,7 +16,7 @@ import {
   type ClaimRequestFormValues,
 } from "../claimSchema";
 import { useCreateClaim } from "../useClaims";
-import { canClaimItem, type ClaimType, type Order } from "../types";
+import type { ClaimType, Order } from "../types";
 
 // 사유는 종류마다 다르다 — 취소는 배송 전이라 상품을 받아보지 못한 상태고,
 // 반품은 받아본 뒤라 파손·오배송 같은 사유가 성립한다.
@@ -51,15 +51,16 @@ export function ClaimRequestModal({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** 목록의 Order 와 상세의 OrderDetail 이 함께 쓴다 — 필요한 건 items 뿐이다 */
+  /** 대상 아이템을 찾을 주문 — 필요한 건 items 뿐이라 상세·목록 타입 모두 받는다 */
   order: Pick<Order, "items">;
   /** 취소(배송 전) | 반품(배송 후) — 사유 목록·문구·전송 body 가 갈린다 */
   type: ClaimType;
   /**
-   * 신청 대상 아이템. 상품 단위로 신청하므로 호출부가 지정한다.
-   * 없으면 신청 가능한 첫 아이템으로 시작한다(주문 카드에서 연 경우).
+   * 신청 대상. 상품 단위 신청이라 항상 호출부가 지정한다 —
+   * 모달에서 고르게 하지 않는 이유는 상품명만 나열되면 이미지·옵션·가격 같은
+   * 식별 단서가 사라져서다. 선택은 주문 상세의 줄별 버튼이 담당한다.
    */
-  orderItemId?: number;
+  orderItemId: number;
 }) {
   const router = useRouter();
   const {
@@ -71,11 +72,7 @@ export function ClaimRequestModal({
     reset: resetMutation,
   } = useCreateClaim();
 
-  // 신청 대상은 이 종류로 신청 가능한 아이템뿐이다 — 한 주문에 배송중과 배송완료가
-  // 섞이면 전체를 다 보여줄 경우 서버가 거부할 줄까지 고르게 된다.
-  const targets = order.items.filter((item) => canClaimItem(item.status, type));
-  const initialId =
-    orderItemId ?? targets[0]?.orderItemId ?? order.items[0]?.orderItemId;
+  const target = order.items.find((i) => i.orderItemId === orderItemId);
 
   const {
     register,
@@ -86,16 +83,14 @@ export function ClaimRequestModal({
     // 폼 필드는 문자열(input) → coerce 후 orderItemId: number(output)로 검증.
     // 3번째 제네릭(output)으로 handleSubmit 콜백이 변환된 값을 받게 한다.
     resolver: zodResolver(claimRequestSchema),
-    defaultValues: { orderItemId: initialId, reason: "", detail: "" },
+    defaultValues: { orderItemId, reason: "", detail: "" },
   });
 
   // 초기화는 "열리는 순간"에만. 열려 있는 동안 값이 바뀌어도 다시 돌리지 않는다.
   //
-  // initialId 를 의존성에 넣으면 안 된다: 신청이 성공하면 ['orders'] 가 무효화되고,
-  // 재조회된 목록에서 방금 신청한 줄이 targets 에서 빠지면서 initialId 가 다음
-  // 아이템으로 바뀐다. 그 변화가 이 이펙트를 다시 돌려 resetMutation() 이 isSuccess 를
-  // 지우고, 완료 화면 대신 "다음 상품 신청 폼"이 열린 것처럼 보인다.
-  // (2개 주문 중 1개만 취소했을 때 실제로 겪은 증상)
+  // 신청이 성공하면 ['orders'] 가 무효화되고 재조회가 돈다. 그때 값이 바뀐다고
+  // 이 이펙트가 다시 돌면 resetMutation() 이 isSuccess 를 지워, 완료 화면 대신
+  // 빈 신청 폼이 열린 것처럼 보인다(2개 주문 중 1개만 취소했을 때 실제로 겪은 증상).
   const openedRef = useRef(false);
   useEffect(() => {
     if (!open) {
@@ -105,8 +100,8 @@ export function ClaimRequestModal({
     if (openedRef.current) return;
     openedRef.current = true;
     resetMutation();
-    reset({ orderItemId: initialId, reason: "", detail: "" });
-  }, [open, initialId, reset, resetMutation]);
+    reset({ orderItemId, reason: "", detail: "" });
+  }, [open, orderItemId, reset, resetMutation]);
 
   // zodResolver가 input→output 변환을 마친 값을 넘겨준다(orderItemId: number).
   const submit = (values: ClaimRequestFormValues) => {
@@ -118,10 +113,6 @@ export function ClaimRequestModal({
     // 성공 시 모달을 닫지 않고 완료 화면(isSuccess)으로 전환 — 아래 렌더 분기.
   };
 
-  // 대상이 하나면 고를 게 없다 — 호출부가 아이템을 지정했거나 신청 가능한 줄이 하나뿐인 경우.
-  const fixed = orderItemId !== undefined || targets.length <= 1;
-  const fixedItem =
-    order.items.find((i) => i.orderItemId === initialId) ?? order.items[0];
   const copy = COPY[type];
 
   // 신청 접수 완료 — 피드백 화면. '내역 보기'로 이동하거나 닫기.
@@ -174,45 +165,18 @@ export function ClaimRequestModal({
           className="mt-5 flex flex-col gap-4"
           noValidate
         >
-          {/* 대상 상품 — 단일 상품이면 표시만, 여러 개면 선택 */}
+          {/* 대상 상품 — 어느 줄에서 눌렀는지가 곧 대상이라 표시만 한다.
+              옵션이 다르면 같은 상품도 별개 줄이므로 옵션명을 함께 보여준다. */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="claim-product">신청 상품</Label>
-            {fixed ? (
-              <>
-                <p className="rounded-sm border bg-muted/40 px-4 py-3 text-sm">
-                  {fixedItem?.productName}
-                  {fixedItem?.optionName ? ` (${fixedItem.optionName})` : ""}
-                </p>
-                <input
-                  type="hidden"
-                  {...register("orderItemId")}
-                  value={initialId}
-                />
-              </>
-            ) : (
-              <select
-                id="claim-product"
-                aria-invalid={!!errors.orderItemId}
-                className={cn(
-                  "h-11 rounded-sm border bg-background px-3 text-sm",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                )}
-                {...register("orderItemId")}
-              >
-                {/* 옵션이 다르면 같은 상품도 별개 줄이므로 옵션명을 함께 보여준다 */}
-                {targets.map((item) => (
-                  <option key={item.orderItemId} value={item.orderItemId}>
-                    {item.productName}
-                    {item.optionName ? ` (${item.optionName})` : ""}
-                  </option>
-                ))}
-              </select>
-            )}
-            {errors.orderItemId && (
-              <p className="text-sm text-destructive">
-                {errors.orderItemId.message}
-              </p>
-            )}
+            <p
+              id="claim-product"
+              className="rounded-sm border bg-muted/40 px-4 py-3 text-sm"
+            >
+              {target?.productName}
+              {target?.optionName ? ` (${target.optionName})` : ""}
+            </p>
+            <input type="hidden" {...register("orderItemId")} />
           </div>
 
           {/* 사유 */}

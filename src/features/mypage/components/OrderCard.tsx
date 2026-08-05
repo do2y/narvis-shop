@@ -11,13 +11,11 @@ import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import {
   canClaimItem,
-  type ClaimType,
   type Order,
   type OrderItem,
   type OrderStatus,
 } from "../types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
-import { ClaimRequestModal } from "./ClaimRequestModal";
 
 // 후기 작성 가능 상태(배송완료/구매확정)인지. 후기만 실제 페이지로 연결.
 function canWriteReview(status: OrderStatus): boolean {
@@ -64,9 +62,7 @@ export function OrderCard({ order }: { order: Order }) {
   // 배송중에만 노출되는 준비 중 액션(배송 조회) 클릭 시 하단에 한 줄 안내.
   const showTracking = order.representativeStatus === "SHIPPING";
   const [notice, setNotice] = useState(false);
-  // 열린 신청 모달의 종류. null 이면 닫힘 — 취소·반품이 같은 모달을 공유하므로
-  // 열림 여부와 종류를 한 상태로 둔다(따로 두면 둘이 어긋날 수 있다).
-  const [claimType, setClaimType] = useState<ClaimType | null>(null);
+  const detailHref = `/mypage/orders/${order.orderId}`;
 
   // 후기 작성 — 대상 상품(첫 항목) 정보를 상세 캐시에 시딩해 작성 화면에서 즉시 표시.
   const goToReview = () => {
@@ -93,7 +89,7 @@ export function OrderCard({ order }: { order: Order }) {
           </span>
         </div>
         <Link
-          href={`/mypage/orders/${order.orderId}`}
+          href={detailHref}
           className="flex shrink-0 items-center gap-0.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           주문 상세
@@ -116,23 +112,20 @@ export function OrderCard({ order }: { order: Order }) {
               후기 작성
             </button>
           )}
+          {/* 신청은 상품 단위라 대상을 골라야 한다. 그 선택은 주문 상세에서 한다 —
+              거기엔 이미지·옵션·가격이 함께 있어 잘못 고를 일이 없다.
+              목록에서 모달로 고르게 하면 상품명만 나열돼 식별 단서가 사라진다.
+              상품이 하나뿐이어도 상세로 보낸다 — 같은 버튼이 주문에 따라 다르게
+              동작하면 다음에 무슨 일이 생길지 예측할 수 없다. */}
           {cancelable && (
-            <button
-              type="button"
-              onClick={() => setClaimType("CANCEL")}
-              className={actionButtonClass}
-            >
+            <Link href={detailHref} className={actionButtonClass}>
               주문 취소
-            </button>
+            </Link>
           )}
           {returnable && (
-            <button
-              type="button"
-              onClick={() => setClaimType("RETURN")}
-              className={actionButtonClass}
-            >
+            <Link href={detailHref} className={actionButtonClass}>
               반품 신청
-            </button>
+            </Link>
           )}
           {showTracking && (
             <button
@@ -151,15 +144,6 @@ export function OrderCard({ order }: { order: Order }) {
         </div>
       )}
 
-      {/* 취소·반품 신청 모달 — 종류만 바꿔 공유한다 */}
-      {claimType && (
-        <ClaimRequestModal
-          open
-          onOpenChange={(next) => !next && setClaimType(null)}
-          order={order}
-          type={claimType}
-        />
-      )}
     </article>
   );
 }
