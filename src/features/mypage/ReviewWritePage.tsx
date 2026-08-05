@@ -121,7 +121,7 @@ export default function ReviewWritePage() {
 
         {/* 내용 */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="review-content">후기 내용</Label>
+          <Label htmlFor="review-content">후기 내용 (선택)</Label>
           <textarea
             id="review-content"
             rows={6}

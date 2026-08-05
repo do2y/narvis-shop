@@ -201,7 +201,9 @@ export interface Inquiry {
 export interface CreateReviewRequest {
   orderItemId: number;
   rating: number; // 1~5 정수
-  content: string; // 최대 2000자
+  // 최대 2000자. 별점만 남기는 경우 빈 문자열로 나간다 — 필드를 빼지 않는 이유는
+  // 계약이 필수로 정의돼 있어서다. 서버가 빈 값을 거부하면 계약부터 고쳐야 한다.
+  content: string;
 }
 
 // 후기 등록 응답 — 작성 후 상품 리뷰 캐시 무효화에 productId가 필요하다.
