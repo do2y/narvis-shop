@@ -31,6 +31,11 @@ export function CartItemCard({
   // 품절/숨김 상품은 선택·수량 변경을 막고 삭제만 남긴다(서버 합계에서도 제외됨)
   const disabled = !item.purchasable;
 
+  // 수량 상한 — 서버가 min(재고, 99)로 계산해 내린다(C-1 maxQuantity, 2026-08-05).
+  // 이게 없으면 사용자가 재고보다 많이 올려본 뒤 400을 받고서야 상한을 알게 된다.
+  // 구버전 응답 대비로 값이 없으면 제한하지 않는다(서버가 최종 판정).
+  const atMax = item.maxQuantity != null && item.quantity >= item.maxQuantity;
+
   return (
     <article className="flex gap-4 rounded-sm border bg-background p-4 sm:p-5">
       {/* 선택 체크박스 */}
@@ -111,9 +116,9 @@ export function CartItemCard({
             <button
               type="button"
               aria-label="수량 늘리기"
-              disabled={disabled}
+              disabled={disabled || atMax}
               onClick={() => onQuantityChange(item.quantity + 1)}
-              className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+              className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
             >
               <Plus className="size-4" />
             </button>
@@ -128,6 +133,13 @@ export function CartItemCard({
             )}
           </div>
         </div>
+
+        {/* 상한 도달 안내 — 남은 재고 수량은 노출하지 않는다(상품 상세와 동일 방침) */}
+        {atMax && !disabled && (
+          <p className="mt-2 text-xs text-muted-foreground" role="status">
+            더 담을 수 있는 재고가 없어요.
+          </p>
+        )}
       </div>
     </article>
   );

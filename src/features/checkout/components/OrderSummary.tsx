@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/shared/ui/button";
+import { buttonVariants } from "@/shared/ui/button";
+import { cn } from "@/lib/utils";
 import { formatPrice } from "@/shared/utils/formatPrice";
 
 // 결제 금액 요약 + 결제 버튼. 넓은 화면에선 우측 sticky.
@@ -11,6 +14,7 @@ export function OrderSummary({
   canSubmit,
   paying,
   error,
+  unrecoverable = false,
   onSubmit,
 }: {
   itemsTotal: number;
@@ -18,6 +22,11 @@ export function OrderSummary({
   canSubmit: boolean;
   paying: boolean; // 승인 대기 중
   error: string | null; // 결제 실패 안내 (있으면 재시도 유도)
+  /**
+   * 다시 시도해도 성공할 수 없는 실패(재고 부족) — 결제 버튼 대신 장바구니로 보낸다.
+   * 재시도 버튼을 그대로 두면 사용자가 같은 실패를 무한히 반복하게 된다(O-1·O-2).
+   */
+  unrecoverable?: boolean;
   onSubmit: () => void;
 }) {
   const finalTotal = itemsTotal - discount;
@@ -58,17 +67,29 @@ export function OrderSummary({
         </div>
       )}
 
-      <Button
-        className="mt-5 h-12 w-full rounded-sm text-base"
-        disabled={!canSubmit || paying}
-        onClick={onSubmit}
-      >
-        {paying
-          ? "결제 처리 중…"
-          : error
-            ? "다시 시도"
-            : `${formatPrice(finalTotal)} 결제하기`}
-      </Button>
+      {unrecoverable ? (
+        <Link
+          href="/cart"
+          className={cn(
+            buttonVariants(),
+            "mt-5 h-12 w-full rounded-sm text-base",
+          )}
+        >
+          장바구니로 이동
+        </Link>
+      ) : (
+        <Button
+          className="mt-5 h-12 w-full rounded-sm text-base"
+          disabled={!canSubmit || paying}
+          onClick={onSubmit}
+        >
+          {paying
+            ? "결제 처리 중…"
+            : error
+              ? "다시 시도"
+              : `${formatPrice(finalTotal)} 결제하기`}
+        </Button>
+      )}
     </div>
   );
 }

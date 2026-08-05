@@ -35,11 +35,22 @@ export interface CreateOrderRequest {
 // MOCK_FAIL은 무조건 실패(시연 재현용), 그 외는 무조건 성공 — 랜덤 실패 없음.
 export type PaymentMethod = "MOCK_CARD" | "MOCK_FAIL";
 
+/**
+ * 결제 실패 사유(O-1·O-2, 2026-08-05). 성공(PAID)이면 null.
+ *
+ * 재결제가 의미 있는지가 갈린다 — 카드 거절은 다시 시도하면 되지만,
+ * 재고 부족은 재결제해도 절대 성공하지 않으므로 장바구니로 보내야 한다.
+ * 이 필드가 없던 동안 사용자는 실패한 재결제를 무한히 반복할 수 있었다.
+ */
+export type PaymentFailureReason = "MOCK_DECLINED" | "OUT_OF_STOCK";
+
 // 결제 성공·실패 모두 HTTP 200. 결과는 status로 구분한다.
 export interface CreateOrderResponse {
   orderId: number;
   orderNo: string;
   status: "PAID" | "PAYMENT_FAILED";
+  // O-2 재결제도 같은 모양으로 온다. 구버전 응답 대비로 optional.
+  failureReason?: PaymentFailureReason | null;
 }
 
 // 배송지 타입은 마이페이지와 공유 — shared/types/address.ts 참조.

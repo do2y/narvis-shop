@@ -77,6 +77,32 @@ export class ApiError extends Error {
     );
     return parsed.length ? parsed : undefined;
   }
+
+  /**
+   * 주문할 수 없는 항목 — ORDER_PRODUCT_UNAVAILABLE에 동반되는
+   * detail.unavailableItems (O-1, 2026-08-05).
+   *
+   * 서버가 주문 생성 전에 재고를 선검증하고 불량 항목을 fail-fast가 아니라 전량 수집해
+   * 내려준다. 이게 없으면 "장바구니에서 확인해주세요"밖에 안내할 수 없다.
+   *
+   * reason은 목록·상세의 purchaseState와 같은 어휘다 — 주문 화면과 장바구니가
+   * 다른 말을 하지 않게 서버가 한 곳(PurchaseState)에서 판정한다.
+   */
+  get unavailableItems():
+    | { productId: number; name: string; reason: "SOLD_OUT" | "HIDDEN" }[]
+    | undefined {
+    const value = this.detail?.unavailableItems;
+    if (!Array.isArray(value)) return undefined;
+    const parsed = value.filter(
+      (i): i is { productId: number; name: string; reason: "SOLD_OUT" | "HIDDEN" } =>
+        typeof i === "object" &&
+        i !== null &&
+        typeof (i as { name?: unknown }).name === "string" &&
+        ((i as { reason?: unknown }).reason === "SOLD_OUT" ||
+          (i as { reason?: unknown }).reason === "HIDDEN"),
+    );
+    return parsed.length ? parsed : undefined;
+  }
 }
 
 export const api = axios.create({

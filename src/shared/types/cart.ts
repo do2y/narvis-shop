@@ -29,6 +29,12 @@ export interface CartItem {
   price: number; // 현재가(담은 시점 가격 아님)
   originalPrice: number; // 정가 — 할인 표시·합산용
   purchasable: boolean; // HIDDEN 상품은 false — 목록 유지하되 합계·주문에서 제외
+  /**
+   * 수량 스테퍼 상한 — 서버가 min(재고, 담기 상한 99)을 계산해 내린다(C-1, 2026-08-05).
+   * 재고 숫자를 받아 FE가 99와 비교하면 서버 규칙을 FE가 아는 게 되므로 계산된 값을 받는다.
+   * 조회 시점 스냅샷이라 담기 실패(CART_STOCK_INSUFFICIENT)는 그대로 남는다.
+   */
+  maxQuantity: number;
 }
 
 // 장바구니 전체 — 합계는 서버 계산값을 그대로 쓴다(FE 계산 금지).
