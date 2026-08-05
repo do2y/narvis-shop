@@ -16,9 +16,13 @@ export function ProfileHeader() {
         <span className="truncate text-[15px] font-semibold leading-tight tracking-tight">
           {nickname}
         </span>
-        <span className="truncate text-xs text-muted-foreground">
-          soy@jarvis.ai
-        </span>
+        {/* 복원 전에는 user 가 null 이라 자리만 비운다 — 임의 값을 넣으면
+            남의 계정으로 로그인한 것처럼 보인다(실제로 고정 이메일이 박혀 있었다). */}
+        {user?.email && (
+          <span className="truncate text-xs text-muted-foreground">
+            {user.email}
+          </span>
+        )}
       </div>
     </div>
   );
