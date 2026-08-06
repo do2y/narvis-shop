@@ -42,8 +42,15 @@ export function MessageList({
 
       {messages.map((msg, i) => {
         const isLast = i === messages.length - 1;
-        const showTyping =
-          isStreaming && isLast && msg.role === "assistant" && !msg.text;
+        const isPending =
+          isStreaming && isLast && msg.role === "assistant" && !msg.error;
+        // 답변이 아직 비었을 때만 말풍선 자체가 타이핑 표시가 된다.
+        const showTyping = isPending && !msg.text;
+        // 진행 표시는 답변 렌더링과 독립이다 — publishing 은 근거 token 이 나간 뒤
+        // products.ready 직전에 오므로, 답변이 채워진 뒤에도 보여줄 자리가 필요하다
+        // (계약 CH-2 §progress). 빈 말풍선일 때는 버블 안에서 이미 보여주므로 제외.
+        const showStatusLine =
+          isPending && Boolean(msg.text) && Boolean(progress);
 
         return msg.role === "user" ? (
           <div
@@ -84,26 +91,41 @@ export function MessageList({
                 )}
               </div>
             ) : (
-              <span
-                className={cn(
-                  "max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed",
-                  showTyping && "py-3",
-                )}
-              >
-                {showTyping ? (
-                  // 진행 텍스트(analysis progress)가 있으면 로딩 문구로, 없으면 점 애니메이션
-                  progress ? (
-                    <span className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex min-w-0 max-w-[80%] flex-col items-start gap-1.5">
+                <span
+                  className={cn(
+                    "whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed",
+                    showTyping && "py-3",
+                  )}
+                >
+                  {showTyping ? (
+                    // 진행 텍스트(progress)가 있으면 로딩 문구로, 없으면 점 애니메이션
+                    progress ? (
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <TypingIndicator />
+                        {progress}
+                      </span>
+                    ) : (
                       <TypingIndicator />
-                      {progress}
-                    </span>
+                    )
                   ) : (
+                    msg.text
+                  )}
+                </span>
+
+                {/* 답변이 렌더된 뒤에도 오는 진행 표시(publishing) 자리.
+                    말풍선 밖 얇은 줄이라 답변 텍스트를 밀지 않고, 사라질 때도
+                    버블 높이가 변하지 않아 레이아웃이 튀지 않는다. */}
+                {showStatusLine && (
+                  <span
+                    className="flex animate-in items-center gap-2 px-1 text-xs text-muted-foreground duration-300 fade-in"
+                    aria-live="polite"
+                  >
                     <TypingIndicator />
-                  )
-                ) : (
-                  msg.text
+                    {progress}
+                  </span>
                 )}
-              </span>
+              </div>
             )}
           </div>
         );
