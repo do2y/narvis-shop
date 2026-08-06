@@ -30,8 +30,6 @@ import { OptionSelector, type OptionSelection } from "./components/OptionSelecto
 import { SpecTable } from "./components/SpecTable";
 import { DetailImages } from "./components/DetailImages";
 import { ReviewSummary } from "./components/ReviewSummary";
-import { RecommendRow } from "./components/RecommendRow";
-import { PLACEHOLDER_DETAIL } from "./placeholder";
 import { toSpecRows } from "./utils/attributes";
 import {
   useProductDetail,
@@ -153,9 +151,7 @@ export default function ProductPage({
     ? Math.round((1 - view.price / view.originalPrice) * 100)
     : 0;
 
-  // 리뷰 목록·연관 추천은 아직 계약 전(P-3, related OPEN)이라 플레이스홀더 유지.
   // 갤러리는 대표 이미지 단일(02 D14)이라 상세 이미지 1장만 사용.
-  const d = PLACEHOLDER_DETAIL;
   const images = [view.imageUrl];
 
   // attributes를 스펙 표 행으로 변환. 상세 도착 전에는 빈 표.
@@ -390,19 +386,6 @@ export default function ProductPage({
           sort={reviewSort}
           onSortChange={setReviewSort}
           isLoading={reviewsLoading}
-        />
-
-        <RecommendRow
-          title="함께 구매하면 좋아요"
-          description="이 상품을 구매한 분들이 함께 구매한 아이템이에요."
-          items={d.frequentlyBought}
-        />
-
-        <RecommendRow
-          title="Jarvis 추천 대체 상품"
-          description="비슷한 조건에서 다른 선택지를 찾고 계신다면요."
-          items={d.alternatives}
-          variant="reason"
         />
 
         {/* 브랜드 배너 — 로고·이름·버튼이 전부 같은 목적지라 배너 전체를 하나의 링크로 둔다.
