@@ -66,7 +66,10 @@ export interface ProductDetail {
   // 한쪽만 문자열이면 찜 판정·캐시 시딩이 타입 에러 없이 조용히 어긋난다.
   id: string;
   name: string;
-  imageUrl: string; // 대표 이미지 단일
+  imageUrl: string; // 대표 이미지 단일(상단 갤러리)
+  // 상세 설명 이미지. 위에서 아래로 이어 붙이는 세로 나열이라 갤러리와 성격이 다르다.
+  // 없는 상품이 있어 optional — 구버전 응답에는 필드 자체가 없다.
+  detailImages?: string[];
   price: number; // 판매가
   originalPrice: number; // 정가
   summary: string;
