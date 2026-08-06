@@ -60,7 +60,7 @@ export function flush() {
 export function track(
   eventType: BehaviorEventType,
   payload?: {
-    productId?: number;
+    productId?: string;
     properties?: EventProperties;
     /** 추천에서 비롯된 이벤트에만 — 서버가 listId 로 지면·순위를 도출해 붙인다 */
     recommendation?: EventRecommendation;

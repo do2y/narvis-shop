@@ -18,8 +18,8 @@ export interface OrderAddressInput {
 }
 
 export interface DirectOrderItem {
-  productId: number;
-  // 문자열이다 — 64비트 ID(ProductOption 주석 참조)
+  // productId·optionId 모두 문자열이다 — 64비트 ID(ProductOption 주석 참조)
+  productId: string;
   optionId?: string;
   quantity: number;
 }

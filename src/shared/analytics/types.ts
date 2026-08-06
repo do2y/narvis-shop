@@ -67,7 +67,7 @@ export interface BehaviorEvent {
   schemaVersion: number;
   sessionKey: string;
   eventType: BehaviorEventType;
-  productId?: number;
+  productId?: string;
   recommendation?: EventRecommendation;
   properties?: EventProperties;
   occurredAt: string; // 발생 시각, ISO 8601 UTC(Z). 서버는 created_at을 수신 시각으로 별도 기록

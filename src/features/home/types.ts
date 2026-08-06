@@ -18,7 +18,7 @@ export interface CategoryChild {
 // reason은 LLM이 추천하는 챗봇 상품 카드(shared/types/chat.ts)에만 존재.
 // 할인율은 백엔드가 주지 않아 originalPrice·price에서 파생.
 export interface PopularProduct {
-  productId: number;
+  productId: string;
   name: string;
   brandName: string;
   imageUrl: string;

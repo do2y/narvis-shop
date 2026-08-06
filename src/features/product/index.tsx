@@ -46,7 +46,7 @@ export default function ProductPage({
   id,
   initialDetail,
 }: {
-  id: number;
+  id: string;
   initialDetail?: ProductDetail;
 }) {
   const router = useRouter();

@@ -19,7 +19,9 @@ export default function ReviewWritePage() {
   const params = useSearchParams();
   // 후기 대상은 주문 줄(orderItemId). productId는 상품 요약 표시·캐시 조회용.
   const orderItemId = Number(params.get("orderItemId"));
-  const productId = Number(params.get("productId"));
+  // Number()로 감싸지 않는다 — 64비트 id라 끝자리가 바뀌고,
+  // 그러면 아래 ['products', productId] 캐시 조회가 조용히 빗나가 상품 요약이 안 뜬다.
+  const productId = params.get("productId") ?? "";
   const router = useRouter();
   const queryClient = useQueryClient();
 

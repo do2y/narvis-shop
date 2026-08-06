@@ -4,7 +4,7 @@ import { formatPrice } from "@/shared/utils/formatPrice";
 import { ProductImage } from "@/shared/ui/ProductImage";
 
 interface RecommendItem {
-  productId: number;
+  productId: string;
   name: string;
   brandName: string;
   price: number;

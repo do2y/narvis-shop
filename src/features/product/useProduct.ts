@@ -16,11 +16,13 @@ const FIVE_MIN = 5 * 60 * 1000;
 // initialData: 서버 컴포넌트가 SSR에서 받아온 상세를 넘긴다. 있으면 첫 렌더부터
 // 완전한 화면이 나가고(검색봇·LCP), 클라이언트는 staleTime이 지난 뒤에만 재조회한다.
 // 클라이언트 내비게이션으로 들어오면 undefined라 기존 동작(카드 시딩 → 조회) 그대로다.
-export function useProductDetail(id: number, initialData?: ProductDetail) {
+export function useProductDetail(id: string, initialData?: ProductDetail) {
   return useQuery({
     queryKey: ["products", id, "detail"],
     queryFn: () => fetchProductDetail(id),
-    enabled: Number.isFinite(id),
+    // id는 문자열이다 — Number.isFinite로 판정하면 항상 false가 되어
+    // 타입 에러 없이 쿼리가 영영 꺼진다(화면은 스켈레톤에서 멈춤).
+    enabled: id !== "",
     staleTime: FIVE_MIN,
     initialData,
   });
@@ -29,7 +31,7 @@ export function useProductDetail(id: number, initialData?: ProductDetail) {
 // 상품 후기 — 상세와 함께 갱신되면 되므로 staleTime 5분.
 // page/sort가 키에 들어가 페이지 전환 시 각각 캐시된다.
 export function useProductReviews(
-  id: number,
+  id: string,
   params: { page?: number; size?: number; sort?: ReviewSort } = {},
 ) {
   const { page = 0, size = 10, sort = "latest" } = params;
@@ -38,7 +40,7 @@ export function useProductReviews(
   const query = useQuery({
     queryKey: ["products", id, "reviews", { page, size, sort }],
     queryFn: () => fetchProductReviews(id, { page, size, sort }),
-    enabled: Number.isFinite(id),
+    enabled: id !== "",
     staleTime: FIVE_MIN,
   });
 
@@ -63,7 +65,7 @@ export function useProductReviews(
 // 이 쿼리는 네트워크 요청이 없어 queryFn을 줄 수 없는데, useQuery는 enabled:false여도
 // queryFn 부재를 에러로 본다(시딩 없이 URL 직접 진입 시 콘솔 에러).
 // "캐시를 읽고 변화를 구독한다"는 실제 의도를 그대로 표현하면 그 문제가 사라진다.
-export function useSeededProductCard(id: number): {
+export function useSeededProductCard(id: string): {
   data: SeededProductCard | undefined;
 } {
   const queryClient = useQueryClient();

@@ -33,7 +33,7 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 // 주문 항목 — 상세 캐시 시딩을 위해 카드 수준 데이터를 포함(이미지/가격).
 export interface OrderItem {
   orderItemId: number;
-  productId: number;
+  productId: string;
   productName: string;
   imageUrl: string;
   optionName: string | null; // 옵션 없는 상품은 null
@@ -96,7 +96,7 @@ export interface OrderDetail extends Omit<Order, "items"> {
 // 정렬은 서버가 최신순으로 내려준 것을 그대로 쓴다(응답에 viewedAt은 없음).
 // 필드 구성은 찜 목록(WishlistProduct)과 동일한 카드 계약이다.
 export interface RecentProduct {
-  productId: number;
+  productId: string;
   name: string;
   brandName: string;
   price: number;
@@ -226,7 +226,7 @@ export interface CreateReviewRequest {
 export interface CreateReviewResponse {
   reviewId: number;
   orderItemId: number;
-  productId: number;
+  productId: string;
   rating: number;
   content: string;
   createdAt: string; // ISO 일시(+09:00)

@@ -10,10 +10,10 @@ export async function fetchWishlist(): Promise<WishlistProduct[]> {
 
 // 찜 추가 — 이미 찜한 상품이면 409 WISHLIST_DUPLICATE.
 // 챗봇 상품 카드의 찜 버튼도 LLM을 거치지 않고 이 API를 직접 호출한다.
-export async function addWishlistItem(productId: number): Promise<void> {
+export async function addWishlistItem(productId: string): Promise<void> {
   await api.post("/api/wishlist", { productId });
 }
 
-export async function removeWishlistItem(productId: number): Promise<void> {
+export async function removeWishlistItem(productId: string): Promise<void> {
   await api.delete(`/api/wishlist/${productId}`);
 }

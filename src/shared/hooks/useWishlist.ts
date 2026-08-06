@@ -27,7 +27,7 @@ export function useWishlist() {
 
 // 특정 상품이 찜 상태인지 — 목록에서 파생한다.
 // 별도 조회 API가 없어 목록을 기준으로 삼는다(목록이 없으면 false).
-export function useIsWished(productId: number): boolean {
+export function useIsWished(productId: string): boolean {
   const { data } = useWishlist();
   return !!data?.some((p) => p.productId === productId);
 }
@@ -43,7 +43,7 @@ export function useToggleWishlist() {
   const isAuthed = useAuthStore((s) => s.user !== null);
 
   const mutation = useMutation({
-    mutationFn: ({ productId, wished }: { productId: number; wished: boolean }) =>
+    mutationFn: ({ productId, wished }: { productId: string; wished: boolean }) =>
       wished ? removeWishlistItem(productId) : addWishlistItem(productId),
 
     onMutate: async ({ productId, wished }) => {
@@ -83,7 +83,7 @@ export function useToggleWishlist() {
     },
   });
 
-  const toggle = (productId: number, wished: boolean) => {
+  const toggle = (productId: string, wished: boolean) => {
     if (!isAuthed) {
       const returnUrl = encodeURIComponent(
         window.location.pathname + window.location.search,
