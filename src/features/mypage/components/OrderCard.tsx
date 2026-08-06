@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import {
+  buildClaimedNotice,
   canClaimItem,
   canReviewItemStatus,
   hasMixedItemStatus,
   isClaimedItemStatus,
   ORDER_STATUS_LABEL,
+  resolveHeaderStatus,
   type Order,
   type OrderItem,
 } from "../types";
@@ -37,25 +39,36 @@ function ItemRow({
   item: OrderItem;
   showStatus: boolean;
 }) {
+  // 가라앉히기는 "빠진 것 vs 남은 것"의 대비가 목적이라, 대비할 상대가 있을 때만
+  // 건다(showStatus = 주문 안에서 상태가 갈림). 전량 취소된 주문에 그대로 걸면
+  // 모든 줄이 회색·취소선이 돼 카드 전체가 죽고, 정작 무엇이 취소됐는지는
+  // 대표 배지 말고는 알 수 없게 된다.
+  const claimed = showStatus && isClaimedItemStatus(item.status);
+
   return (
-    <div className="flex gap-4 py-4">
+    <div className="flex gap-4 px-5 py-4">
       <ProductImage
         src={item.imageUrl}
         alt=""
-        className="size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20"
+        className={cn(
+          "size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20",
+          claimed && "opacity-50 grayscale",
+        )}
       />
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="truncate text-sm font-medium">{item.productName}</p>
+        <p
+          className={cn(
+            "truncate text-sm font-medium",
+            claimed && "text-muted-foreground",
+          )}
+        >
+          {item.productName}
+        </p>
         <p className="text-xs text-muted-foreground">
           {showStatus && (
             // 취소·반품 줄만 색으로 띄운다 — 어느 상품이 빠졌는지 찾으려고 보는
             // 화면이라 그 줄이 먼저 눈에 들어와야 한다. 나머지는 회색으로 배경에 둔다.
-            <span
-              className={cn(
-                "font-medium",
-                isClaimedItemStatus(item.status) && "text-amber-700",
-              )}
-            >
+            <span className={cn("font-medium", claimed && "text-amber-700")}>
               {ORDER_STATUS_LABEL[item.status] ?? item.status}
             </span>
           )}
@@ -63,7 +76,15 @@ function ItemRow({
           {item.optionName ? `${item.optionName} / ` : ""}
           {item.quantity}개
         </p>
-        <p className="mt-0.5 text-sm font-bold">{formatPrice(item.price)}</p>
+        <p
+          className={cn(
+            "mt-0.5 text-sm font-bold",
+            // 취소된 줄의 가격에 취소선 — 결제에서 빠진 금액임을 형태로 알린다
+            claimed && "font-medium text-muted-foreground line-through",
+          )}
+        >
+          {formatPrice(item.price)}
+        </p>
       </div>
     </div>
   );
@@ -78,20 +99,17 @@ export function OrderCard({ order }: { order: Order }) {
   const detailHref = `/mypage/orders/${order.orderId}`;
   // 부분 취소처럼 상태가 갈린 주문에서만 줄마다 상태를 밝힌다 (판정은 types.ts)
   const showItemStatus = hasMixedItemStatus(order.items);
-  // 대표 배지는 주문에 하나뿐이라 부분 취소를 담지 못한다 — 남은 주문이 우세하면
-  // "주문 완료"로 떠서 빠진 상품이 사라지고, 취소가 우세하면 멀쩡한 상품까지
-  // 취소된 것으로 읽힌다. 어느 쪽이든 건수는 배지와 별개로 밝혀야 한다.
-  const claimedCount = order.items.filter((i) =>
-    isClaimedItemStatus(i.status),
-  ).length;
-  const showClaimedNotice = showItemStatus && claimedCount > 0;
+  // 대표 배지는 배송·결제 진행 축이라 "일부가 취소됨"을 담지 못한다. 다른 축이므로
+  // 배지에 섞지 않고(섞으면 부분 취소된 주문의 배송 상태를 표현할 수 없다)
+  // 건수를 별도 줄로 밝힌다 — 리스트를 끝까지 보지 않아도 알 수 있게 목록 위에 둔다.
+  const claimedNotice = buildClaimedNotice(order.items);
 
   return (
     <article className="overflow-hidden rounded-sm border bg-background">
       {/* 헤더: 상태 + 주문일 + 주문번호 / 우측 주문 상세 */}
       <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-5 py-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <OrderStatusBadge status={order.representativeStatus} />
+          <OrderStatusBadge status={resolveHeaderStatus(order)} />
           <span className="truncate text-sm text-muted-foreground">
             {order.orderedAt.slice(0, 10).replace(/-/g, ".")} · {order.orderNo}
           </span>
@@ -105,15 +123,17 @@ export function OrderCard({ order }: { order: Order }) {
         </Link>
       </div>
 
-      {showClaimedNotice && (
-        <p className="flex items-center gap-1.5 border-b bg-amber-50/50 px-5 py-2.5 text-xs text-amber-800">
+      {claimedNotice && (
+        <p className="flex items-center gap-1.5 border-b bg-amber-50/50 px-5 py-2.5 text-xs font-medium text-amber-800">
           <Info className="size-3.5 shrink-0" aria-hidden />
-          상품 {order.items.length}개 중 {claimedCount}개가 취소·반품되었어요
+          {claimedNotice}
         </p>
       )}
 
-      {/* 상품 목록 */}
-      <div className="divide-y px-5">
+      {/* 상품 목록 — 좌우 여백은 각 행(ItemRow)이 갖는다.
+          여기에 px-5 를 주면 divide-y 구분선이 여백 안쪽에서만 그어져
+          헤더·안내 줄의 경계선보다 짧아진다. */}
+      <div className="divide-y">
         {order.items.map((item) => (
           <ItemRow
             key={item.orderItemId}
