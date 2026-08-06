@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -84,10 +85,18 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
         <Button
           variant="outline"
           onClick={() => setExpanded((v) => !v)}
-          // 이미지와 같은 폭·같은 중심으로 맞춘다 — 버튼만 본문 폭이면 어긋나 보인다.
-          className="mx-auto h-11 w-full max-w-2xl"
+          // 이미지가 아니라 위아래 형제 섹션(상품 정보 표·리뷰)의 폭에 맞춘다.
+          // 이미지는 원본 해상도 때문에 max-w-2xl로 좁혀 둔 예외라, 거기 맞추면
+          // 버튼만 안쪽으로 들어가 세로 정렬선이 끊긴다.
+          className="h-11 w-full gap-1.5"
         >
           {expanded ? "상세 설명 접기" : "상세 설명 더보기"}
+          {/* 펼치면 화살표를 뒤집어 접힌다는 것을 보인다. 아이콘 2개를 번갈아 쓰지 않고
+              회전시키는 건 AppHeader와 같은 방식 — 상태 전환이 이어져 보인다. */}
+          <ChevronDown
+            aria-hidden
+            className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
         </Button>
       )}
     </section>
