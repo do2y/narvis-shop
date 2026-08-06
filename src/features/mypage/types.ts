@@ -33,7 +33,7 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 // 주문 항목 — 상세 캐시 시딩을 위해 카드 수준 데이터를 포함(이미지/가격).
 export interface OrderItem {
   orderItemId: number;
-  productId: number;
+  productId: string;
   productName: string;
   imageUrl: string;
   optionName: string | null; // 옵션 없는 상품은 null
@@ -96,7 +96,7 @@ export interface OrderDetail extends Omit<Order, "items"> {
 // 정렬은 서버가 최신순으로 내려준 것을 그대로 쓴다(응답에 viewedAt은 없음).
 // 필드 구성은 찜 목록(WishlistProduct)과 동일한 카드 계약이다.
 export interface RecentProduct {
-  productId: number;
+  productId: string;
   name: string;
   brandName: string;
   price: number;
@@ -127,6 +127,18 @@ export type ClaimType =
  */
 export function canClaimItem(status: OrderStatus, type: ClaimType): boolean {
   if (type === "CANCEL") return status === "ORDERED";
+  return status === "DELIVERED" || status === "CONFIRMED";
+}
+
+/**
+ * 이 상태의 주문 상품에 후기를 쓸 수 있는가 — 목록 카드의 버튼 노출 판정.
+ *
+ * 상세는 이걸 쓰지 않는다. 서버가 아이템마다 주는 `canReview` 가 정본이고,
+ * 그쪽은 "이미 작성함"까지 반영한다(상태만으로는 알 수 없다).
+ * 목록 응답에는 그 필드가 없어 상태로 근사할 수밖에 없다 — 그래서 목록 버튼은
+ * 작성 화면이 아니라 주문 상세로 보낸다.
+ */
+export function canReviewItemStatus(status: OrderStatus): boolean {
   return status === "DELIVERED" || status === "CONFIRMED";
 }
 
@@ -201,14 +213,16 @@ export interface Inquiry {
 export interface CreateReviewRequest {
   orderItemId: number;
   rating: number; // 1~5 정수
-  content: string; // 최대 2000자
+  // 최대 2000자. 별점만 남기는 경우 빈 문자열로 나간다 — 필드를 빼지 않는 이유는
+  // 계약이 필수로 정의돼 있어서다. 서버가 빈 값을 거부하면 계약부터 고쳐야 한다.
+  content: string;
 }
 
 // 후기 등록 응답 — 작성 후 상품 리뷰 캐시 무효화에 productId가 필요하다.
 export interface CreateReviewResponse {
   reviewId: number;
   orderItemId: number;
-  productId: number;
+  productId: string;
   rating: number;
   content: string;
   createdAt: string; // ISO 일시(+09:00)

@@ -38,7 +38,7 @@ export interface SellerSummaryParams {
 
 /** 재고 부족 목록의 한 행 — 상품 목록(SellerProductStat)보다 필드가 적다 */
 export interface SellerLowStockItem {
-  productId: number;
+  productId: string;
   name: string;
   imageUrl: string;
   stockQuantity: number;
@@ -77,7 +77,7 @@ export interface SellerSummary {
 
   // 화면에는 쓰지 않는다 — AI 채팅·타 화면이 소비하는 상품 퍼널 데이터
   products: {
-    productId: number;
+    productId: string;
     name: string;
     viewCount: number;
     cartCount: number;
@@ -113,7 +113,7 @@ export type SellerOrderTab =
 
 /** 주문의 대표 상품 — 자사 아이템 중 금액 최대 1건 */
 export interface SellerOrderRepProduct {
-  productId: number;
+  productId: string;
   name: string;
   imageUrl: string;
   optionName: string;
@@ -157,7 +157,7 @@ export type SellerProductSort = "latest" | "sales" | "stock" | "price";
 // S-3 화면 전용. 챗봇용 SellerProductStat(shared)과 필드가 달라 상속하지 않는다
 // (code 없음, stockQuantity/displayedSalesCount, displayStatus·createdAt은 화면 전용).
 export interface SellerProduct {
-  productId: number;
+  productId: string;
   name: string;
   imageUrl: string;
   category: string; // 소분류(leaf) 이름만

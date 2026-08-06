@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, ImagePlus, X } from "lucide-react";
+import { Check } from "lucide-react";
 import type { ProductCard } from "@/shared/types/chat";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { Button } from "@/shared/ui/button";
@@ -19,7 +19,9 @@ export default function ReviewWritePage() {
   const params = useSearchParams();
   // 후기 대상은 주문 줄(orderItemId). productId는 상품 요약 표시·캐시 조회용.
   const orderItemId = Number(params.get("orderItemId"));
-  const productId = Number(params.get("productId"));
+  // Number()로 감싸지 않는다 — 64비트 id라 끝자리가 바뀌고,
+  // 그러면 아래 ['products', productId] 캐시 조회가 조용히 빗나가 상품 요약이 안 뜬다.
+  const productId = params.get("productId") ?? "";
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -28,9 +30,6 @@ export default function ReviewWritePage() {
     "products",
     productId,
   ]);
-
-  // 사진은 목: 파일명만 유지(백엔드 업로드 API 붙을 때 실제 전송).
-  const [photos, setPhotos] = useState<string[]>([]);
 
   const {
     control,
@@ -121,7 +120,7 @@ export default function ReviewWritePage() {
 
         {/* 내용 */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="review-content">후기 내용</Label>
+          <Label htmlFor="review-content">후기 내용 (선택)</Label>
           <textarea
             id="review-content"
             rows={6}
@@ -139,49 +138,9 @@ export default function ReviewWritePage() {
           )}
         </div>
 
-        {/* 사진 첨부 (목: 파일명만 유지) */}
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="review-photos">사진 첨부 (선택)</Label>
-          <div className="flex flex-wrap gap-2">
-            {photos.map((name) => (
-              <span
-                key={name}
-                className="inline-flex h-9 items-center gap-1 rounded-full bg-muted px-3 text-xs text-muted-foreground"
-              >
-                <span className="max-w-32 truncate">{name}</span>
-                <button
-                  type="button"
-                  aria-label={`${name} 제거`}
-                  onClick={() =>
-                    setPhotos((prev) => prev.filter((n) => n !== name))
-                  }
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </span>
-            ))}
-            <label
-              htmlFor="review-photos"
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
-            >
-              <ImagePlus className="size-4" />
-              사진 추가
-            </label>
-            <input
-              id="review-photos"
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const names = Array.from(e.target.files ?? []).map((f) => f.name);
-                setPhotos((prev) => [...prev, ...names]);
-                e.target.value = ""; // 같은 파일 재선택 허용
-              }}
-            />
-          </div>
-        </div>
+        {/* 사진 첨부는 두지 않는다 — 업로드 API(백엔드)가 아직 없어서,
+            첨부해도 등록 시 조용히 사라진다. 붙이는 것보다 없는 게 정직하다.
+            API 가 생기면 파일 전송까지 함께 구현한다. */}
 
         {errorMessage && (
           <p className="text-sm text-destructive" role="alert">

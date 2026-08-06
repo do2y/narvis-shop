@@ -14,6 +14,6 @@ import type { ProductDetail } from "./types";
  * 하고, 상세 화면이 "품절인데 구매 가능"으로 보이면 안 된다.
  * ISR 전환은 갱신 빈도를 확인한 뒤 결정한다(계획서 6장 열린 질문).
  */
-export const getProductDetail = cachedGet((id: number) =>
+export const getProductDetail = cachedGet((id: string) =>
   serverGet<ProductDetail>(`/api/products/${id}`),
 );

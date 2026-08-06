@@ -33,7 +33,10 @@ export function unavailableLabel(state?: PurchaseState | null): string | null {
 // 렌더에 그대로 사용한다. 필드가 하나라도 빠지면 상세 렌더가 깨지므로
 // 시딩은 반드시 useGoToProduct(shared/hooks)를 거쳐 이 타입으로 강제한다.
 export interface SeededProductCard {
-  productId: number;
+  // 문자열이다. 서버 productId가 64비트라 number로 두면 JSON.parse 시점에
+  // 끝자리가 조용히 바뀐다(optionId에서 같은 일을 겪음, b72f0e9).
+  // number로 되돌리지 말 것 — 경고 없이 값만 틀어진다.
+  productId: string;
   name: string;
   brandName: string;
   price: number;

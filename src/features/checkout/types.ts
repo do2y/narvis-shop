@@ -18,7 +18,7 @@ export interface OrderAddressInput {
 }
 
 export interface DirectOrderItem {
-  productId: number;
+  productId: string;
   optionId?: number;
   quantity: number;
 }

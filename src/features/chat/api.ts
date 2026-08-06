@@ -4,7 +4,7 @@ import type { ProductCard } from "@/shared/types/chat";
 // 인기상품 응답(GET /api/products/popular, P-4) — 채팅 초기 화면 카드로 변환해 사용.
 // 단순 집계라 추천 이유가 없다(reason은 LLM 추천 카드에만 존재).
 interface PopularProductRaw {
-  productId: number;
+  productId: string;
   name: string;
   brandName: string;
   imageUrl: string;

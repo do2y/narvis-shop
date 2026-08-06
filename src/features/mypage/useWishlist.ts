@@ -10,7 +10,7 @@ import { useToggleWishlist } from "@/shared/hooks/useWishlist";
 export function useRemoveWishlistItem() {
   const { toggle, isPending } = useToggleWishlist();
   return {
-    mutate: (productId: number) => toggle(productId, true),
+    mutate: (productId: string) => toggle(productId, true),
     isPending,
   };
 }
