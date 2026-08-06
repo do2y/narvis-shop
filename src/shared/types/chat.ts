@@ -228,19 +228,36 @@ export interface SellerDraft {
 // event: 라인은 쓰지 않는다 — payload 의 type 으로 구분한다.
 
 /**
- * 구매자 진행 단계(계약 CH-2 §progress, 2026-08-05 신설 #289).
- * 확정 어휘는 analyzing 1종 — 첫 프레임 시점엔 intent 가 아직 확정되지 않아
- * 그 자리에서 searching 을 내면 담기·주문조회·일반 대화 턴까지 "검색 중"으로 잘못 표시된다.
- * searching·relaxing·reranking 은 후속 확장 후보이며 미구현이다.
+ * 구매자 진행 단계(계약 CH-2 §progress, 2026-08-05 신설 #289 → 다단계화 2026-08-06).
+ *
+ * 어휘는 **개방형**이다 — 계약이 "FE 는 모르는 stage 를 무시한다"를 명문화했으므로
+ * 닫힌 유니온으로 두지 않는다. AI 가 stage 를 추가할 때 FE 배포를 기다리게 하지 않으려는 것이고,
+ * 실제로 retrying 이 후속으로 예고돼 있다(jarvis-ai#406).
+ * KNOWN 목록은 자체 문구를 가진 것들일 뿐 허용 집합이 아니다.
  */
-export type BuyerProgressStage = "analyzing";
+export const KNOWN_BUYER_PROGRESS_STAGES = [
+  "analyzing",
+  "mapping",
+  "expanding",
+  "searching",
+  "relaxing",
+  "reranking",
+  "publishing",
+] as const;
+
+/** 알려진 7종 + 그 밖의 문자열. `& {}` 는 유니온이 string 으로 뭉개져 자동완성이 죽는 걸 막는다. */
+export type BuyerProgressStage =
+  | (typeof KNOWN_BUYER_PROGRESS_STAGES)[number]
+  | (string & {});
 
 /**
- * 구매자 progress 페이로드 — 0~1회, 나가면 스트림 첫 프레임.
+ * 구매자 progress 페이로드 — **다회 나갈 수 있다**(2026-08-06 다단계화 전까지는 0~1회였다).
  *
  * FE 는 도착을 전제하면 안 된다: 그 앞에서 끝나는 턴(LLM 미구성 → error{LLM_UNAVAILABLE},
- * 세션 저장소 장애 → 스트림 전 오류 봉투)에서는 0회이고, AI 서버도 아직 기본 off 라
- * 당분간 실제 와이어로는 나오지 않는다.
+ * 세션 저장소 장애 → 스트림 전 오류 봉투)에서는 0회다.
+ *
+ * publishing 은 근거 token 이 나간 **뒤** products.ready 직전에 온다 —
+ * 그래서 진행 표시를 답변 렌더링에 종속시키면 안 된다(계약 CH-2 §progress).
  */
 export interface BuyerProgress {
   stage: BuyerProgressStage;
@@ -259,9 +276,18 @@ export interface SellerProgress {
 /**
  * 서버가 message 를 생략했을 때 쓰는 fallback 문구.
  * 계약이 "FE 가 stage 로 자체 문구를 매핑한다(다국어·로컬 카피)"로 위임한 지점이다.
+ *
+ * 어휘가 개방형이라 Record 가 아니라 부분 맵이다 — 모르는 stage 는 여기서 undefined 가 되고,
+ * 수신부가 그걸 "문구 없음"으로 흘려보낸다(계약: FE 는 모르는 stage 를 무시한다).
  */
-export const BUYER_PROGRESS_LABEL: Record<BuyerProgressStage, string> = {
+export const BUYER_PROGRESS_LABEL: Partial<Record<string, string>> = {
   analyzing: "요청을 확인하고 있어요",
+  mapping: "카테고리를 찾고 있어요",
+  expanding: "어떤 상품이 필요한지 넓혀 보고 있어요",
+  searching: "상품을 검색하고 있어요",
+  relaxing: "조건을 조금 넓혀 다시 찾고 있어요",
+  reranking: "가장 잘 맞는 걸 고르고 있어요",
+  publishing: "추천 목록을 준비하고 있어요",
 };
 
 // 액션 실패 사유(계약 CH-2 §action).

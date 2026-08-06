@@ -15,7 +15,7 @@ import {
 import { clearChat } from "@/shared/chat/chatPersistence";
 import { getThreadId, newThreadId } from "@/shared/chat/threadId";
 import { fetchChatListGroup } from "@/shared/chat/lists";
-import { BUYER_PROGRESS_LABEL } from "@/shared/types/chat";
+import { resolveProgressText } from "@/shared/chat/progress";
 import type {
   ChatAction,
   ChatChannel,
@@ -238,23 +238,24 @@ export function useChat({
               // 새 분석이 시작되면 이전 리포트를 비운다(스켈레톤부터 다시 시작)
               if (e.data.lane === "analysis") setAnalysisReport(null);
               break;
-            case "progress":
+            case "progress": {
               // 진행 상태(최종 답변 아님). 두 스트림의 페이로드가 다르다 —
               // 구매자 {stage, message?} / 판매자 {text}. 쉐이프를 맞추는 건 후속 과제라
               // 지금은 수신부가 분기한다(계약 CH-2 §progress, 2026-08-05 #289).
               //
               // 구매자는 message 가 없으면 stage 로 자체 문구를 매핑한다 —
               // 서버가 빈 값이면 키 자체를 싣지 않기로 계약이 위임한 지점이다.
-              setProgress(
-                "stage" in e.data
-                  ? (e.data.message ??
-                      BUYER_PROGRESS_LABEL[e.data.stage] ??
-                      null)
-                  : e.data.text,
-              );
+              // 문구를 못 구한 경우(모르는 stage + message 없음)는 무시한다 — 계약이
+              // "FE 는 모르는 stage 를 무시한다"로 정한 지점이다. null 로 덮으면
+              // 직전 단계 문구까지 지워져 진행 표시가 도리어 후퇴한다.
+              const text = resolveProgressText(e.data);
+              if (text) setProgress(text);
               break;
+            }
             case "token":
-              setProgress(null); // 실제 답변이 시작되면 진행 표시 제거
+              // 진행 표시를 지우지 않는다 — publishing 은 근거 token 뒤에 오므로
+              // 여기서 지우면 7종 중 그 한 종이 영영 화면에 닿지 못한다(계약 CH-2 §progress).
+              // 정리는 done·finally 가 맡는다.
               appendToLastAssistant(e.data.text);
               break;
             case "conditions":
@@ -386,6 +387,7 @@ export function useChat({
               // 재시도 여부는 code 가 아니라 retryable 로 판단한다 — 같은 LLM_UNAVAILABLE
               // 이라도 "미구성"(재시도 무의미)과 "일시 불가"(유효)가 섞여 있어
               // emit 지점만이 안다. requestId 는 사용자 신고 시 서버 로그 추적에 쓴다.
+              setProgress(null); // 종결 이벤트 — 진행 표시를 남기지 않는다
               failLastAssistant(e.data.message, {
                 retryable: e.data.retryable,
                 requestId: e.data.requestId,
