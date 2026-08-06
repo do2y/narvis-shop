@@ -15,6 +15,8 @@ export type OrderStatus =
   | "DELIVERED" // 배송 완료
   | "CONFIRMED" // 구매확정
   | "CLAIM_IN_PROGRESS" // 취소·반품 처리 중
+  | "CANCELLED" // 취소 완료 — 클레임이 승인돼 종결된 줄
+  | "RETURNED" // 반품 완료
   | "COMPLETED"; // 처리 완료(클레임 종결 포함)
 
 // 알 수 없는 상태가 와도 화면이 깨지지 않도록 fallback을 둔다
@@ -27,6 +29,8 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   DELIVERED: "배송 완료",
   CONFIRMED: "구매확정",
   CLAIM_IN_PROGRESS: "취소/반품 처리중",
+  CANCELLED: "취소 완료",
+  RETURNED: "반품 완료",
   COMPLETED: "처리 완료",
 };
 
@@ -132,6 +136,34 @@ export type ClaimType =
 export function canClaimItem(status: OrderStatus, type: ClaimType): boolean {
   if (type === "CANCEL") return status === "ORDERED";
   return status === "DELIVERED";
+}
+
+/**
+ * 취소·반품으로 빠진 줄인가 — 진행 중과 종결을 함께 본다.
+ *
+ * 사용자에겐 "이 상품은 안 온다"는 한 가지 사실이라 처리 단계로 나누지 않는다.
+ * 세부 진행은 클레임 내역(/mypage/claims)이 답한다.
+ */
+export function isClaimedItemStatus(status: OrderStatus): boolean {
+  return (
+    status === "CLAIM_IN_PROGRESS" ||
+    status === "CANCELLED" ||
+    status === "RETURNED"
+  );
+}
+
+/**
+ * 한 주문 안에서 상품별 상태가 갈리는가 — 목록 카드의 아이템별 배지 노출 판정.
+ *
+ * 대표 상태(representativeStatus)는 주문에 하나뿐이라, 4개 중 1개만 취소해도
+ * 주문 전체가 "취소/반품 처리중"으로 보인다. 어느 상품이 취소된 것인지
+ * 목록에서 알 수 없어, 취소하지 않은 상품까지 취소된 줄로 읽힌다.
+ *
+ * 그래서 상태가 섞인 주문에서만 각 줄에 상태를 덧붙인다. 전부 같은 상태면
+ * 대표 배지가 이미 답이라 줄마다 반복하는 것은 노이즈일 뿐이다.
+ */
+export function hasMixedItemStatus(items: readonly OrderItem[]): boolean {
+  return items.some((i) => i.status !== items[0]?.status);
 }
 
 /**

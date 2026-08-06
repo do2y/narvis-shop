@@ -11,6 +11,9 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
   DELIVERED: "bg-green-50 text-green-700",
   CONFIRMED: "bg-muted text-muted-foreground",
   CLAIM_IN_PROGRESS: "bg-amber-50 text-amber-700",
+  // 종결된 줄 — 되돌릴 것도 기다릴 것도 없어 회색으로 가라앉힌다
+  CANCELLED: "bg-muted text-muted-foreground",
+  RETURNED: "bg-muted text-muted-foreground",
   COMPLETED: "bg-muted text-muted-foreground",
 };
 
