@@ -28,6 +28,7 @@ import { setCheckoutState } from "@/shared/utils/checkoutHandoff";
 import { ImageGallery } from "./components/ImageGallery";
 import { OptionSelector, type OptionSelection } from "./components/OptionSelector";
 import { SpecTable } from "./components/SpecTable";
+import { DetailImages } from "./components/DetailImages";
 import { ReviewSummary } from "./components/ReviewSummary";
 import { RecommendRow } from "./components/RecommendRow";
 import { PLACEHOLDER_DETAIL } from "./placeholder";
@@ -371,6 +372,12 @@ export default function ProductPage({
         </div>
 
         {specRows.length > 0 && <SpecTable rows={specRows} />}
+
+        {/* 상세 설명 이미지 — 상세 응답에만 있다(시딩 카드에는 없음).
+            빈 배열이면 제목만 남으므로 length로 판정한다. */}
+        {detail?.detailImages && detail.detailImages.length > 0 && (
+          <DetailImages images={detail.detailImages} alt={view.name} />
+        )}
 
         <ReviewSummary
           average={view.rating}

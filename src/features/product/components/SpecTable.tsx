@@ -6,17 +6,18 @@ export function SpecTable({ rows }: { rows: { label: string; value: string }[] }
     <section className="flex flex-col gap-4">
       <h2 className="text-lg font-bold">상품 정보</h2>
       <div className="overflow-hidden rounded-sm border">
-        <table className="w-full text-sm">
+        {/* 부차적 정보라 본문(text-sm)보다 한 단계 작게 — 표가 먼저 시선을 끌지 않게 한다 */}
+        <table className="w-full text-xs">
           <tbody className="divide-y">
             {rows.map((row) => (
               <tr key={row.label}>
                 <th
                   scope="row"
-                  className="w-32 bg-muted/40 px-4 py-3 text-left font-medium text-muted-foreground"
+                  className="w-32 bg-muted/40 px-4 py-2 text-left font-medium text-muted-foreground"
                 >
                   {row.label}
                 </th>
-                <td className="px-4 py-3">{row.value}</td>
+                <td className="px-4 py-2">{row.value}</td>
               </tr>
             ))}
           </tbody>
