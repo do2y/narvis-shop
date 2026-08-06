@@ -11,7 +11,7 @@ export function PopularProducts() {
   return (
     <section className="px-6 py-16">
       <div className="mx-auto max-w-6xl">
-        <SectionHeading eyebrow="추천 상품" title="지금 많이 찾는 상품" />
+        <SectionHeading eyebrow="인기 상품" title="지금 많이 찾는 상품" />
 
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading &&

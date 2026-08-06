@@ -36,7 +36,7 @@ export function RecommendedProducts() {
     <section className="px-6 py-16">
       <div className="mx-auto max-w-6xl">
         <SectionHeading
-          eyebrow="개인화 추천"
+          eyebrow="AI 추천"
           title={`${nickname}님을 위한 추천`}
         />
 
