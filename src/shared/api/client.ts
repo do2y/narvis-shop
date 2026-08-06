@@ -114,6 +114,28 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+/**
+ * 개발 전용 요청 로그 (브라우저 콘솔).
+ *
+ * 봉투를 벗기고 401 재시도까지 인터셉터가 처리하므로, 화면에서 무슨 호출이 언제
+ * 나갔는지는 여기 말고는 볼 곳이 없다. `NODE_ENV`로 막아 프로덕션 번들에는
+ * 들어가지 않는다(응답 body가 콘솔에 남는 것도 막는다).
+ */
+const DEBUG_API = process.env.NODE_ENV === "development";
+
+function logRequest(config: InternalAxiosRequestConfig) {
+  if (!DEBUG_API) return config;
+  const method = (config.method ?? "get").toUpperCase();
+  console.log(
+    `%c[api →] ${method} ${config.url ?? ""}`,
+    "color:#888",
+    config.params ?? "",
+  );
+  return config;
+}
+
+if (DEBUG_API) api.interceptors.request.use(logRequest);
+
 let refreshing: Promise<void> | null = null;
 
 // 동시 401이 여러 건일 때 리다이렉트가 중복 실행되는 것을 막는다.
@@ -159,6 +181,14 @@ export const NO_AUTH_REDIRECT: { skipAuthRedirect: true } = {
 // success:false인데 HTTP 200으로 올 수도 있어(백엔드 정책) 여기서 방어적으로 throw.
 api.interceptors.response.use(
   (res) => {
+    if (DEBUG_API) {
+      const method = (res.config.method ?? "get").toUpperCase();
+      console.log(
+        `%c[api ←] ${res.status} ${method} ${res.config.url ?? ""}`,
+        "color:#2a8",
+        res.data,
+      );
+    }
     const body = res.data as ApiEnvelope<unknown> | undefined;
     if (body && typeof body === "object" && "success" in body) {
       if (body.success) {
@@ -175,9 +205,21 @@ api.interceptors.response.use(
   },
   async (error: unknown) => {
     // 응답 인터셉터에서 throw한 ApiError는 그대로 전파
-    if (error instanceof ApiError) return Promise.reject(error);
+    if (error instanceof ApiError) {
+      if (DEBUG_API) console.warn(`[api ✕] ${error.code} ${error.message}`);
+      return Promise.reject(error);
+    }
 
     const axiosError = error as AxiosError<ApiEnvelope<unknown>>;
+    if (DEBUG_API) {
+      const method = (axiosError.config?.method ?? "get").toUpperCase();
+      console.warn(
+        `[api ✕] ${axiosError.response?.status ?? "network"} ${method} ${
+          axiosError.config?.url ?? ""
+        }`,
+        axiosError.response?.data ?? axiosError.message,
+      );
+    }
     const original = axiosError.config as RetriableConfig | undefined;
     const status = axiosError.response?.status;
     const code = axiosError.response?.data?.error?.code;

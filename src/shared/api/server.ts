@@ -74,14 +74,35 @@ export async function serverGet<T>(
 ): Promise<T> {
   const { revalidate } = options;
 
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    // revalidate가 없으면 매 요청 조회(재고·가격이 실시간이어야 하는 화면 대비).
-    ...(revalidate === undefined
-      ? { cache: "no-store" as const }
-      : { next: { revalidate } }),
-  });
+  // 개발 전용 로그. SSR 조회는 브라우저 네트워크 탭에 안 잡히므로(서버가 부른다)
+  // dev 터미널에 남기지 않으면 실제로 나갔는지 확인할 방법이 없다.
+  // revalidate 캐시에 맞으면 fetch 자체가 생략되어 "→"만 찍히고 "←"가 없을 수 있다.
+  const debug = process.env.NODE_ENV === "development";
+  const startedAt = debug ? performance.now() : 0;
+  if (debug) console.log(`[ssr →] GET ${BASE}${path} (revalidate=${revalidate ?? "no-store"})`);
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      // revalidate가 없으면 매 요청 조회(재고·가격이 실시간이어야 하는 화면 대비).
+      ...(revalidate === undefined
+        ? { cache: "no-store" as const }
+        : { next: { revalidate } }),
+    });
+  } catch (e) {
+    if (debug) {
+      const ms = Math.round(performance.now() - startedAt);
+      console.warn(`[ssr ✕] GET ${path} (${ms}ms)`, (e as Error).message);
+    }
+    throw e;
+  }
+
+  if (debug) {
+    const ms = Math.round(performance.now() - startedAt);
+    console.log(`[ssr ←] ${res.status} GET ${path} (${ms}ms)`);
+  }
 
   // 봉투가 실려 오면 에러도 그 안에 있다 — code를 살려 호출부가 분기할 수 있게 한다.
   let body: ApiEnvelope<T> | undefined;
