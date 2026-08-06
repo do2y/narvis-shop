@@ -15,6 +15,8 @@ export type OrderStatus =
   | "DELIVERED" // 배송 완료
   | "CONFIRMED" // 구매확정
   | "CLAIM_IN_PROGRESS" // 취소·반품 처리 중
+  | "CANCELLED" // 취소 완료 — 클레임이 승인돼 종결된 줄
+  | "RETURNED" // 반품 완료
   | "COMPLETED"; // 처리 완료(클레임 종결 포함)
 
 // 알 수 없는 상태가 와도 화면이 깨지지 않도록 fallback을 둔다
@@ -27,6 +29,8 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   DELIVERED: "배송 완료",
   CONFIRMED: "구매확정",
   CLAIM_IN_PROGRESS: "취소/반품 처리중",
+  CANCELLED: "취소 완료",
+  RETURNED: "반품 완료",
   COMPLETED: "처리 완료",
 };
 
@@ -132,6 +136,101 @@ export type ClaimType =
 export function canClaimItem(status: OrderStatus, type: ClaimType): boolean {
   if (type === "CANCEL") return status === "ORDERED";
   return status === "DELIVERED";
+}
+
+/**
+ * 취소·반품으로 빠진 줄인가 — 진행 중과 종결을 함께 본다.
+ *
+ * 사용자에겐 "이 상품은 안 온다"는 한 가지 사실이라 처리 단계로 나누지 않는다.
+ * 세부 진행은 클레임 내역(/mypage/claims)이 답한다.
+ */
+export function isClaimedItemStatus(status: OrderStatus): boolean {
+  return (
+    status === "CLAIM_IN_PROGRESS" ||
+    status === "CANCELLED" ||
+    status === "RETURNED"
+  );
+}
+
+/**
+ * 한 주문 안에서 상품별 상태가 갈리는가 — 목록 카드의 아이템별 배지 노출 판정.
+ *
+ * 대표 상태(representativeStatus)는 주문에 하나뿐이라, 4개 중 1개만 취소해도
+ * 주문 전체가 "취소/반품 처리중"으로 보인다. 어느 상품이 취소된 것인지
+ * 목록에서 알 수 없어, 취소하지 않은 상품까지 취소된 줄로 읽힌다.
+ *
+ * 그래서 상태가 섞인 주문에서만 각 줄에 상태를 덧붙인다. 전부 같은 상태면
+ * 대표 배지가 이미 답이라 줄마다 반복하는 것은 노이즈일 뿐이다.
+ */
+export function hasMixedItemStatus(items: readonly OrderItem[]): boolean {
+  return items.some((i) => i.status !== items[0]?.status);
+}
+
+/**
+ * 주문에서 취소·반품으로 빠진 줄을 종류별로 센다 — 안내 문구·헤더 표기용.
+ *
+ * 취소와 반품을 묶어 "취소·반품 N개"로 적으면 어느 쪽인지 알 수 없고,
+ * 실제로는 한 종류만 있는 경우가 대부분이라 부정확하기까지 하다. 세어서
+ * 나눠 두면 호출부가 실제 상태에 맞는 문구를 고를 수 있다.
+ *
+ * 진행 중(CLAIM_IN_PROGRESS)은 취소·반품 어느 쪽인지 주문 응답만으로 알 수 없다
+ * — 그 구분은 클레임(Claim)이 답한다. 그래서 따로 센다.
+ */
+export function countClaimedItems(items: readonly OrderItem[]): {
+  cancelled: number;
+  returned: number;
+  inProgress: number;
+  total: number;
+} {
+  const cancelled = items.filter((i) => i.status === "CANCELLED").length;
+  const returned = items.filter((i) => i.status === "RETURNED").length;
+  const inProgress = items.filter(
+    (i) => i.status === "CLAIM_IN_PROGRESS",
+  ).length;
+  return {
+    cancelled,
+    returned,
+    inProgress,
+    total: cancelled + returned + inProgress,
+  };
+}
+
+/**
+ * 헤더 배지에 쓸 상태 — 항목 상태가 전부 같으면 그것을, 갈리면 대표 상태를 쓴다.
+ *
+ * 대표 상태(representativeStatus)는 클레임이 얽히면 실제 항목과 어긋난다.
+ * 전량 취소된 주문이 "처리 완료"로 뜨는 게 그 예다 — 틀린 말은 아니지만
+ * 무엇이 어떻게 끝났는지 답하지 않아, 취소된 주문임을 알 수 없다.
+ * 항목이 만장일치일 때는 그 상태가 주문 상태이기도 하므로 그대로 쓴다.
+ */
+export function resolveHeaderStatus(order: Order): OrderStatus {
+  const [first, ...rest] = order.items;
+  if (first && rest.every((i) => i.status === first.status)) return first.status;
+  return order.representativeStatus;
+}
+
+/**
+ * 부분 취소·반품 안내 문구 — "상품 4개 중 1개가 취소되었습니다" 형태.
+ *
+ * 종류가 하나면 그 이름을 쓰고(취소/반품/취소·반품 신청), 섞였을 때만 묶는다.
+ * 전부 빠졌거나 하나도 없으면 null — 안내할 "나머지"가 없어 문장이 성립하지 않는다.
+ * (전량 취소는 대표 배지가 이미 정확히 답한다)
+ */
+export function buildClaimedNotice(items: readonly OrderItem[]): string | null {
+  const { cancelled, returned, inProgress, total } = countClaimedItems(items);
+  if (total === 0 || total === items.length) return null;
+
+  const prefix = `상품 ${items.length}개 중 ${total}개가`;
+
+  // 진행 중만 있으면 아직 끝난 게 아니라 "되었습니다"로 단정할 수 없다
+  if (cancelled === 0 && returned === 0) {
+    return `${prefix} 취소·반품 신청 중입니다`;
+  }
+  // 종결된 것 중 한 종류뿐이면 그 이름으로 정확히 적는다 (가장 흔한 경우)
+  if (returned === 0 && inProgress === 0) return `${prefix} 취소되었습니다`;
+  if (cancelled === 0 && inProgress === 0) return `${prefix} 반품되었습니다`;
+
+  return `${prefix} 취소·반품되었습니다`;
 }
 
 /**

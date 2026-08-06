@@ -11,6 +11,10 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
   DELIVERED: "bg-green-50 text-green-700",
   CONFIRMED: "bg-muted text-muted-foreground",
   CLAIM_IN_PROGRESS: "bg-amber-50 text-amber-700",
+  // 취소·반품은 종결됐어도 "받지 못한다"는 결과라 회색에 묻으면 안 된다 —
+  // 진행 중(CLAIM_IN_PROGRESS)과 같은 계열로 묶어 한 흐름으로 읽히게 한다.
+  CANCELLED: "bg-amber-50 text-amber-700",
+  RETURNED: "bg-amber-50 text-amber-700",
   COMPLETED: "bg-muted text-muted-foreground",
 };
 

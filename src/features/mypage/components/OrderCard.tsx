@@ -2,13 +2,18 @@
 
 import Link from "next/link";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import {
+  buildClaimedNotice,
   canClaimItem,
   canReviewItemStatus,
+  hasMixedItemStatus,
+  isClaimedItemStatus,
+  ORDER_STATUS_LABEL,
+  resolveHeaderStatus,
   type Order,
   type OrderItem,
 } from "../types";
@@ -18,26 +23,68 @@ import { OrderStatusBadge } from "./OrderStatusBadge";
 // CLAIM_IN_PROGRESS·COMPLETED는 이미 클레임이 걸렸거나 종결돼 어느 쪽도 통과하지 않는다.
 
 // 액션 버튼 공통 스타일 (칩 형태).
+// press 피드백은 100~160ms — 눌렀다는 사실만 전하면 되므로 길면 굼떠 보인다.
+// hover는 (hover:hover)로 막는다: 터치에서는 탭이 hover로 잡혀 손을 뗀 뒤에도
+// 배경색이 남는다. transition은 실제 바뀌는 두 속성만 지정한다(all 금지).
 const actionButtonClass = cn(
   "inline-flex h-9 items-center rounded-full border px-4 text-sm font-medium",
-  "transition-all hover:bg-muted active:scale-[0.97]",
+  "transition-[transform,scale,background-color] duration-150 ease-out-strong",
+  "active:scale-[0.97] hover:[@media(hover:hover)]:bg-muted",
 );
 
-function ItemRow({ item }: { item: OrderItem }) {
+function ItemRow({
+  item,
+  showStatus,
+}: {
+  item: OrderItem;
+  showStatus: boolean;
+}) {
+  // 가라앉히기는 "빠진 것 vs 남은 것"의 대비가 목적이라, 대비할 상대가 있을 때만
+  // 건다(showStatus = 주문 안에서 상태가 갈림). 전량 취소된 주문에 그대로 걸면
+  // 모든 줄이 회색·취소선이 돼 카드 전체가 죽고, 정작 무엇이 취소됐는지는
+  // 대표 배지 말고는 알 수 없게 된다.
+  const claimed = showStatus && isClaimedItemStatus(item.status);
+
   return (
-    <div className="flex gap-4 py-4">
+    <div className="flex gap-4 px-5 py-4">
       <ProductImage
         src={item.imageUrl}
         alt=""
-        className="size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20"
+        className={cn(
+          "size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20",
+          claimed && "opacity-50 grayscale",
+        )}
       />
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="truncate text-sm font-medium">{item.productName}</p>
+        <p
+          className={cn(
+            "truncate text-sm font-medium",
+            claimed && "text-muted-foreground",
+          )}
+        >
+          {item.productName}
+        </p>
         <p className="text-xs text-muted-foreground">
+          {showStatus && (
+            // 취소·반품 줄만 색으로 띄운다 — 어느 상품이 빠졌는지 찾으려고 보는
+            // 화면이라 그 줄이 먼저 눈에 들어와야 한다. 나머지는 회색으로 배경에 둔다.
+            <span className={cn("font-medium", claimed && "text-amber-700")}>
+              {ORDER_STATUS_LABEL[item.status] ?? item.status}
+            </span>
+          )}
+          {showStatus && " · "}
           {item.optionName ? `${item.optionName} / ` : ""}
           {item.quantity}개
         </p>
-        <p className="mt-0.5 text-sm font-bold">{formatPrice(item.price)}</p>
+        <p
+          className={cn(
+            "mt-0.5 text-sm font-bold",
+            // 취소된 줄의 가격에 취소선 — 결제에서 빠진 금액임을 형태로 알린다
+            claimed && "font-medium text-muted-foreground line-through",
+          )}
+        >
+          {formatPrice(item.price)}
+        </p>
       </div>
     </div>
   );
@@ -50,30 +97,49 @@ export function OrderCard({ order }: { order: Order }) {
   const cancelable = order.items.some((i) => canClaimItem(i.status, "CANCEL"));
   const returnable = order.items.some((i) => canClaimItem(i.status, "RETURN"));
   const detailHref = `/mypage/orders/${order.orderId}`;
+  // 부분 취소처럼 상태가 갈린 주문에서만 줄마다 상태를 밝힌다 (판정은 types.ts)
+  const showItemStatus = hasMixedItemStatus(order.items);
+  // 대표 배지는 배송·결제 진행 축이라 "일부가 취소됨"을 담지 못한다. 다른 축이므로
+  // 배지에 섞지 않고(섞으면 부분 취소된 주문의 배송 상태를 표현할 수 없다)
+  // 건수를 별도 줄로 밝힌다 — 리스트를 끝까지 보지 않아도 알 수 있게 목록 위에 둔다.
+  const claimedNotice = buildClaimedNotice(order.items);
 
   return (
     <article className="overflow-hidden rounded-sm border bg-background">
       {/* 헤더: 상태 + 주문일 + 주문번호 / 우측 주문 상세 */}
       <div className="flex items-center justify-between gap-3 border-b bg-muted/20 px-5 py-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <OrderStatusBadge status={order.representativeStatus} />
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <OrderStatusBadge status={resolveHeaderStatus(order)} />
           <span className="truncate text-sm text-muted-foreground">
             {order.orderedAt.slice(0, 10).replace(/-/g, ".")} · {order.orderNo}
           </span>
         </div>
         <Link
           href={detailHref}
-          className="flex shrink-0 items-center gap-0.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center gap-0.5 text-sm text-muted-foreground transition-colors duration-150 ease-out-strong hover:[@media(hover:hover)]:text-foreground"
         >
           주문 상세
           <ChevronRight className="size-4" />
         </Link>
       </div>
 
-      {/* 상품 목록 */}
-      <div className="divide-y px-5">
+      {claimedNotice && (
+        <p className="flex items-center gap-1.5 border-b bg-amber-50/50 px-5 py-2.5 text-xs font-medium text-amber-800">
+          <Info className="size-3.5 shrink-0" aria-hidden />
+          {claimedNotice}
+        </p>
+      )}
+
+      {/* 상품 목록 — 좌우 여백은 각 행(ItemRow)이 갖는다.
+          여기에 px-5 를 주면 divide-y 구분선이 여백 안쪽에서만 그어져
+          헤더·안내 줄의 경계선보다 짧아진다. */}
+      <div className="divide-y">
         {order.items.map((item) => (
-          <ItemRow key={item.orderItemId} item={item} />
+          <ItemRow
+            key={item.orderItemId}
+            item={item}
+            showStatus={showItemStatus}
+          />
         ))}
       </div>
 
@@ -107,7 +173,6 @@ export function OrderCard({ order }: { order: Order }) {
               있어 기대만 만든다. 실제 조회가 가능해지면 그때 붙인다. */}
         </div>
       )}
-
     </article>
   );
 }
