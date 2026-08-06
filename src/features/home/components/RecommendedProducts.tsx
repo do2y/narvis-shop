@@ -25,7 +25,8 @@ export function RecommendedProducts() {
   // 영원히 걸린다. 실제로 요청이 도는 중일 때만 로딩으로 친다.
   const isLoading = isPending && fetchStatus === "fetching";
 
-  // 요청이 꺼져 있으면(P-5 미구현) 섹션 자체를 렌더하지 않는다
+  // 요청이 아직 꺼져 있으면(세션 복원 중 — isAuthReady 대기) 섹션을 렌더하지 않는다.
+  // 여기서 스켈레톤을 띄우면 비로그인 확정 시 사라져 레이아웃이 흔들린다.
   if (isPending && fetchStatus === "idle") return null;
 
   // 로딩이 끝났는데 결과가 없으면 섹션을 숨긴다

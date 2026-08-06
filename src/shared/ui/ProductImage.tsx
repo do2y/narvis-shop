@@ -19,12 +19,20 @@ export function ProductImage({
   alt,
   className,
   loading = "lazy",
+  fetchPriority,
 }: {
   src?: string | null;
   alt: string;
   /** 이미지 자체에 붙일 클래스 — 카드마다 object-cover·hover 확대 등이 다르다 */
   className?: string;
   loading?: "lazy" | "eager";
+  /**
+   * LCP 이미지에만 "high"를 준다(상품 상세의 메인 사진 등).
+   * loading="eager"는 "지연하지 말라"일 뿐 순서를 정하지 않아, 같이 대기 중인
+   * 다른 리소스와 경쟁한다. 이 값이 그 경쟁에서 먼저 가져올 것을 지정한다.
+   * 남용하면 서로 밀어내 의미가 없어지므로 화면당 한 장만.
+   */
+  fetchPriority?: "high" | "low" | "auto";
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -53,6 +61,7 @@ export function ProductImage({
       src={src}
       alt={alt}
       loading={loading}
+      fetchPriority={fetchPriority}
       onError={() => setFailed(true)}
       className={className}
     />

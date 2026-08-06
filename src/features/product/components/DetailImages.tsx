@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -34,6 +35,18 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
   const collapsible = valid.length > 1;
   const collapsed = collapsible && !expanded;
 
+  // 접힌 동안에는 잘려서 안 보이는 조각을 아예 렌더하지 않는다.
+  //
+  // loading="lazy"만으로는 막지 못한다: overflow-hidden은 시각적으로만 자를 뿐
+  // 레이아웃 흐름에는 그대로 남아, 브라우저가 "뷰포트 근처"로 판정해 전부 받는다.
+  // 실측(상품 8909282005)에서 접힌 화면인데도 이미지 68장 143MB를 받았고,
+  // 그중 한 장이 94MB였다. 렌더 자체를 막는 것이 유일하게 확실한 방법이다.
+  //
+  // 2장을 남기는 이유: 첫 장만 두면 접힌 높이(600px)를 못 채워 그라데이션이
+  // 허공에 뜨고, 잘린 느낌이 사라져 더보기 버튼의 근거가 약해진다.
+  const COLLAPSED_VISIBLE = 2;
+  const rendered = collapsed ? valid.slice(0, COLLAPSED_VISIBLE) : valid;
+
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-lg font-bold">상세 설명</h2>
@@ -51,9 +64,9 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
               여기 이미지는 비율이 제각각이라 부모에 높이를 고정할 수도 없다.
 
               block: img 는 기본 inline 이라 조각 사이에 여백이 생겨 이어진 그림이 끊겨 보인다.
-              loading 은 전부 lazy 로 두지 않는다 — 접힌 컨테이너 안에서는 아래 조각들이
-              뷰포트 밖으로 판정돼 펼쳐도 로드가 늦다. */}
-          {valid.map((src, i) => (
+              첫 조각만 eager 인 이유: 펼친 직후 화면에 남아 있는 것이 그 조각이라
+              lazy 로 두면 이미 보이는 자리가 비어 보인다. */}
+          {rendered.map((src, i) => (
             <img
               key={src}
               src={src}
@@ -65,6 +78,11 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
+              // 로드 전 높이가 0이면 조각들이 한 점에 겹쳐 전부 뷰포트 안으로
+              // 판정돼 lazy가 무력해진다(펼친 직후 66장이 동시에 뜨던 원인).
+              // 비율을 모르니 최소 높이만 잡아 서로 밀어내게 한다 — 로드되면
+              // 실제 높이가 이 값을 덮는다.
+              style={i === 0 ? undefined : { minHeight: 400 }}
               className="block w-full"
             />
           ))}
@@ -84,10 +102,18 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
         <Button
           variant="outline"
           onClick={() => setExpanded((v) => !v)}
-          // 이미지와 같은 폭·같은 중심으로 맞춘다 — 버튼만 본문 폭이면 어긋나 보인다.
-          className="mx-auto h-11 w-full max-w-2xl"
+          // 이미지가 아니라 위아래 형제 섹션(상품 정보 표·리뷰)의 폭에 맞춘다.
+          // 이미지는 원본 해상도 때문에 max-w-2xl로 좁혀 둔 예외라, 거기 맞추면
+          // 버튼만 안쪽으로 들어가 세로 정렬선이 끊긴다.
+          className="h-11 w-full gap-1.5"
         >
           {expanded ? "상세 설명 접기" : "상세 설명 더보기"}
+          {/* 펼치면 화살표를 뒤집어 접힌다는 것을 보인다. 아이콘 2개를 번갈아 쓰지 않고
+              회전시키는 건 AppHeader와 같은 방식 — 상태 전환이 이어져 보인다. */}
+          <ChevronDown
+            aria-hidden
+            className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
         </Button>
       )}
     </section>
