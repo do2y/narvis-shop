@@ -55,7 +55,9 @@ export interface ProductReviewPage {
 }
 
 export interface ProductDetail {
-  id: number;
+  // SeededProductCard.productId와 같은 값이라 타입도 같아야 한다 —
+  // 한쪽만 문자열이면 찜 판정·캐시 시딩이 타입 에러 없이 조용히 어긋난다.
+  id: string;
   name: string;
   imageUrl: string; // 대표 이미지 단일
   price: number; // 판매가

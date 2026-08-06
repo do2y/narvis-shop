@@ -4,7 +4,7 @@
 import type { PurchaseState } from "./product";
 
 export interface WishlistProduct {
-  productId: number;
+  productId: string;
   name: string;
   brandName: string;
   price: number;

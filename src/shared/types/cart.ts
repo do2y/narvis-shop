@@ -20,7 +20,7 @@ export interface RecommendationContext {
 // 장바구니 항목. 결제 이동을 위해 카드 수준 데이터를 포함.
 export interface CartItem {
   cartItemId: number; // 장바구니 라인 식별(같은 상품 다른 옵션 구분)
-  productId: number;
+  productId: string;
   name: string;
   brandId: number;
   brandName: string;

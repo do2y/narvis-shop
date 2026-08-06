@@ -8,11 +8,14 @@ import { formatPrice } from "@/shared/utils/formatPrice";
 type Props = { params: Promise<{ productId: string }> };
 
 // Next 16에서 params는 Promise다(동기 접근 제거됨).
-async function resolveId(params: Props["params"]): Promise<number> {
+//
+// Number()로 바꾸지 않는다 — 서버 productId가 64비트라 숫자로 만드는 순간
+// 끝자리가 조용히 바뀐다. URL의 문자열을 그대로 들고 다닌다.
+// 형식 검증만 한다: 빈 값·숫자가 아닌 문자는 존재할 수 없는 id이므로 404.
+async function resolveId(params: Props["params"]): Promise<string> {
   const { productId } = await params;
-  const id = Number(productId);
-  if (!Number.isFinite(id)) notFound();
-  return id;
+  if (!/^\d+$/.test(productId)) notFound();
+  return productId;
 }
 
 /**

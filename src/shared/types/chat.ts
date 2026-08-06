@@ -32,7 +32,7 @@ export interface ChatScreenContext {
    * 추천 카드(CH-5)는 listId 로 서버가 알고 있어 싣지 않는다(되돌려주면 위조 경로가 된다).
    * 상한 20건, 초과분은 화면 순서대로 자른다.
    */
-  products?: { productId: number; name: string }[];
+  products?: { productId: string; name: string }[];
   /**
    * 전송 시점 그리드 열 수 — 반응형이라 서버가 알 수 없다. 목록형은 1.
    * "3번째 줄 2번째" 같은 좌표 지시를 index = (row-1) × columns + (col-1) 로 푼다.
@@ -214,7 +214,7 @@ export type SellerDraftField =
 export interface SellerDraft {
   draftId: string; // confirm이 참조(보여준 것 == 실행)
   op: "update" | "create" | "delete";
-  productId: number | null; // create는 null 일 수 있음
+  productId: string | null; // create는 null 일 수 있음
   changes: {
     field: SellerDraftField | string;
     before: string | number;
@@ -309,8 +309,8 @@ export type ChatAction =
   | { type: "WISHLIST_REMOVED"; message: string }
   | { type: "WISHLIST_REMOVE_FAILED"; message: string; reason: ActionFailReason }
   // ── SELLER ──
-  | { type: "PRODUCT_UPDATED"; message: string; productId: number }
-  | { type: "PRODUCT_UPDATE_FAILED"; message: string; productId: number };
+  | { type: "PRODUCT_UPDATED"; message: string; productId: string }
+  | { type: "PRODUCT_UPDATE_FAILED"; message: string; productId: string };
 
 /**
  * 장바구니가 실제로 바뀐 액션인가 — 성공 3종만 해당한다(실패는 서버 상태가 그대로다).

@@ -12,7 +12,7 @@ export async function fetchCart(): Promise<Cart> {
 // 응답 quantity는 합산 결과라 요청 수량과 다를 수 있다.
 // 상품 상세·챗봇 카드·찜 목록이 함께 쓰므로 shared에 둔다.
 export async function addCartItem(body: {
-  productId: number;
+  productId: string;
   optionId?: number | null;
   quantity: number;
   // 추천 카드에서 담을 때만 싣는다(C-2). 서버가 담기 시점의 출처를 저장해
