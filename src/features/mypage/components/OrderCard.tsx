@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 import { ChevronRight } from "lucide-react";
@@ -50,9 +49,6 @@ export function OrderCard({ order }: { order: Order }) {
   const reviewable = order.items.some((i) => canReviewItemStatus(i.status));
   const cancelable = order.items.some((i) => canClaimItem(i.status, "CANCEL"));
   const returnable = order.items.some((i) => canClaimItem(i.status, "RETURN"));
-  // 배송중에만 노출되는 준비 중 액션(배송 조회) 클릭 시 하단에 한 줄 안내.
-  const showTracking = order.representativeStatus === "SHIPPING";
-  const [notice, setNotice] = useState(false);
   const detailHref = `/mypage/orders/${order.orderId}`;
 
   return (
@@ -81,8 +77,8 @@ export function OrderCard({ order }: { order: Order }) {
         ))}
       </div>
 
-      {/* 하단 액션 — 후기·취소·반품은 주문 상세로, 배송 조회는 준비 중 안내 */}
-      {(reviewable || cancelable || returnable || showTracking || notice) && (
+      {/* 하단 액션 — 전부 주문 상세로 보낸다. 실제 동작하는 것만 둔다 */}
+      {(reviewable || cancelable || returnable) && (
         <div className="flex flex-wrap items-center gap-2 border-t px-5 py-4">
           {/* 후기·취소·반품 모두 대상 상품을 골라야 하고, 그 선택은 주문 상세에서 한다 —
               거기엔 이미지·옵션·가격이 함께 있어 잘못 고를 일이 없다. 목록에서 처리하면
@@ -106,20 +102,9 @@ export function OrderCard({ order }: { order: Order }) {
               반품 신청
             </Link>
           )}
-          {showTracking && (
-            <button
-              type="button"
-              onClick={() => setNotice(true)}
-              className={actionButtonClass}
-            >
-              배송 조회
-            </button>
-          )}
-          {notice && (
-            <span className="text-xs text-muted-foreground">
-              준비 중인 기능이에요.
-            </span>
-          )}
+          {/* 배송 조회는 두지 않는다 — 조회 API 도 송장 데이터도 없어서, 눌러도
+              "준비 중"만 뜨는 버튼이었다. 배송중 주문에서 가장 누르고 싶은 자리에
+              있어 기대만 만든다. 실제 조회가 가능해지면 그때 붙인다. */}
         </div>
       )}
 

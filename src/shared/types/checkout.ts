@@ -14,7 +14,8 @@ export interface CheckoutItem {
   options?: Record<string, string>;
   optionName?: string | null;
   // 주문 생성 시 서버로 보내는 옵션 식별자. 옵션 없는 상품은 null.
-  optionId?: number | null;
+  // 문자열이다 — 64비트 ID(ProductOption 주석 참조).
+  optionId?: string | null;
   // 장바구니 경유 주문이면 이 값으로 cartItemIds[]를 만든다(바로 구매는 없음).
   cartItemId?: number;
   quantity: number;

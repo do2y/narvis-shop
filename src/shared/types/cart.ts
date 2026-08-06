@@ -25,7 +25,8 @@ export interface CartItem {
   brandId: number;
   brandName: string;
   imageUrl: string;
-  optionId: number | null; // 옵션 없는 상품은 null
+  // 옵션 없는 상품은 null. 문자열인 이유는 ProductOption 주석 참조(64비트 ID)
+  optionId: string | null;
   optionName: string | null; // "화이트/M" — 슬래시로 구분. 옵션 없는 상품은 null
   quantity: number;
   price: number; // 현재가(담은 시점 가격 아님)

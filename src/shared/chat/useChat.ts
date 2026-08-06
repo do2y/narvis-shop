@@ -543,11 +543,19 @@ export function useChat({
   // 조건 칩 제거 — conditionActions 배열로 보낸다(계약 CH-2 #84, 규약 문자열 방식은 폐기).
   // 어떤 칩을 지웠는지는 UI만 아는 사실이라 발화만으로는 서버가 복원할 수 없다.
   // 아직 AI 에 수신부가 없어 무동작이다(extra=ignore 라 조용히 버려진다).
+  //
+  // 그래서 화면에서 먼저 지운다. 서버 응답을 기다리면 AI 가 수신부를 갖추기 전까지
+  // 칩이 영영 안 사라진다 — 눌러도 아무 일이 없는 것처럼 보인다.
+  // 다음 턴의 conditions 이벤트가 오면 어차피 전체가 덮어써지므로(§conditions)
+  // 이 낙관적 제거가 서버 상태와 어긋난 채로 남지 않는다.
   const removeCondition = useCallback(
     (field: ConditionField) => {
+      setConditions(
+        useChatStore.getState().conditions.filter((c) => c.field !== field),
+      );
       send("", [{ op: "remove", field }]);
     },
-    [send],
+    [send, setConditions],
   );
 
   // 제안 칩(완화·되돌리기) 적용 = 칩 label 을 다음 턴 message 로 보내는 왕복(계약 §suggestions).

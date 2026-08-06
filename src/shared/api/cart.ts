@@ -12,8 +12,11 @@ export async function fetchCart(): Promise<Cart> {
 // 응답 quantity는 합산 결과라 요청 수량과 다를 수 있다.
 // 상품 상세·챗봇 카드·찜 목록이 함께 쓰므로 shared에 둔다.
 export async function addCartItem(body: {
+  // 두 ID 모두 문자열이다 — 64비트라 number 로 만들면 끝자리가 조용히 바뀐다.
+  // 여기는 담기 요청 본문이라 틀어진 값이 그대로 서버로 나가고,
+  // optionId 는 CART_OPTION_INVALID 로 거부된다(b72f0e9).
   productId: string;
-  optionId?: number | null;
+  optionId?: string | null;
   quantity: number;
   // 추천 카드에서 담을 때만 싣는다(C-2). 서버가 담기 시점의 출처를 저장해
   // 주문 시 order_item 스냅샷으로 복사하므로, 이게 빠지면 추천 전환이 집계에서 사라진다.

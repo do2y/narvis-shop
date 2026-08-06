@@ -65,14 +65,16 @@ export class ApiError extends Error {
    * 타입을 features/product에서 가져오면 shared → features 역방향 의존이 되므로
    * 필요한 모양만 여기서 좁힌다(구조가 같아 그대로 쓰인다).
    */
-  get options(): { optionId: number; name: string; extraPrice: number }[] | undefined {
+  get options(): { optionId: string; name: string; extraPrice: number }[] | undefined {
     const value = this.detail?.options;
     if (!Array.isArray(value)) return undefined;
     const parsed = value.filter(
-      (o): o is { optionId: number; name: string; extraPrice: number } =>
+      (o): o is { optionId: string; name: string; extraPrice: number } =>
         typeof o === "object" &&
         o !== null &&
-        typeof (o as { optionId?: unknown }).optionId === "number" &&
+        // optionId 는 문자열이다(2026-08-06) — 64비트 ID라 number 로 파싱하면
+        // 끝자리가 조용히 바뀐다. ProductOption 주석 참조.
+        typeof (o as { optionId?: unknown }).optionId === "string" &&
         typeof (o as { name?: unknown }).name === "string",
     );
     return parsed.length ? parsed : undefined;

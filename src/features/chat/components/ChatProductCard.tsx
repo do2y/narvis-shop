@@ -59,7 +59,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
    * FE 가 "챗봇에서 담았다"고 주장하는 값보다 신뢰할 수 있다(계약 E-1).
    * 인기상품 카드엔 recommendationContext 가 없어 필드째 빠진다.
    */
-  const addToCart = (optionId?: number, extraPrice = 0) => {
+  const addToCart = (optionId?: string, extraPrice = 0) => {
     addCart.mutate(
       {
         productId: product.productId,
