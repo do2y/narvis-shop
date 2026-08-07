@@ -9,6 +9,7 @@ import { ProductImage } from "@/shared/ui/ProductImage";
 import { cn } from "@/lib/utils";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerSummary } from "./api";
+import { numeric, pressableCard } from "./interaction";
 import type { SellerOrderStatus, SellerSummary } from "./types";
 import { SellerHero } from "./components/SellerHero";
 import { SellerErrorState } from "./components/SellerErrorState";
@@ -106,7 +107,12 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold tracking-tight">오늘 할 일</h2>
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold text-muted-foreground">
+                <span
+                  className={cn(
+                    "rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold text-muted-foreground",
+                    numeric,
+                  )}
+                >
                   {data.orderStatus.activeTotal}건
                 </span>
               </div>
@@ -121,7 +127,9 @@ export default function DashboardPage() {
                   key={c.status}
                   href={`/seller/orders?status=${c.status}`}
                   className={cn(
-                    "flex flex-col gap-3 rounded-sm border bg-background p-4 transition-all hover:shadow-md active:scale-[0.99] sm:p-5",
+                    "flex flex-col gap-3 rounded-sm border bg-background p-4 sm:p-5",
+                    pressableCard,
+                    "hover:[@media(hover:hover)]:shadow-md",
                     c.primary && "border-foreground",
                   )}
                 >
@@ -133,7 +141,12 @@ export default function DashboardPage() {
                   >
                     {c.label}
                   </span>
-                  <span className="text-2xl font-bold tracking-tight">
+                  <span
+                    className={cn(
+                      "text-2xl font-bold tracking-tight",
+                      numeric,
+                    )}
+                  >
                     {data.orderStatus.counts[c.status] ?? 0}건
                   </span>
                   {/* 배송 중 카드에만 평균 배송일 — 나머지는 붙일 지표가 없다 */}
@@ -154,13 +167,18 @@ export default function DashboardPage() {
                   <h3 className="text-base font-bold tracking-tight">
                     재고 부족 알림
                   </h3>
-                  <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+                  <span
+                    className={cn(
+                      "rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive",
+                      numeric,
+                    )}
+                  >
                     {data.lowStock.count}
                   </span>
                 </div>
                 <Link
                   href="/seller/products"
-                  className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors duration-150 ease-out-strong hover:[@media(hover:hover)]:text-foreground hover:[@media(hover:hover)]:underline"
                 >
                   전체 보기
                 </Link>
@@ -186,7 +204,12 @@ export default function DashboardPage() {
                         <span className="truncate text-sm font-medium">
                           {p.name}
                         </span>
-                        <span className="text-xs font-semibold text-destructive">
+                        <span
+                          className={cn(
+                            "text-xs font-semibold text-destructive",
+                            numeric,
+                          )}
+                        >
                           남은 수량 {p.stockQuantity}
                         </span>
                       </div>

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ArrowUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { hoverMuted, pressable } from "../interaction";
 
 const QUESTIONS = [
   "이번주 판매 전략 알려줘",
@@ -22,9 +24,12 @@ export function SellerHero() {
     if (trimmed) router.push(`/seller/chat?q=${encodeURIComponent(trimmed)}`);
   };
 
+  // 세로 여백을 줄였다(py-10/14 → py-7/9). 업무 화면의 첫 스크롤에는
+  // AI 진입보다 "오늘 할 일"이 들어와야 한다 — 히어로는 유지하되 자리만 양보한다.
   return (
-    <section className="flex flex-col gap-6 py-10 sm:py-14">
-      <h1 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+    <section className="flex flex-col gap-5 py-7 sm:py-9">
+      {/* 큰 글자는 자간을 좁힌다 — 크기가 커질수록 글자 사이가 벌어져 보인다 */}
+      <h1 className="text-center text-2xl font-bold tracking-tight sm:text-3xl sm:tracking-[-0.02em]">
         무엇을 도와드릴까요?
       </h1>
 
@@ -33,7 +38,7 @@ export function SellerHero() {
           e.preventDefault();
           start(value);
         }}
-        className="mx-auto flex w-full max-w-2xl items-center gap-2 rounded-full border bg-background px-4 py-2 shadow-sm transition-shadow focus-within:shadow-md focus-within:ring-1 focus-within:ring-brand/40"
+        className="mx-auto flex w-full max-w-2xl items-center gap-2 rounded-full border bg-background px-4 py-2 shadow-sm transition-shadow duration-150 ease-out-strong focus-within:shadow-md focus-within:ring-1 focus-within:ring-brand/40"
       >
         <input
           type="text"
@@ -47,7 +52,12 @@ export function SellerHero() {
           type="submit"
           disabled={!value.trim()}
           aria-label="전송"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground transition-all hover:opacity-90 active:scale-90 disabled:scale-100 disabled:opacity-40"
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground",
+            pressable,
+            "hover:[@media(hover:hover)]:opacity-90",
+            "disabled:scale-100 disabled:opacity-40",
+          )}
         >
           <ArrowUp className="size-4" />
         </button>
@@ -59,7 +69,12 @@ export function SellerHero() {
             key={q}
             type="button"
             onClick={() => start(q)}
-            className="rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-95"
+            className={cn(
+              "rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground",
+              pressable,
+              hoverMuted,
+              "hover:[@media(hover:hover)]:text-foreground",
+            )}
           >
             {q}
           </button>

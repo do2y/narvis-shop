@@ -1,5 +1,6 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { numeric } from "../interaction";
 import type { SellerMetric } from "../types";
 import { formatMetric } from "../utils/formatMetric";
 
@@ -22,7 +23,9 @@ export function MetricCards({ items }: { items: SellerMetric[] }) {
             <span className="text-sm font-medium text-muted-foreground">
               {m.label}
             </span>
-            <span className="text-2xl font-bold tracking-tight">
+            {/* 실시간으로 갱신되는 값이라 고정폭 숫자를 쓴다 — 아니면 자릿수가
+                바뀔 때마다 폭이 흔들려 옆 카드와 밑선이 어긋난다 */}
+            <span className={cn("text-2xl font-bold tracking-tight", numeric)}>
               {formatMetric(m.value, m.unit)}
             </span>
             {hasRate &&
@@ -43,6 +46,7 @@ export function MetricCards({ items }: { items: SellerMetric[] }) {
                   <span
                     className={cn(
                       "font-semibold",
+                      numeric,
                       up ? "text-brand" : "text-destructive",
                     )}
                   >

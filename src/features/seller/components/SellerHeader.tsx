@@ -88,10 +88,11 @@ export function SellerHeader({ showNav = true }: SellerHeaderProps) {
                 <Link
                   href={item.to}
                   className={cn(
-                    "flex h-11 items-center whitespace-nowrap rounded-full px-3.5 text-sm transition-colors",
+                    "flex h-11 items-center whitespace-nowrap rounded-full px-3.5 text-sm",
+                    "transition-[color,background-color] duration-150 ease-out-strong",
                     isMenuActive(pathname, item)
                       ? "bg-muted font-bold text-foreground"
-                      : "font-medium text-muted-foreground hover:text-foreground",
+                      : "font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
                   )}
                 >
                   {item.label}
@@ -156,10 +157,11 @@ export function SellerHeader({ showNav = true }: SellerHeaderProps) {
               <Link
                 href={item.to}
                 className={cn(
-                  "flex h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm transition-colors",
+                  "flex h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm",
+                  "transition-[color,border-color] duration-150 ease-out-strong",
                   isMenuActive(pathname, item)
                     ? "border-foreground font-bold text-foreground"
-                    : "border-transparent font-medium text-muted-foreground hover:text-foreground",
+                    : "border-transparent font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
                 )}
               >
                 {item.label}
