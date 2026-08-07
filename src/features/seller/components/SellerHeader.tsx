@@ -58,12 +58,25 @@ export function SellerHeader({ showNav = true }: SellerHeaderProps) {
         {/* 로고 → 쇼핑몰 홈(판매자도 구매자 화면으로 돌아갈 수 있어야 함) */}
         <Link
           href="/"
-          aria-label="Jarvis 홈"
-          className="flex shrink-0 items-baseline gap-2"
+          aria-label="Narvis 홈"
+          className="flex shrink-0 items-center gap-2.5"
         >
-          <span className="text-lg font-bold tracking-tight">Jarvis</span>
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Seller
+          {/* 구매자 헤더와 같은 심볼 — 두 화면이 같은 로고로 읽혀야 한다 */}
+          <img
+            src="/logo-mark.png"
+            alt=""
+            aria-hidden
+            className="size-7 shrink-0"
+          />
+          {/* 워드마크와 Seller 는 baseline 으로 맞춘다 — 크기가 달라 가운데 정렬하면
+              글자 밑선이 어긋난다. 심볼만 바깥에서 세로 가운데로 맞춘다. */}
+          <span className="flex items-baseline gap-2">
+            <span className="text-lg font-bold tracking-tight text-wordmark">
+              Narvis
+            </span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Seller
+            </span>
           </span>
         </Link>
 

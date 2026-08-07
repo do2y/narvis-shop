@@ -19,6 +19,9 @@
   /* 브랜드 포인트 색(딥 틸그린 #115E59) — 로고·전송버튼·활성 요소 등 강조에만. 기본 primary는 검정 유지 */
   --brand: #115e59;
   --brand-foreground: oklch(0.985 0 0);
+  /* 워드마크("Narvis") 전용 — 순수 검정은 파스텔 심볼 옆에서 대비가 너무 세다.
+     푸른기가 도는 짙은 색이라 로고와 이어지면서 가독성은 유지된다(대비 10.6). */
+  --wordmark: #2c3e63;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -46,6 +49,8 @@
 }
 
 @theme inline {
+  /* animate-avatar-thinking 유틸리티로 쓰인다(채팅 AI 아바타, 응답 대기 중에만) */
+  --animate-avatar-thinking: avatar-thinking 1.4s ease-in-out infinite;
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -75,6 +80,7 @@
   --color-primary: var(--primary);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand: var(--brand);
+  --color-wordmark: var(--wordmark);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -100,6 +106,8 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
+  /* 다크에서는 짙은 색이 배경에 묻힌다 — 같은 색조를 유지하되 밝은 쪽으로 뒤집는다 */
+  --wordmark: #dbe4f5;
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
@@ -129,6 +137,37 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* AI 아바타(스파크)가 "생각 중"임을 알리는 반짝임 — 응답을 기다리는 동안에만 돈다.
+
+   회전시키지 않는다. 스파크는 상하좌우 대칭이라 돌려봐야 "도는구나"만 보이고
+   반짝인다는 느낌이 안 난다 — 실제 반짝임은 빛의 세기가 변하는 것이다.
+
+   네 가지를 함께, 대신 아주 얕게 움직인다. 하나만 쓰면 그냥 깜빡임이 되고,
+   깊게 주면 28px 자리에서 말풍선마다 붙어 있는 요소로는 과하다(대화를 읽는데 시선이 끌린다):
+   - brightness(1.14): 색을 살짝 태운다
+   - drop-shadow(1.5px): 빛이 아주 조금 번지는 halo
+   - opacity(0.72→1) / scale(1.05)
+
+   비대칭 타이밍: 45% 에서 정점을 찍고 나머지 55% 에 걸쳐 잦아든다.
+   실제 반짝임은 빠르게 타올랐다 천천히 사그라지므로, 대칭이면 기계적으로 보인다.
+
+   filter 는 페인트 단계라 transform 만큼 싸지 않지만, 28px 도형 2개뿐이라 부담이 없다.
+   1.4초 주기는 어지럼을 유발한다는 0.2Hz 대역(5초)을 피하면서 시선을 뺏지 않는다. */
+@keyframes avatar-thinking {
+  0%,
+  100% {
+    opacity: 0.72;
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+    transform: scale(1);
+  }
+  45% {
+    opacity: 1;
+    /* halo 는 그라데이션 중앙의 스카이블루(#8DB9F4) — 도형 색과 이어져야 번져 보인다 */
+    filter: brightness(1.14) drop-shadow(0 0 1.5px rgb(141 185 244 / 0.45));
+    transform: scale(1.05);
+  }
 }
 
 @layer base {

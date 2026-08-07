@@ -47,13 +47,12 @@ function ItemRow({
 
   return (
     <div className="flex gap-4 px-5 py-4">
+      {/* 취소된 줄이어도 사진은 원래 색으로 둔다 — 흐리면 어떤 상품이었는지
+          알아보기 어려워진다. 취소 여부는 상품명 회색·가격 취소선·상태 문구로 이미 드러난다. */}
       <ProductImage
         src={item.imageUrl}
         alt=""
-        className={cn(
-          "size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20",
-          claimed && "opacity-50 grayscale",
-        )}
+        className="size-16 shrink-0 rounded-sm bg-muted object-cover ring-1 ring-black/5 sm:size-20"
       />
       <div className="flex min-w-0 flex-col gap-1">
         <p

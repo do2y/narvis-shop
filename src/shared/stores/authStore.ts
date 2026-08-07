@@ -40,6 +40,9 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => set({ user: null }),
     }),
     {
+      // 서비스명이 Narvis 로 바뀐 뒤에도 이 키는 jarvis- 로 둔다(2026-08-07).
+      // 바꾸면 기존 사용자의 localStorage 항목을 못 찾아 전원 로그아웃된다.
+      // 사용자에게 보이지 않는 내부 식별자라 통일할 이득도 없다.
       name: "jarvis-auth",
       // 토큰은 저장하지 않는다 — AT·RT 모두 httpOnly 쿠키라 JS가 볼 수 없다.
       //

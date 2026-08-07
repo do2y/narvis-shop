@@ -57,7 +57,7 @@ export async function generateMetadata({
   }
 
   const { brand, products } = home;
-  const title = `${brand.name} | Jarvis`;
+  const title = `${brand.name} | Narvis`;
   const description =
     brand.description?.trim() ||
     `${brand.name}의 상품 ${products.totalElements.toLocaleString("ko-KR")}개를 만나보세요.`;

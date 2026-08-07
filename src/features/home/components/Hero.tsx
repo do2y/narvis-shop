@@ -49,7 +49,7 @@ export function Hero() {
         <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
           원하는 걸 말하면
           <br />
-          <span className="text-brand">Jarvis</span>가 찾아드립니다
+          <span className="text-brand">Narvis</span>가 찾아드립니다
         </h1>
 
         {/* 입력 내용을 첫 메시지로 채팅 화면에 전달 */}
@@ -59,7 +59,7 @@ export function Hero() {
             e.preventDefault();
             startChat(message);
           }}
-          aria-label="Jarvis에게 요청하기"
+          aria-label="Narvis에게 요청하기"
         >
           <Search className="size-5 shrink-0 text-muted-foreground" />
           <input

@@ -8,13 +8,13 @@ import HomePage from "@/features/home";
 import { getCategories, getPopularProducts } from "@/features/home/serverApi";
 
 export const metadata: Metadata = {
-  title: "Jarvis — 대화로 찾는 쇼핑",
+  title: "Narvis — 대화로 찾는 쇼핑",
   description:
-    "찾는 물건을 말로 설명하면 Jarvis가 조건에 맞는 상품을 추천해드려요.",
+    "찾는 물건을 말로 설명하면 Narvis가 조건에 맞는 상품을 추천해드려요.",
   openGraph: {
-    title: "Jarvis — 대화로 찾는 쇼핑",
+    title: "Narvis — 대화로 찾는 쇼핑",
     description:
-      "찾는 물건을 말로 설명하면 Jarvis가 조건에 맞는 상품을 추천해드려요.",
+      "찾는 물건을 말로 설명하면 Narvis가 조건에 맞는 상품을 추천해드려요.",
     type: "website",
   },
 };

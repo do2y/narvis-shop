@@ -116,13 +116,20 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            aria-label="Jarvis 홈"
-            className="flex items-center gap-2 rounded-full"
+            aria-label="Narvis 홈"
+            className="flex items-center gap-2.5 rounded-full"
           >
-            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-              J
+            {/* 워드마크 옆 심볼. alt=""·aria-hidden — 바로 옆 "Narvis" 와 Link 의
+                aria-label 이 이미 이름을 말하므로 중복해 읽히지 않게 한다. */}
+            <img
+              src="/logo-mark.png"
+              alt=""
+              aria-hidden
+              className="size-7 shrink-0"
+            />
+            <span className="text-lg font-bold tracking-tight text-wordmark">
+              Narvis
             </span>
-            <span className="text-lg font-bold tracking-tight">Jarvis</span>
           </Link>
           {leftSlot}
         </div>
