@@ -115,7 +115,7 @@ export function MessageList({
 }
 
 /**
- * AI 아바타 — 이미지 대신 brand 색 점 하나로 그린다.
+ * AI 아바타 — 이미지 대신 스파크 글리프(SVG)로 그린다.
  *
  * 28px 자리라 비트맵은 뭉개지고 배율마다 흐려진다. 코드로 그리면 어느 배율에서도
  * 선명하고 네트워크 요청도 없다.
@@ -124,25 +124,22 @@ export function MessageList({
  * 상시 도는 애니메이션은 자주 보는 것일수록 조용해야 한다는 원칙에 어긋난다
  * (.agents/skills: "frequency of use", "purposeful animation").
  * 그래서 움직임은 "지금 생각 중"이라는 뜻을 가질 때만 준다 — thinking 일 때만
- * 은은한 맥박. 상태를 전달하는 목적이 있어 장식이 아니다.
+ * 은은하게 반짝인다. 상태를 전달하는 목적이 있어 장식이 아니다.
  */
 function Avatar({ thinking = false }: { thinking?: boolean }) {
   return (
     // 말풍선 옆 장식이라 스크린리더에서 숨긴다 — 발화자는 버블 위치·문맥으로 이미 구분된다.
     // 응답 중 상태는 아래 TypingDots 가 role/문구로 따로 알린다.
-    // overflow-visible: 반짝일 때 번지는 halo(drop-shadow)가 뷰박스 경계에서 잘리지 않게.
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="mt-0.5 size-7 shrink-0 overflow-visible"
-    >
+    <svg aria-hidden viewBox="0 0 24 24" className="mt-0.5 size-7 shrink-0">
       <defs>
-        {/* 대각선 그라데이션 — 단색보다 입체감이 생기고, AI 제품의 관용 표현이기도 하다.
+        {/* 로고·파비콘과 같은 팔레트 — 아이스블루 → 스카이블루 → 세이지 → 버터옐로우.
+            로고가 파랑에서 노랑으로 넘어가는 축을 그대로 따라 같은 브랜드로 읽히게 한다.
             id 가 문서 전역이라 다른 컴포넌트와 겹치지 않게 이름을 구체적으로 둔다. */}
-        <linearGradient id="ai-spark" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="50%" stopColor="#8b5cf6" />
-          <stop offset="100%" stopColor="#ec4899" />
+        <linearGradient id="ai-spark" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#BDD5F4" />
+          <stop offset="30%" stopColor="#8DB9F4" />
+          <stop offset="60%" stopColor="#B9CFBF" />
+          <stop offset="100%" stopColor="#F8DB72" />
         </linearGradient>
       </defs>
 
