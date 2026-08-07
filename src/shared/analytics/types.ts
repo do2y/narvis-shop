@@ -1,16 +1,13 @@
 // 행동 이벤트 수집 계약 — 백엔드 POST /api/events (E-1, 2026-07-17 확정)와 1:1.
 
-// FE 전송 11종 화이트리스트. 그 외 타입은 서버가 버리므로(경고 로그) 타입으로 막는다.
-//
-// 서버 전용 3종(recommendation_generated·add_to_cart·remove_from_cart)은 여기에 없다.
-// HTTP 로 들어오면 드롭되기 때문이다. 장바구니 2종은 BE CartService 가 적재하도록
-// 이관됐다(A 문서, 2026-08-06) — FE 가 SSE 경로에서 quantity·price 를 채울 수 없어
-// _incomplete 로 쌓이던 문제를 데이터 변경 지점에서 남기는 것으로 해결한 것.
+// 12종 화이트리스트. 그 외 타입은 서버가 버리므로(경고 로그) 타입으로 막는다.
+// recommendation_generated 는 서버(Spring) 전용이라 FE 가 보내지 않는다 — HTTP 로 들어오면 드롭된다.
 export type BehaviorEventType =
   | "session_start"
   | "page_view"
   | "search"
   | "product_view"
+  | "add_to_cart"
   | "checkout_start"
   | "purchase_complete"
   | "login"
