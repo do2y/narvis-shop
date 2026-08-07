@@ -117,11 +117,8 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
           <Link
             href="/"
             aria-label="Narvis 홈"
-            className="flex items-center gap-2 rounded-full"
+            className="flex items-center rounded-full"
           >
-            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-              J
-            </span>
             <span className="text-lg font-bold tracking-tight">Narvis</span>
           </Link>
           {leftSlot}
