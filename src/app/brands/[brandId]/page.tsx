@@ -35,11 +35,14 @@ function toQuery(sp: Record<string, string | string[] | undefined>): BrandQuery 
   };
 }
 
-async function resolveId(params: Props["params"]): Promise<number> {
+// 문자열이다. brandId도 productId와 같은 64비트라 Number()로 바꾸는 순간
+// 끝자리가 조용히 바뀐다(503922368982002241 → 503922368982002000).
+// Number.isFinite 검사는 뭉개진 값도 통과시키므로, 존재하는 브랜드인데 404가 났다.
+// number로 되돌리지 말 것 — 경고 없이 값만 틀어진다.
+async function resolveId(params: Props["params"]): Promise<string> {
   const { brandId } = await params;
-  const id = Number(brandId);
-  if (!Number.isFinite(id)) notFound();
-  return id;
+  if (!/^\d+$/.test(brandId)) notFound();
+  return brandId;
 }
 
 export async function generateMetadata({
