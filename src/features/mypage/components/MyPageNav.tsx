@@ -12,7 +12,6 @@ const MENU = [
   { to: "/mypage/recent", label: "최근 본 상품" },
   { to: "/mypage/wishlist", label: "찜" },
   { to: "/mypage/addresses", label: "배송지 관리" },
-  { to: "/mypage/inquiries", label: "문의 내역" },
 ];
 
 export function MyPageNav() {
