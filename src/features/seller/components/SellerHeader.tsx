@@ -58,10 +58,10 @@ export function SellerHeader({ showNav = true }: SellerHeaderProps) {
         {/* 로고 → 쇼핑몰 홈(판매자도 구매자 화면으로 돌아갈 수 있어야 함) */}
         <Link
           href="/"
-          aria-label="Jarvis 홈"
+          aria-label="Narvis 홈"
           className="flex shrink-0 items-baseline gap-2"
         >
-          <span className="text-lg font-bold tracking-tight">Jarvis</span>
+          <span className="text-lg font-bold tracking-tight">Narvis</span>
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Seller
           </span>

@@ -8,11 +8,11 @@ export function HomeFooter() {
           <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
             J
           </span>
-          <span className="font-semibold text-foreground">Jarvis</span>
+          <span className="font-semibold text-foreground">Narvis</span>
           <span className="hidden sm:inline">AI Shopping Agent</span>
         </div>
 
-        <p>© 2026 Jarvis. All rights reserved.</p>
+        <p>© 2026 Narvis. All rights reserved.</p>
 
         <nav className="flex items-center gap-4">
           {/* TODO: 각 정책 페이지 라우트 확정 시 연결 */}

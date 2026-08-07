@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Jarvis",
-  description: "AI 쇼핑 에이전트 Jarvis — 대화로 찾는 쇼핑",
+  title: "Narvis",
+  description: "AI 쇼핑 에이전트 Narvis — 대화로 찾는 쇼핑",
   icons: { icon: "/favicon.svg" },
 };
 
