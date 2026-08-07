@@ -46,6 +46,8 @@
 }
 
 @theme inline {
+  /* animate-avatar-thinking 유틸리티로 쓰인다(채팅 AI 아바타, 응답 대기 중에만) */
+  --animate-avatar-thinking: avatar-thinking 1.4s ease-in-out infinite;
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -129,6 +131,35 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* AI 아바타(스파크)가 "생각 중"임을 알리는 반짝임 — 응답을 기다리는 동안에만 돈다.
+
+   회전시키지 않는다. 스파크는 상하좌우 대칭이라 돌려봐야 "도는구나"만 보이고
+   반짝인다는 느낌이 안 난다 — 실제 반짝임은 빛의 세기가 변하는 것이다.
+
+   세 가지를 함께 움직여 "빛난다"를 만든다. 하나만 쓰면 그냥 깜빡임이 된다:
+   - brightness: 색을 실제로 밝게 태운다(1.35). 이게 반짝임의 핵심이다
+   - drop-shadow: 빛이 바깥으로 번지는 halo. 밝아질 때만 퍼진다
+   - scale: 부풀어 오르는 느낌을 아주 살짝(1.12) 얹는다
+
+   비대칭 타이밍: 45% 에서 정점을 찍고 나머지 55% 에 걸쳐 잦아든다.
+   실제 반짝임은 빠르게 타올랐다 천천히 사그라지므로, 대칭이면 기계적으로 보인다.
+
+   filter 는 페인트 단계라 transform 만큼 싸지 않지만, 28px 도형 2개뿐이라 부담이 없다.
+   1.4초 주기는 어지럼을 유발한다는 0.2Hz 대역(5초)을 피하면서 시선을 뺏지 않는다. */
+@keyframes avatar-thinking {
+  0%,
+  100% {
+    opacity: 0.5;
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+    transform: scale(1);
+  }
+  45% {
+    opacity: 1;
+    filter: brightness(1.35) drop-shadow(0 0 3px rgb(139 92 246 / 0.7));
+    transform: scale(1.12);
+  }
 }
 
 @layer base {
