@@ -341,19 +341,15 @@ export function useChat({
                   settleDraft(pending.draft.draftId, action);
                 }
               }
-              // 행동 이벤트는 CART_ADDED 하나만 쏜다. 나머지 9종에 대응하는 eventType 이
-              // E-1 화이트리스트 12종에 없기 때문이다 — 삭제·수량변경·찜에 해당하는
-              // 이름이 아예 정의돼 있지 않다. 없는 이름을 지어 보내면 서버가 드롭하고
-              // 경고 로그만 쌓이므로(analytics/types.ts) 빠뜨린 게 아니라 안 보내는 것이다.
-              // E-1 에 이름이 추가되면 그때 여기에 붙인다.
-              if (action.type === "CART_ADDED") {
-                // AI 가 대화 중 담은 경로 — 명세 필수 키(quantity·price)를 채우지 못한다.
-                // CART_ADDED 페이로드가 cartItemId·message 뿐이라 FE 가 수량·단가를 모르고,
-                // 어느 추천 목록에서 왔는지도 알 수 없어 recommendation 도 못 싣는다.
-                // 서버가 _incomplete 를 붙여 저장한다(E-1 원칙: 버리지 않고 표시).
-                // 계약 표에 없는 키는 싣지 않는다 — 집계가 의존하는 이름만 보낸다.
-                track("add_to_cart");
-              }
+              // 이 경로에서는 행동 이벤트를 쏘지 않는다.
+              //
+              // 예전엔 CART_ADDED 하나만 add_to_cart 로 쐈지만, SSE 페이로드가
+              // cartItemId·message 뿐이라 명세 필수 키(quantity·price)를 채우지 못해
+              // 서버에 _incomplete 로 쌓였다. 그래서 담기 3개 경로를 모두 커버하는
+              // BE CartService 단일 지점 적재로 이관됨(A 문서, 2026-08-06).
+              //
+              // 나머지 액션(삭제·수량변경·찜)도 여기서 쏘지 않는다 — 대응하는
+              // eventType 이름이 E-1 FE 화이트리스트에 없다(analytics/types.ts).
               onActionRef.current?.(action);
               break;
             }

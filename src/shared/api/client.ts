@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { getSessionKey } from "@/shared/analytics/sessionKey";
 import { useAuthStore } from "@/shared/stores/authStore";
 
 // 백엔드 공통 응답 봉투. 모든 응답이 이 형태로 감싸여 옴.
@@ -135,6 +136,34 @@ function logRequest(config: InternalAxiosRequestConfig) {
 }
 
 if (DEBUG_API) api.interceptors.request.use(logRequest);
+
+/**
+ * 장바구니 변경 요청에 X-Session-Key 를 싣는다 (A 문서, 2026-08-06).
+ *
+ * 담기·삭제·수량변경 이벤트는 FE track() 이 아니라 BE CartService 가 적재한다.
+ * 서버는 이 헤더로만 방문 세션을 알 수 있다 — member_id·guest_id 는 JWT·쿠키에서
+ * 뽑지만 sessionKey 는 FE 가 localStorage 로 관리하는 값이라 그렇다.
+ *
+ * 조회(GET /api/cart)에는 붙이지 않는다. 적재 대상이 변경 3종뿐이다.
+ *
+ * 값을 모듈 로드 시점에 캐시하지 않고 **요청 시점에** 읽는 이유: sessionKey 는
+ * 30분 무활동이면 재발급되는데, 캐시하면 만료된 옛 키를 계속 보내게 된다.
+ */
+function attachSessionKey(config: InternalAxiosRequestConfig) {
+  const url = config.url ?? "";
+  const method = (config.method ?? "get").toLowerCase();
+  if (!url.startsWith("/api/cart/items") || method === "get") return config;
+
+  try {
+    config.headers.set("X-Session-Key", getSessionKey().sessionKey);
+  } catch {
+    // localStorage 차단(사파리 프라이빗 등) — 헤더 없이 보낸다.
+    // 명세상 헤더가 없으면 담기는 정상 처리되고 이벤트만 스킵된다.
+  }
+  return config;
+}
+
+api.interceptors.request.use(attachSessionKey);
 
 let refreshing: Promise<void> | null = null;
 
