@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { categoryEmoji, categoryImage } from "../categoryEmoji";
+import {
+  DEFAULT_CATEGORY_IMAGE,
+  categoryEmoji,
+  categoryImage,
+} from "../categoryEmoji";
 import { useCategories } from "../useHomeData";
 import { SectionHeading } from "./SectionHeading";
 
@@ -45,7 +49,9 @@ export function CategoryGrid() {
               }
               className="flex flex-col items-center gap-2 rounded-sm border bg-background px-3 py-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:bg-muted hover:shadow-md active:translate-y-0 active:scale-[0.98]"
             >
-              {/* 이미지가 준비된 카테고리만 그림으로, 나머지는 이모지로 폴백한다 */}
+              {/* 이미지가 준비된 카테고리만 그림으로, 나머지는 이모지로 폴백한다.
+                  표에 등록돼 있어도 파일이 없을 수 있어(에셋 교체 중) onError 로 기본 아이콘을 세운다.
+                  깨진 이미지 아이콘이 그대로 노출되는 것을 막는 마지막 방어다 */}
               {image ? (
                 // eslint-disable-next-line @next/next/no-img-element -- 고정 크기 로컬 아이콘이라 최적화 이득이 없다
                 <img
@@ -55,6 +61,13 @@ export function CategoryGrid() {
                   height={32}
                   className="size-8 object-contain"
                   aria-hidden
+                  onError={(e) => {
+                    // 기본 아이콘마저 실패하면 무한 루프가 되므로 한 번만 교체한다
+                    const img = e.currentTarget;
+                    if (img.dataset.fallback) return;
+                    img.dataset.fallback = "true";
+                    img.src = DEFAULT_CATEGORY_IMAGE;
+                  }}
                 />
               ) : (
                 <span className="text-2xl leading-8" aria-hidden>
