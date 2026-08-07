@@ -130,7 +130,12 @@ function Avatar({ thinking = false }: { thinking?: boolean }) {
   return (
     // 말풍선 옆 장식이라 스크린리더에서 숨긴다 — 발화자는 버블 위치·문맥으로 이미 구분된다.
     // 응답 중 상태는 아래 TypingDots 가 role/문구로 따로 알린다.
-    <svg aria-hidden viewBox="0 0 24 24" className="mt-0.5 size-7 shrink-0">
+    // overflow-visible: 반짝일 때 번지는 halo(drop-shadow)가 뷰박스 경계에서 잘리지 않게.
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="mt-0.5 size-7 shrink-0 overflow-visible"
+    >
       <defs>
         {/* 로고·파비콘과 같은 팔레트 — 아이스블루 → 스카이블루 → 세이지 → 버터옐로우.
             로고가 파랑에서 노랑으로 넘어가는 축을 그대로 따라 같은 브랜드로 읽히게 한다.
