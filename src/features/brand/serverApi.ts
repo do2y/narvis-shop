@@ -9,7 +9,7 @@ import type { BrandHome, BrandQuery } from "./types";
  * 원시값 인자로 고정해 generateMetadata와 page의 호출이 1회로 합쳐지게 한다.
  */
 const getBrandHomeByKey = cachedGet(
-  (brandId: number, search: string): Promise<BrandHome> =>
+  (brandId: string, search: string): Promise<BrandHome> =>
     serverGet<BrandHome>(
       `/api/brands/${brandId}${search ? `?${search}` : ""}`,
     ),
@@ -17,7 +17,7 @@ const getBrandHomeByKey = cachedGet(
 
 /** 기본값(sort=popular·page=0·size=20)은 백엔드가 갖고 있어 미지정 파라미터는 보내지 않는다. */
 export function getBrandHome(
-  brandId: number,
+  brandId: string,
   query: BrandQuery = {},
 ): Promise<BrandHome> {
   const params = new URLSearchParams();
