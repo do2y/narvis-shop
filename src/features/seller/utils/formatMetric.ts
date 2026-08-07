@@ -1,9 +1,9 @@
-import type { SellerMetric } from "../types";
+import type { SellerAnalysis, SellerMetric } from "../types";
 
 /** 판매 지표 값 표시 — 단위별 포맷 */
 export function formatMetric(
   value: number,
-  unit: SellerMetric["unit"],
+  unit: SellerMetric["unit"] | SellerAnalysis["unit"],
 ): string {
   switch (unit) {
     case "KRW":

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AnalysisReportView } from "@/shared/chat/store";
 import type { ChatResult } from "@/shared/types/chat";
 import type {
   SellerOrderTab,
@@ -10,6 +11,7 @@ import type {
   SellerProductTab,
   SellerWorkspaceTab,
 } from "../types";
+import { hoverMuted, pressable } from "../interaction";
 import { AnalysisReport } from "./AnalysisReport";
 import { OrderList } from "./OrderList";
 import { ProductList } from "./ProductList";
@@ -22,8 +24,8 @@ interface SellerWorkspaceProps {
   results: ChatResult[];
   showResults: boolean;
   isStreaming: boolean;
-  /** 분석 리포트 본문(analysis+replace) — 있으면 결과 영역에 리포트를 표시 */
-  analysisReport: string | null;
+  /** 분석 리포트(analysis+replace) — 있으면 결과 영역에 리포트를 표시 */
+  analysisReport: AnalysisReportView | null;
   /** 분석 스트림 진행 중 — 리포트 확정 전 스켈레톤 표시(lane:analysis) */
   analysisLoading: boolean;
   onBackToList: () => void;
@@ -73,7 +75,12 @@ export function SellerWorkspace({
           <button
             type="button"
             onClick={onBackToList}
-            className="flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+            className={cn(
+              "flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground",
+              pressable,
+              hoverMuted,
+              "hover:[@media(hover:hover)]:text-foreground",
+            )}
           >
             <ArrowLeft className="size-4" />
             목록으로
@@ -91,10 +98,11 @@ export function SellerWorkspace({
                   onClick={() => onTabChange(t.key)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-8 items-center whitespace-nowrap rounded-full px-3.5 text-sm transition-colors",
+                    "flex h-8 items-center whitespace-nowrap rounded-full px-3.5 text-sm",
+                    "transition-[color,background-color,box-shadow] duration-150 ease-out-strong",
                     active
                       ? "bg-background font-semibold text-foreground shadow-sm"
-                      : "font-medium text-muted-foreground hover:text-foreground",
+                      : "font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
                   )}
                 >
                   {t.label}
@@ -111,7 +119,7 @@ export function SellerWorkspace({
           <div className="flex flex-col gap-6">
             {/* 분석 리포트(analysis+replace) — 스트림 중엔 스켈레톤, 확정되면 본문 */}
             {(analysisLoading || analysisReport) && (
-              <div className="animate-in duration-300 fade-in slide-in-from-bottom-2">
+              <div className="animate-in duration-200 fade-in slide-in-from-bottom-2 ease-out-strong motion-reduce:animate-none">
                 <AnalysisReport
                   report={analysisReport}
                   loading={analysisLoading}
@@ -122,7 +130,7 @@ export function SellerWorkspace({
               r.kind === "draft" ? (
                 <div
                   key={r.draft.draftId ?? i}
-                  className="animate-in duration-300 fade-in slide-in-from-bottom-2"
+                  className="animate-in duration-200 fade-in slide-in-from-bottom-2 ease-out-strong motion-reduce:animate-none"
                 >
                   <ProductDiffCard
                     draft={r.draft}

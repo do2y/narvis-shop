@@ -16,6 +16,7 @@ import { clearChat } from "@/shared/chat/chatPersistence";
 import { getThreadId, newThreadId } from "@/shared/chat/threadId";
 import { fetchChatListGroup } from "@/shared/chat/lists";
 import { resolveProgressText } from "@/shared/chat/progress";
+import { resolveAnalysisReport } from "@/shared/chat/analysisReport";
 import type {
   ChatAction,
   ChatChannel,
@@ -25,6 +26,7 @@ import type {
   ConditionAction,
   ConditionField,
   SellerPanel,
+  SellerReport,
   StreamChatBody,
 } from "@/shared/types/chat";
 import { useChatStore } from "./store";
@@ -214,6 +216,10 @@ export function useChat({
       // 완료를 보장하려고 promise 를 모아 두고 스트림 소비 후 함께 기다린다.
       const pendingFetches: Promise<void>[] = [];
 
+      // 분석 리포트 보관함 — 스트림 1회 수명(run 호출당 새로 생긴다).
+      // report 수신 즉시 패널에 꽂지 않고 여기 담아 두는 이유는 done 절 주석 참조.
+      let pendingReport: SellerReport | null = null;
+
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -235,8 +241,13 @@ export function useChat({
             case "meta":
               // 첫 프레임 — 레인으로 즉시 레이아웃·로딩 준비
               setLane(e.data.lane);
-              // 새 분석이 시작되면 이전 리포트를 비운다(스켈레톤부터 다시 시작)
-              if (e.data.lane === "analysis") setAnalysisReport(null);
+              // 새 분석이 시작되면 이전 리포트를 비운다(스켈레톤부터 다시 시작).
+              // 보관함도 함께 턴다 — 이전 스트림이 report 만 보내고 done 없이
+              // 끊겼다면 남아 있을 수 있는데, 그게 다음 턴 결과로 새면 안 된다.
+              if (e.data.lane === "analysis") {
+                setAnalysisReport(null);
+                pendingReport = null;
+              }
               break;
             case "progress": {
               // 진행 상태(최종 답변 아님). 두 스트림의 페이로드가 다르다 —
@@ -318,6 +329,12 @@ export function useChat({
             case "draft":
               pushResult({ kind: "draft", draft: e.data });
               break;
+            case "report":
+              // 보관만 하고 화면에 꽂지 않는다 — 커밋 신호는 done{replace} 다.
+              // 여기서 바로 반영하면 report 뒤에 error 로 끝나는 스트림에서
+              // 실패한 턴의 리포트가 패널에 남는다(계약 §3.2: error 종료 시 폐기).
+              pendingReport = e.data;
+              break;
             case "action": {
               // 장바구니 담기·삭제·수량변경, 찜 추가·해제, 판매자 수정 결과(계약 CH-2 §action).
               // message 는 AI 가 조립한 사용자 노출 안전 문구다 — 그대로 붙이고
@@ -368,14 +385,17 @@ export function useChat({
                   );
                 }
               }
-              // 분석 리포트(analysis+replace)는 우측 패널로 교체된다. 계약상 리포트는
-              // 단일 token이라 마지막 assistant 텍스트를 그대로 리포트 본문으로 승계한다.
+              // 분석 리포트(analysis+replace)는 우측 패널로 교체된다.
+              // 구조화 report 우선, 없으면 token 연문 승계(계약 §0 fallback).
               const st = useChatStore.getState();
               if (st.lane === "analysis" && e.data.panel === "replace") {
                 const last = st.messages[st.messages.length - 1];
-                if (last?.role === "assistant" && last.text) {
-                  setAnalysisReport(last.text);
-                }
+                const next = resolveAnalysisReport(
+                  pendingReport,
+                  last?.role === "assistant" ? last.text : undefined,
+                );
+                // null 이면 패널을 건드리지 않는다 — 이전 리포트가 남는 게 낫다
+                if (next) setAnalysisReport(next);
               }
               onDoneRef.current?.(e.data.panel);
               break;
@@ -388,6 +408,9 @@ export function useChat({
               // 이라도 "미구성"(재시도 무의미)과 "일시 불가"(유효)가 섞여 있어
               // emit 지점만이 안다. requestId 는 사용자 신고 시 서버 로그 추적에 쓴다.
               setProgress(null); // 종결 이벤트 — 진행 표시를 남기지 않는다
+              // 계약 §3.2: error 종료 시 보관 중인 리포트는 폐기한다.
+              // 패널은 건드리지 않는다 — done 이 안 왔으니 이전 리포트가 정본이다.
+              pendingReport = null;
               failLastAssistant(e.data.message, {
                 retryable: e.data.retryable,
                 requestId: e.data.requestId,

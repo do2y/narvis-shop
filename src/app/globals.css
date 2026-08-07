@@ -170,6 +170,58 @@
   }
 }
 
+/* ── 인쇄(판매자 분석 리포트 "PDF로 저장") ──
+   PDF 라이브러리 대신 브라우저 인쇄를 쓴다 — 화면과 같은 폰트로 나오고
+   차트(SVG)도 그대로 실린다. 한글 폰트를 수 MB 임베딩할 필요가 없다.
+
+   리포트는 flex·overflow 컨테이너 안쪽 깊숙이 있어서, 그냥 인쇄하면
+   그 조상들이 높이를 가둬 첫 페이지에서 잘린다. 그래서 숨기는 것만으로는
+   부족하고 조상들의 레이아웃 제약을 함께 풀어야 한다. */
+/* 화면에서는 인쇄 전용 컨테이너를 감춘다(인쇄 시에만 채워진다) */
+[data-print-portal] {
+  display: none;
+}
+
+@media print {
+  /* 1) 실제 화면은 통째로 숨기고, body 직계인 인쇄 컨테이너만 보인다.
+        "리포트만 남기고 조상 레이아웃을 되돌리는" 방식은 쓰지 않는다 —
+        조상의 flex·overflow·height 를 일일이 풀어야 하고, 하나라도
+        놓치면 내용이 첫 페이지에서 잘린다. 아예 body 밑으로 옮기는 게
+        예측 가능하다(리포트 노드를 여기로 복제해 넣는다). */
+  body > *:not([data-print-portal]) {
+    display: none !important;
+  }
+
+  [data-print-portal] {
+    display: block !important;
+  }
+
+  /* 2) 인쇄물에 남으면 안 되는 조작 요소(저장 버튼·펼치기 토글) */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* 3) 접혀 있던 "종합 해설 전문"도 인쇄물에는 펼쳐서 싣는다 —
+        화면에서 접은 건 공간 때문이지 뺄 내용이라서가 아니다.
+        (Tailwind 의 .hidden 을 이겨야 해서 !important) */
+  [data-print-portal] [data-print-body] {
+    display: block !important;
+  }
+
+  /* 4) 종이에 맞춘 마무리 — 카드 그림자는 잉크만 먹고,
+        절이 페이지 경계에서 갈리지 않게 막는다. */
+  [data-print-portal] section,
+  [data-print-portal] article {
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
