@@ -258,7 +258,17 @@ export interface SellerReportRecommendation {
 export interface SellerReportChart {
   title: string;
   chartType: "line" | "bar";
-  unit: "KRW" | "COUNT" | "PERCENT";
+  /** RATING 은 상품별 평균 평점 차트(2026-08-08 신설) — 1~5 실수 */
+  unit: "KRW" | "COUNT" | "PERCENT" | "RATING";
+  /**
+   * 이 계열을 어떻게 집계했는가 (2026-08-08 신설).
+   * 서버가 소스 레지스트리에서 채워 보낸다 — unit 으로 추측하지 말 것
+   * (같은 COUNT 라도 판매 수량은 sum, 재고는 none 이다).
+   *  sum  합계가 의미 있음
+   *  avg  평균 (평점)
+   *  none 스냅샷이라 합계·평균 둘 다 무의미 (가격·재고)
+   */
+  aggregate: "sum" | "avg" | "none";
   series: { label: string; points: { x: string; y: number }[] }[];
   summary?: string;
 }
