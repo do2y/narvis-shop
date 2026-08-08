@@ -78,15 +78,6 @@ export interface SellerSummary {
     count: number; // items는 상위 일부만 올 수 있어 전체 수는 이 값을 쓴다
     items: SellerLowStockItem[];
   };
-
-  // 화면에는 쓰지 않는다 — AI 채팅·타 화면이 소비하는 상품 퍼널 데이터
-  products: {
-    productId: string;
-    name: string;
-    viewCount: number;
-    cartCount: number;
-    salesCount: number;
-  }[];
 }
 
 // ── 주문  ──
