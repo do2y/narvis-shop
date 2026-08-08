@@ -53,7 +53,7 @@ export function Toaster() {
             // 반투명은 흰 바탕에 묻혀 알림이 온 줄도 모른다(실제로 그랬다).
             // 어두운 재질은 콘텐츠에서 확실히 분리되면서도, 불투명 검정 판보다
             // 조용하다(§12: 어두운 재질이 구조를 분리한다).
-            "!bg-foreground/85 !backdrop-blur-md !backdrop-saturate-150",
+            "!bg-foreground/70 !backdrop-blur-md !backdrop-saturate-150",
             // 빛을 받는 윗변 — 어두운 표면에서도 위가 밝아야 판이 아닌 물체로 읽힌다.
             "!border !border-white/10 !border-t-white/20",
             // 어두운 표면은 그림자가 잘 안 보인다. 아래로 살짝 띄워 부유감만 준다.
