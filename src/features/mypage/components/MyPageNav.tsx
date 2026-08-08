@@ -7,6 +7,8 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MENU = [
+  // AI 개인화가 이 서비스의 핵심 기능이라 주문 내역보다 앞에 둔다.
+  { to: "/mypage/preferences", label: "AI 취향 분석" },
   { to: "/mypage/orders", label: "주문 내역" },
   { to: "/mypage/claims", label: "취소·반품" },
   { to: "/mypage/recent", label: "최근 본 상품" },
