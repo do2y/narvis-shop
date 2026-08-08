@@ -9,7 +9,11 @@ import { formatMetric } from "../utils/formatMetric";
 // 글자가 겹쳐 읽을 수 없다 — 균등 간격으로 솎아낸다(대시보드 7점은 그대로 다 나온다).
 const MAX_X_LABELS = 10;
 
-// viewBox 좌표계 — 실제 크기는 CSS가 결정(preserveAspectRatio="none" 대신 비율 유지)
+// viewBox 좌표계 — 실제 크기는 CSS가 결정한다.
+// preserveAspectRatio="none" 으로 좌표계를 컨테이너에 꽉 채운다. 기본값(비율 유지)이면
+// 컨테이너가 528px(=44rem, h-44 기준 3:1 비율의 폭)를 넘는 순간 그림만 528px 에 고정돼
+// 가운데 정렬되는데, x축 라벨은 컨테이너 폭 기준으로 절대 배치돼 둘이 어긋난다.
+// 대신 스케일이 비균등해지므로 선·점은 non-scaling 처리가 필요하다(아래 참조).
 const W = 600;
 const H = 200;
 const PAD = { top: 12, right: 12, bottom: 24, left: 12 };
@@ -66,6 +70,7 @@ export function AnalysisChart({
 
       <svg
         viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
         className="h-44 w-full"
         role="img"
         aria-label={`${analysis.title} ${chartType === "line" ? "선" : "막대"} 그래프`}
@@ -110,7 +115,7 @@ export function AnalysisChart({
                   y={y(p.y)}
                   width={bw}
                   height={PAD.top + innerH - y(p.y)}
-                  rx="3"
+                  // rx 를 두면 비균등 스케일에서 모서리가 가로로만 늘어나 찌그러진다
                   className="fill-brand"
                 />
               );
@@ -118,6 +123,7 @@ export function AnalysisChart({
           : (
             <>
               <path d={area} fill={`url(#${gradientId})`} />
+              {/* vector-effect: 비균등 스케일에서 선 굵기가 가로로만 늘어나는 걸 막는다 */}
               <polyline
                 points={line}
                 fill="none"
@@ -125,12 +131,19 @@ export function AnalysisChart({
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
               />
+              {/* 마지막 점 마커 — circle 은 비균등 스케일에서 타원으로 찌그러진다.
+                  획만 남기고 채움을 stroke 로 옮겨 vector-effect 로 원형을 유지한다. */}
               <circle
                 cx={x(points.length - 1)}
                 cy={y(points[points.length - 1].y)}
-                r="4"
-                className="fill-brand"
+                r="0.01"
+                fill="none"
+                className="stroke-brand"
+                strokeWidth="8"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
               />
             </>
           )}

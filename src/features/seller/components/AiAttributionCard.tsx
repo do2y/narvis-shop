@@ -1,0 +1,61 @@
+import { cn } from "@/lib/utils";
+import { numeric } from "../interaction";
+import type { SellerAiAttribution } from "../types";
+import { formatMetric } from "../utils/formatMetric";
+
+/**
+ * AI 추천 경유 매출 카드 — 매출 추이 차트 왼쪽.
+ *
+ * 표시는 금액·비율·구성비 3종뿐이다. 확정/추정 분리와 추천 퍼널은 응답에 오지만
+ * 카드를 작게 유지하기로 해 싣지 않는다.
+ *
+ * 제목이 "AI 추천 매출"이 아니라 "경유"가 붙는 이유: 이 지표는 기여도(어느 매출이
+ * AI를 거쳤는가)이지 증분(AI가 없었다면 얼마였는가)이 아니다. 줄이면 판매자가
+ * "AI가 만들어낸 매출"로 읽는다.
+ */
+export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
+  // 스택바 폭은 aiShare 가 아니라 여기서 직접 계산한다 —
+  // aiShare 는 분모 0이면 null 이라 width 에 넣으면 바가 통째로 사라진다.
+  const total = data.aiSales + data.directSales;
+  const aiPct = total > 0 ? (data.aiSales / total) * 100 : 0;
+
+  return (
+    <section className="flex flex-col gap-4 rounded-sm border border-l-2 border-l-brand bg-background p-4 sm:p-6">
+      <h3 className="text-base font-bold tracking-tight">AI 추천 경유 매출</h3>
+
+      <div>
+        <p className={cn("text-3xl font-bold tracking-tight", numeric)}>
+          {formatMetric(data.aiSales, "KRW")}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          전체 매출의{" "}
+          <span className={cn("font-bold text-brand", numeric)}>
+            {/* null 은 0%가 아니라 계산 불가 — 지표 카드의 증감률과 같은 표기로 맞춘다 */}
+            {data.aiShare === null ? "—" : `${data.aiShare}%`}
+          </span>
+        </p>
+      </div>
+
+      <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+        <div className="bg-brand" style={{ width: `${aiPct}%` }} />
+      </div>
+
+      <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-sm bg-brand" />
+          AI 경유{" "}
+          <b className={cn("font-semibold text-foreground", numeric)}>
+            {data.aiSales.toLocaleString("ko-KR")}
+          </b>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-sm bg-muted-foreground/30" />
+          직접{" "}
+          <b className={cn("font-semibold text-foreground", numeric)}>
+            {data.directSales.toLocaleString("ko-KR")}
+          </b>
+        </span>
+      </div>
+    </section>
+  );
+}

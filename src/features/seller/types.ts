@@ -38,6 +38,21 @@ export interface SellerSummaryParams {
   trendDays?: number; // 기본 7, 1~90
 }
 
+/**
+ * S-1 AI 추천 경유 매출 (2026-08-07 신설).
+ *
+ * 화면에서 쓰는 4개 필드만 선언한다 — 응답에는 confirmedSales·estimatedSales·
+ * funnel·coverage·policyVersion·windowDays·aiOrderCount 도 오지만 이번 카드는 싣지 않는다.
+ */
+export interface SellerAiAttribution {
+  totalSales: number;
+  aiSales: number;
+  directSales: number;
+  // 분모(전체 매출)가 0이면 null — 0%가 아니라 "계산 불가"다.
+  // today 의 *ChangeRate 와 같은 규칙이라 표기도 똑같이 "—" 로 맞춘다.
+  aiShare: number | null;
+}
+
 /** 재고 부족 목록의 한 행 — 상품 목록(SellerProductStat)보다 필드가 적다 */
 export interface SellerLowStockItem {
   productId: string;
@@ -79,14 +94,10 @@ export interface SellerSummary {
     items: SellerLowStockItem[];
   };
 
-  // 화면에는 쓰지 않는다 — AI 채팅·타 화면이 소비하는 상품 퍼널 데이터
-  products: {
-    productId: string;
-    name: string;
-    viewCount: number;
-    cartCount: number;
-    salesCount: number;
-  }[];
+  // null 가능 — S-1 은 서브쿼리 8개를 한 응답에 묶는데 귀속 집계 3개만 실패를 격리한다
+  // (대시보드 전체가 500이 되면 안 되므로). 나머지 5개는 하나만 실패해도 전체 500이지만
+  // 이 블록은 실패 시 null 로 내려온다. `| null` 을 빼면 집계가 실패하는 날 런타임에서 터진다.
+  aiAttribution: SellerAiAttribution | null;
 }
 
 // ── 주문  ──
