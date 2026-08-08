@@ -283,6 +283,21 @@ export interface SellerReport {
   limitations: string[];
   chartRequested: boolean;
   charts: SellerReportChart[];
+  /**
+   * 차트 기간이 분석 기간과 다를 때만 온다 (2026-08-08 신설). 없으면 period 와 같다.
+   * "지난달 이탈 보고서 + 최근 7일 매출 그래프" 같은 요청에서 갈린다 —
+   * 표기하지 않으면 판매자가 7일 그래프를 지난달 그래프로 읽는다.
+   */
+  chartPeriod?: { from: string; to: string };
+  /**
+   * 차트를 못 만든 사유 (2026-08-08 신설). 차트 일부만 성공하면
+   * charts 와 이 배열이 동시에 온다.
+   *
+   * reason 을 닫힌 유니온으로 두지 않는 이유는 progress.stage 와 같다 —
+   * 사유가 늘 때마다 FE 배포를 기다리게 하지 않으려는 것이다.
+   * 화면에는 message 를 그대로 싣고(서버가 완성 문장으로 준다) reason 은 로깅·QA 용이다.
+   */
+  chartUnavailable?: { reason: string; message: string }[];
   recommendations: SellerReportRecommendation[];
   applyGuide: string; // 추천 없으면 ""
 }
