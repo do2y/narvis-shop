@@ -15,6 +15,11 @@ export type OrderStatus =
   | "DELIVERED" // 배송 완료
   | "CONFIRMED" // 구매확정
   | "CLAIM_IN_PROGRESS" // 취소·반품 처리 중
+  // 서버는 클레임 종류까지 구분해 내려준다(판매자 SellerClaimStatus 와 같은 어휘).
+  // CLAIM_IN_PROGRESS 로 뭉뚱그리지 않는 이유: 구매자에게 "취소 요청"과 "반품 요청"은
+  // 이후 절차가 다르다 — 반품은 물건을 보내야 하고 취소는 아니다.
+  | "CANCEL_REQUESTED" // 취소 요청 — 접수됐고 승인 대기
+  | "RETURN_REQUESTED" // 반품 요청 — 접수됐고 승인 대기
   | "CANCELLED" // 취소 완료 — 클레임이 승인돼 종결된 줄
   | "RETURNED" // 반품 완료
   | "COMPLETED"; // 처리 완료(클레임 종결 포함)
@@ -29,6 +34,11 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   DELIVERED: "배송 완료",
   CONFIRMED: "구매확정",
   CLAIM_IN_PROGRESS: "취소/반품 처리중",
+  // 판매자 화면은 "취소요청"·"반품요청"(받은 요청을 처리할 대상으로 봄).
+  // 구매자 쪽은 "-중"을 붙여 승인 대기 상태임을 드러낸다 — "요청함"은 행위가
+  // 끝난 것처럼 읽혀 아직 확정 전이라는 사실이 가려진다.
+  CANCEL_REQUESTED: "취소 요청 중",
+  RETURN_REQUESTED: "반품 요청 중",
   CANCELLED: "취소 완료",
   RETURNED: "반품 완료",
   COMPLETED: "처리 완료",
@@ -147,6 +157,8 @@ export function canClaimItem(status: OrderStatus, type: ClaimType): boolean {
 export function isClaimedItemStatus(status: OrderStatus): boolean {
   return (
     status === "CLAIM_IN_PROGRESS" ||
+    status === "CANCEL_REQUESTED" ||
+    status === "RETURN_REQUESTED" ||
     status === "CANCELLED" ||
     status === "RETURNED"
   );
@@ -175,6 +187,9 @@ export function hasMixedItemStatus(items: readonly OrderItem[]): boolean {
  *
  * 진행 중(CLAIM_IN_PROGRESS)은 취소·반품 어느 쪽인지 주문 응답만으로 알 수 없다
  * — 그 구분은 클레임(Claim)이 답한다. 그래서 따로 센다.
+ *
+ * 반면 *_REQUESTED 는 종류가 이미 드러나 있으므로 각각 취소·반품으로 센다.
+ * 아직 승인 전이지만 사용자에겐 "이 상품은 빠진다"는 같은 사실이다.
  */
 export function countClaimedItems(items: readonly OrderItem[]): {
   cancelled: number;
@@ -182,8 +197,12 @@ export function countClaimedItems(items: readonly OrderItem[]): {
   inProgress: number;
   total: number;
 } {
-  const cancelled = items.filter((i) => i.status === "CANCELLED").length;
-  const returned = items.filter((i) => i.status === "RETURNED").length;
+  const cancelled = items.filter(
+    (i) => i.status === "CANCELLED" || i.status === "CANCEL_REQUESTED",
+  ).length;
+  const returned = items.filter(
+    (i) => i.status === "RETURNED" || i.status === "RETURN_REQUESTED",
+  ).length;
   const inProgress = items.filter(
     (i) => i.status === "CLAIM_IN_PROGRESS",
   ).length;
@@ -293,22 +312,6 @@ export interface CreateClaimResponse {
   type: ClaimType;
   status: ClaimStatus;
   requestedAt: string; // ISO 일시(+09:00)
-}
-
-// 문의 처리 상태 (스크린샷: 처리중 / 답변완료) — 문의 챗봇에서 접수, 읽기 전용.
-export type InquiryStatus =
-  | "PENDING" // 처리중 (관리자 답변 대기)
-  | "ANSWERED"; // 답변완료
-
-// 문의 내역 — 문의 챗봇(9번)에서 접수한 문의. 답변완료 시 answer 포함.
-export interface Inquiry {
-  inquiryId: string; // "INQ-20250602"
-  title: string; // "환불 처리 기간이 얼마나 걸리나요?"
-  status: InquiryStatus;
-  content: string; // 문의 본문
-  answer: string | null; // 답변 (PENDING이면 null)
-  createdAt: string; // ISO 날짜 (YYYY-MM-DD) — 최신순 정렬 기준
-  answeredAt: string | null; // 답변 일시 (PENDING이면 null)
 }
 
 // 후기 작성 요청 — POST /api/reviews 계약. 대상은 주문 줄(orderItemId) 기준.

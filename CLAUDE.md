@@ -4,7 +4,8 @@
 - AI Shopping Agent "Jarvis"의 프론트엔드. 자연어 채팅으로 상품을 탐색·추천받는 쇼핑몰
 - 부트캠프 최종 프로젝트, **프론트 1인 체제** — 단순함과 일관성이 최우선
 - 백엔드는 Spring Boot로 분리. 프론트는 **Next.js(App Router)** 이며, SEO가 필요한 공개 페이지만 SSR하고 나머지는 클라이언트 렌더
-- 챗봇 3개(상품 추천 / 문의 / 판매자 분석)는 단일 채팅 API를 공유하는 공통 모듈로 구현
+- 챗봇 2개(상품 추천 / 판매자 분석)는 단일 채팅 API를 공유하는 공통 모듈로 구현
+  (문의 챗봇은 폐기 — `ChatChannel`의 `CS`는 계약에만 남고 쓰는 화면이 없다)
 
 ## 명령어
 - `npm run dev` — 개발 서버 (**포트 3000 고정** — 백엔드 CORS가 `http://localhost:3000`만 허용)
@@ -42,7 +43,7 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
 - **컴포넌트에서 axios 직접 호출 금지.** 반드시 shared/api 함수 → 도메인 훅 경유
 
 ## 상태 구분
-- **서버 원본 데이터**(상품/장바구니/주문/찜/문의) → React Query. useState로 복제 금지
+- **서버 원본 데이터**(상품/장바구니/주문/찜) → React Query. useState로 복제 금지
 - **클라이언트 상태** → Zustand: 인증(authStore — user만 localStorage persist, AT는 메모리 전용), 현재 챗봇 대화(sessionStorage에 탭 단위 저장 — `chatPersistence`), UI 상태
   - 챗 대화를 **탭 단위**로 잡은 이유: 서버 맥락 TTL이 10분(sliding)이라 그보다 오래 남기면
     화면엔 대화가 있는데 AI는 기억 못 하는 어긋난 상태가 길어진다. 탭 수명이 세션 수명과
@@ -96,7 +97,8 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
   내부망 직행으로 바꾸려면 보안그룹 작업이 선행되므로 임의로 막지 않는다
 
 ## 챗봇 공통 모듈 (src/shared/chat, 타입: src/shared/types/chat.ts)
-- 3개 챗봇은 단일 API를 `channel`(SHOPPING|CS|SELLER)만 바꿔 공유. 공통 모듈 + 채널별 렌더러 주입
+- 챗봇은 단일 API를 `channel`(SHOPPING|SELLER)만 바꿔 공유. 공통 모듈 + 채널별 렌더러 주입
+  (`CS`는 타입에 남아 있으나 넘기는 화면이 없다 — 백엔드 계약이라 임의로 지우지 않음)
 - 와이어는 `data: {"type":..,"data":{..}}` envelope 한 줄 — **`event:` 줄을 쓰지 않는다**. 이름이 아니라 `payload.type`으로 분기
 - 구매자 이벤트 **8종**: `progress`(0~1회, 첫 프레임) / `token`(append) / `conditions`(제거 가능 칩) / `suggestions`(완화 제안) / `action` / `products.ready`(상관키) / `done` / `error` + **판매자 전용 `meta`·`draft`**
   - **`progress`는 채널별로 페이로드가 다르다** — 구매자 `{stage,message?}`(어휘 `analyzing` 1종) / 판매자 `{text}`. 수신부가 분기해야 한다

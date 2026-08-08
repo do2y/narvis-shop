@@ -54,9 +54,6 @@ export function toSpecRows(
   if (!attributes) return [];
   const rows: SpecRow[] = [];
   for (const [label, raw] of Object.entries(attributes)) {
-    // `_`로 시작하는 키는 백엔드 내부 메타(_domain·_category·_source_pid·_extra).
-    // 개별 나열 대신 접두사로 거른다 — 메타 키가 늘어도 자동으로 빠진다.
-    if (label.startsWith("_")) continue;
     if (HIDDEN_KEYS.has(label)) continue;
     const value = formatValue(raw);
     if (value !== null) rows.push({ label, value });

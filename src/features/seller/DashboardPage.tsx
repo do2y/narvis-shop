@@ -149,9 +149,12 @@ export default function DashboardPage() {
                   >
                     {data.orderStatus.counts[c.status] ?? 0}건
                   </span>
-                  {/* 배송 중 카드에만 평균 배송일 — 나머지는 붙일 지표가 없다 */}
+                  {/* 배송 중 카드에만 평균 배송일 — 나머지는 붙일 지표가 없다.
+                      표본(배송 완료 건)이 없으면 null 이라 문구를 숨긴다 —
+                      그대로 넣으면 "평균 배송 null일"로 렌더된다. */}
                   <span className="text-sm text-muted-foreground">
-                    {c.status === "SHIPPING"
+                    {c.status === "SHIPPING" &&
+                    data.orderStatus.avgDeliveryDays !== null
                       ? `평균 배송 ${data.orderStatus.avgDeliveryDays}일`
                       : " "}
                   </span>

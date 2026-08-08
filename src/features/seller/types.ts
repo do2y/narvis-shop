@@ -52,7 +52,9 @@ export interface SellerSummary {
   orderStatus: {
     counts: Record<SellerOrderStatus, number>;
     activeTotal: number; // CANCELLED·RETURNED 제외 합계
-    avgDeliveryDays: number;
+    // 배송 완료 건이 없으면 null 이 온다(집계할 표본이 없음).
+    // S-1 조인 교체(C 문서, 2026-08-06)로 null 이 나올 확률이 올라가 타입에 명시한다.
+    avgDeliveryDays: number | null;
   };
 
   today: {

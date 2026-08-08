@@ -5,7 +5,6 @@ import type {
   CreateClaimResponse,
   CreateReviewRequest,
   CreateReviewResponse,
-  Inquiry,
   OrderDetail,
   OrderPage,
   RecentProduct,
@@ -60,14 +59,6 @@ export async function createReview(
 ): Promise<CreateReviewResponse> {
   const { data } = await api.post<CreateReviewResponse>("/api/reviews", body);
   return data;
-}
-
-// 문의 내역 — 읽기 전용(문의 챗봇에서 접수). 답변은 관리자가 등록.
-export async function fetchInquiries(): Promise<Inquiry[]> {
-  const { data } = await api.get<{ inquiries: Inquiry[] }>(
-    "/api/mypage/inquiries",
-  );
-  return data.inquiries;
 }
 
 // 배송지 관리는 결제 화면과 같은 /api/addresses를 쓴다 — shared/api/address.ts 참조.

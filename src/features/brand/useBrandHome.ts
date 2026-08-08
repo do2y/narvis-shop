@@ -19,7 +19,7 @@ const THIRTY_MIN = 30 * 60 * 1000;
 //
 // serverQuery는 서버가 SSR에 사용한 조합. 지금 보고 있는 조합과 같을 때만 승계한다.
 export function useBrandHome(
-  brandId: number,
+  brandId: string,
   query: BrandQuery = {},
   initialData?: BrandHome,
   serverQuery?: BrandQuery,
@@ -39,7 +39,8 @@ export function useBrandHome(
     queryKey: ["brands", brandId, current],
     queryFn: () => fetchBrandHome(brandId, query),
     staleTime: THIRTY_MIN,
-    enabled: Number.isFinite(brandId),
+    // brandId 는 문자열이다 — Number.isFinite 를 쓰면 항상 false 가 되어 쿼리가 안 돈다
+    enabled: brandId.length > 0,
     placeholderData: keepPreviousData,
     initialData: isServerRenderedCombo ? initialData : undefined,
   });

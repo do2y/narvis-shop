@@ -21,7 +21,9 @@ export interface ProductOption {
 export type ProductAttributeValue = string | string[] | null | Record<string, unknown>;
 
 export interface ProductBrand {
-  id: number;
+  // 문자열이다(브랜드 링크 `/brands/${id}` 가 이 값을 그대로 쓴다).
+  // number 로 두면 64비트 id 의 끝자리가 조용히 바뀌어 존재하는 브랜드가 404 가 된다.
+  id: string;
   name: string;
   logoUrl: string;
 }

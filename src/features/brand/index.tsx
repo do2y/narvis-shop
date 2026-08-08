@@ -21,7 +21,7 @@ export default function BrandPage({
   initialData,
   serverQuery,
 }: {
-  id: number;
+  id: string;
   initialData?: BrandHome;
   /** initialData가 어떤 필터 조합의 결과인지 — 그 조합에서만 승계한다 */
   serverQuery?: BrandQuery;

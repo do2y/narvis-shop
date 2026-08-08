@@ -13,7 +13,9 @@ export interface BrandCategory {
 }
 
 export interface Brand {
-  id: number;
+  // 문자열이다. 64비트라 number 로 두면 JSON.parse 시점에 끝자리가 조용히 바뀐다
+  // (productId 와 같은 이유 — shared/types/product.ts 참조).
+  id: string;
   name: string;
   logoUrl: string;
   description: string;

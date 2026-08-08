@@ -27,3 +27,31 @@ export interface PopularProduct {
   rating: number;
   reviewCount: number;
 }
+
+/**
+ * 추천 출처 (P-5, 2026-08-07 개명 — 구 `AI_RECOMMENDED`|`POPULAR_FALLBACK`).
+ *
+ * `NOT_PERSONALIZED` = 서버가 개인화에 실패해 P-4(인기상품)로 대체한 결과.
+ * 신규 회원·후보 부족·AI 장애를 FE는 구분하지 않는다(사유는 와이어에 없다).
+ */
+export type RecommendationSource = "PERSONALIZED" | "NOT_PERSONALIZED";
+
+// 추천 카드 — P-4 카드 + 카드별 추천 이유.
+// reason은 NOT_PERSONALIZED일 때 서버가 null을 넣는다(필드 자체는 유지).
+export interface RecommendedProduct extends PopularProduct {
+  reason: string | null;
+}
+
+/**
+ * GET /api/products/recommended (P-5) 응답.
+ *
+ * items 배열 순서가 곧 순위다 — FE는 재정렬하지 않는다.
+ * 상관키 2종은 fallback 응답에도 실린다(Spring 발급) — 없으면 노출·클릭
+ * 이벤트가 고아가 되어 E-1 서버 검증에서 버려진다.
+ */
+export interface RecommendationResult {
+  source: RecommendationSource;
+  recommendationRequestId: string;
+  listId: string;
+  items: RecommendedProduct[];
+}

@@ -51,6 +51,9 @@
 @theme inline {
   /* animate-avatar-thinking 유틸리티로 쓰인다(채팅 AI 아바타, 응답 대기 중에만) */
   --animate-avatar-thinking: avatar-thinking 1.4s ease-in-out infinite;
+  /* 홈 히어로 전용 — 워드마크 그라데이션과 검색바 테두리가 같은 타이밍으로 흐른다 */
+  --animate-narvis-flow: narvis-flow 7s linear infinite;
+  --animate-narvis-pulse: narvis-pulse 9s ease-in-out infinite;
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -167,6 +170,31 @@
     /* halo 는 그라데이션 중앙의 스카이블루(#8DB9F4) — 도형 색과 이어져야 번져 보인다 */
     filter: brightness(1.14) drop-shadow(0 0 1.5px rgb(141 185 244 / 0.45));
     transform: scale(1.05);
+  }
+}
+
+/* 홈 히어로의 로고색 그라데이션이 좌→우로 흐른다.
+   background-size 를 200% 로 두고 마지막 색을 첫 색과 같게 잡았기 때문에
+   0%→200% 한 바퀴가 이음새 없이 맞물린다(리버스·딜레이 없이 linear 무한 루프).
+   워드마크(글자 클리핑)와 검색바 테두리가 같은 주기를 공유해 한 덩어리로 읽힌다. */
+@keyframes narvis-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* 히어로 뒤 글로우의 아주 느린 호흡. 9초 주기는 어지럼 대역(0.2Hz)을 피하면서
+   "정지 화면이 아니다" 정도만 전달한다 — 시선을 뺏으면 검색바가 밀린다 */
+@keyframes narvis-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
   }
 }
 

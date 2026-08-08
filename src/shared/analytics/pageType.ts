@@ -34,7 +34,7 @@ export function toPageType(pathname: string): PageType | null {
     return "my";
   }
 
-  // 어휘에 없는 화면(/inquiry·/admin)은 발화하지 않는다 —
+  // 어휘에 없는 화면(/admin 등)은 발화하지 않는다 —
   // 미분류 값을 만들면 집계에서 정체 불명 행이 쌓인다.
   return null;
 }

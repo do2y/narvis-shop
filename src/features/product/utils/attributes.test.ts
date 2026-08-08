@@ -2,17 +2,6 @@ import { describe, expect, it } from "vitest";
 import { toSpecRows } from "./attributes";
 
 describe("toSpecRows", () => {
-  it("백엔드 내부 메타(_ 접두사) 키를 제외한다", () => {
-    const rows = toSpecRows({
-      브랜드: "카시오",
-      _domain: "패션의류/잡화",
-      _category: "브랜드 시계 > 브랜드 여성시계",
-      _source_pid: "9464590839",
-      _extra: { situation_tags: ["일상착용"] },
-    });
-    expect(rows).toEqual([{ label: "브랜드", value: "카시오" }]);
-  });
-
   it("미기재 관용구를 제외한다", () => {
     const rows = toSpecRows({
       제조국: "미표기",
