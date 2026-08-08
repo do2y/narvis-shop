@@ -10,14 +10,16 @@ import { Toaster as SonnerToaster } from "sonner";
  *
  * 디자인은 apple-design 스킬을 따랐다:
  *
- * §12 재질·깊이 — 토스트는 콘텐츠 위에 잠깐 떠 있는 기능 레이어다. 불투명 알약으로
- *   두면 화면을 덮는 판때기가 되지만, 반투명 + backdrop-blur 로 두면 아래 내용이
- *   비쳐 "위에 얹혀 있다"가 형태로 읽힌다. 작은 표면이라 블러는 얕게(12px),
- *   그림자도 과하지 않게 준다("큰 표면일수록 두껍게" 의 역).
- *   테두리 윗변을 밝게 줘 빛을 받는 재질처럼 보이게 한다.
+ * §12 재질·깊이 — 토스트는 콘텐츠 위에 잠깐 떠 있는 기능 레이어다. 반투명 +
+ *   backdrop-blur 로 두면 아래 내용이 비쳐 "위에 얹혀 있다"가 형태로 읽힌다.
+ *   작은 표면이라 블러는 얕게, 그림자도 과하지 않게 준다("큰 표면일수록 두껍게" 의 역).
  *
- * §12 vibrancy — 반투명 위의 글자는 흐린 회색을 쓰지 않는다. 배경이 계속 바뀌므로
- *   본문은 text-foreground(고대비)에 font-medium 으로 무게를 살짝 얹는다.
+ *   **어두운 재질을 쓴다.** 이 앱은 배경이 흰색이라 밝은 반투명은 흰 바탕에
+ *   묻혀 알림이 온 줄도 모른다. 어두운 재질은 콘텐츠에서 확실히 분리되면서도
+ *   불투명 검정 판보다 조용하다(§12: 어두운/무거운 재질이 구조를 분리한다).
+ *
+ * §12 vibrancy — 반투명 위의 글자는 흐린 회색을 쓰지 않는다. 바탕이 어두우므로
+ *   전경을 뒤집어 text-background 에 font-medium 으로 무게를 살짝 얹는다.
  *
  * §15 타이포 — tracking 은 크기별로 다르게. 작은 UI 텍스트라 살짝 양수(tracking-wide
  *   대신 미세하게)로 두어 흐린 배경 위 가독성을 확보한다.
@@ -47,34 +49,39 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast: [
-            // 재질: 반투명 + 얕은 블러. saturate 로 뒤 색이 탁해지지 않게 한다.
-            "!bg-background/75 !backdrop-blur-md !backdrop-saturate-150",
-            // 빛을 받는 윗변 — 아래보다 밝아 판이 아니라 표면으로 읽힌다.
-            "!border !border-black/[0.06] !border-t-white/60",
-            // 작은 표면이라 그림자는 얕게. 떠 있다는 것만 전달하면 된다.
-            "!shadow-lg !shadow-black/5",
+            // 재질: 어두운 반투명 + 얕은 블러. 이 앱은 배경이 흰색이라 밝은
+            // 반투명은 흰 바탕에 묻혀 알림이 온 줄도 모른다(실제로 그랬다).
+            // 어두운 재질은 콘텐츠에서 확실히 분리되면서도, 불투명 검정 판보다
+            // 조용하다(§12: 어두운 재질이 구조를 분리한다).
+            "!bg-foreground/85 !backdrop-blur-md !backdrop-saturate-150",
+            // 빛을 받는 윗변 — 어두운 표면에서도 위가 밝아야 판이 아닌 물체로 읽힌다.
+            "!border !border-white/10 !border-t-white/20",
+            // 어두운 표면은 그림자가 잘 안 보인다. 아래로 살짝 띄워 부유감만 준다.
+            "!shadow-lg !shadow-black/20",
             // 알약 형태 — CLAUDE.md radius 규칙(버튼·칩은 rounded-full)
             "!rounded-full !px-4 !py-3",
-            // vibrancy: 흐린 회색 대신 고대비 + 살짝 무게. tracking 은 미세하게 양수.
-            "!text-sm !font-medium !tracking-[0.01em] !text-foreground",
+            // 어두운 바탕이므로 전경을 뒤집는다. tracking 은 미세하게 양수(§15).
+            "!text-sm !font-medium !tracking-[0.01em] !text-background",
             "!gap-2.5",
             // 투명도를 낮춘 사용자에게는 불투명하게(§14)
-            "[@media(prefers-reduced-transparency:reduce)]:!bg-background",
+            "[@media(prefers-reduced-transparency:reduce)]:!bg-foreground",
             "[@media(prefers-reduced-transparency:reduce)]:!backdrop-blur-none",
             // 고대비 설정에서는 테두리를 세운다(§14)
-            "[@media(prefers-contrast:more)]:!border-foreground/40",
+            "[@media(prefers-contrast:more)]:!border-background/50",
           ].join(" "),
-          // 보조 설명은 한 단계 낮추되, 반투명 위라 너무 흐리지 않게 유지.
-          description: "!text-muted-foreground !font-normal",
+          // 어두운 바탕 위 보조 설명 — 본문보다 한 단계 낮추되 흐려서 안 읽히면 안 된다.
+          description: "!text-background/70 !font-normal",
           // 색은 불투명 레이어에 얹는다(§12: 반투명 전경에 색을 칠하지 않는다).
+          // 바탕이 어두우므로 버튼은 반대로 밝게 둔다.
           actionButton:
-            "!rounded-full !bg-primary !text-primary-foreground !font-medium",
-          cancelButton: "!rounded-full !bg-muted !text-muted-foreground",
+            "!rounded-full !bg-background !text-foreground !font-medium",
+          cancelButton: "!rounded-full !bg-white/15 !text-background",
           // 성공/실패는 아이콘 색으로만 가른다 — 배경까지 물들이면 재질이 깨지고,
           // 실패가 성공보다 시끄러워야 할 이유도 없다(§16 절제).
           // sonner 아이콘은 currentColor SVG 라 색만 바꾸면 된다.
-          success: "[&_[data-icon]]:!text-muted-foreground",
-          error: "[&_[data-icon]]:!text-destructive",
+          success: "[&_[data-icon]]:!text-background/70",
+          // 어두운 바탕에서 destructive(짙은 빨강)는 묻힌다 — 밝은 쪽으로 올린다.
+          error: "[&_[data-icon]]:!text-red-400",
         },
       }}
     />
