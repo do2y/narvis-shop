@@ -155,20 +155,10 @@ export default function CheckoutPage() {
     );
   }
 
-  // 결제 성공 경로가 신규 주문·재결제 두 갈래라 양쪽에서 부른다
-  // (한쪽만 넣으면 재결제로 성사된 주문이 집계에서 빠진다).
-  const trackPurchase = (orderId: number) => {
-    // productId 는 대표 상품 1개다(명세) — 판매자 집계에는 쓰이지 않는다
-    // (order_item × product × brand 집계가 정본).
-    // properties 는 계약 표대로 orderId·amount 만. 선택 키는 없다(E-1).
-    track("purchase_complete", {
-      productId: items[0]?.product.productId,
-      properties: {
-        orderId,
-        amount: itemsTotal - discount,
-      },
-    });
-  };
+  // purchase_complete 는 FE 가 쏘지 않는다 — 주문 성사는 서버가 정본이고,
+  // FE 는 결제 성공 응답을 받아야만 쏠 수 있어 응답 직전에 탭이 닫히거나
+  // 네트워크가 끊기면 이미 서버에 생성된 주문이 집계에서 통째로 빠진다.
+  // 적재는 BE 주문 처리에서 한다.
 
   // 결제 실패 안내 — 사유마다 사용자가 할 일이 다르다(2026-08-05 failureReason).
   // 재고 부족은 재결제가 무의미하므로 장바구니로, 거절은 결제 수단을 바꿔 재시도로 보낸다.
@@ -209,7 +199,6 @@ export default function CheckoutPage() {
           setPaymentFailed({ reason: retried.failureReason ?? null });
           return;
         }
-        trackPurchase(retried.orderId);
         setOrderCompleteState<OrderCompleteState>({
           order: {
             orderId: retried.orderId,
@@ -270,8 +259,6 @@ export default function CheckoutPage() {
         setFailedOrderId(result.orderId);
         return;
       }
-
-      trackPurchase(result.orderId);
 
       const order: OrderCompleteState["order"] = {
         orderId: result.orderId,
