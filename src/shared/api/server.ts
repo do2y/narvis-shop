@@ -65,6 +65,48 @@ interface ServerFetchOptions {
 const TIMEOUT_MS = 5000;
 
 /**
+ * 응답 본문 로그의 깊이·길이 상한.
+ *
+ * 터미널 로그라 브라우저 콘솔처럼 접을 수가 없다. 상품 목록 응답 하나가
+ * 수백 줄로 쏟아지면 정작 보려던 `[ssr ←]` 줄이 스크롤 밖으로 밀려난다.
+ * 기본은 요약만 찍고, 전체가 필요할 때만 환경변수로 연다.
+ */
+const BODY_MAX_CHARS = 2000;
+
+/**
+ * 응답 본문 로그 스위치. `SSR_LOG_BODY=1`(요약) / `=full`(전체).
+ *
+ * 기본 off 인 이유: 홈 한 번 렌더에 SSR 조회가 여러 건 나가는데, 매번 본문을
+ * 뱉으면 `[ssr ←]` 줄들이 본문 사이에 파묻혀 오히려 흐름을 못 읽는다.
+ * 응답 내용을 봐야 할 때만 켜는 도구로 둔다.
+ *
+ * `NEXT_PUBLIC_` 접두사를 쓰지 않는다 — 서버 전용 모듈이라 브라우저로 나갈 일이
+ * 없고, 접두사를 붙이면 클라이언트 번들에 값이 박힌다.
+ */
+const SSR_LOG_BODY_MODE = process.env.SSR_LOG_BODY ?? "";
+const SSR_LOG_BODY = SSR_LOG_BODY_MODE !== "" && SSR_LOG_BODY_MODE !== "0";
+const SSR_LOG_BODY_FULL = SSR_LOG_BODY_MODE === "full";
+
+/**
+ * 응답 본문을 터미널에 한 줄로 눌러 담는다.
+ *
+ * `console.log(obj)`를 그대로 쓰지 않는 이유: Node 는 기본 깊이 2 를 넘으면
+ * `[Object]`·`[Array]` 로 접어버려 정작 확인하려는 중첩 필드가 안 보인다.
+ * JSON 으로 직렬화해 그 접힘을 없애고, 대신 길이를 잘라 폭주를 막는다.
+ */
+function formatBody(body: unknown): string {
+  let text: string;
+  try {
+    text = JSON.stringify(body, null, 2) ?? String(body);
+  } catch {
+    // 순환 참조 등 — 본문 하나 때문에 SSR 이 죽으면 안 된다.
+    return "[직렬화 실패]";
+  }
+  if (SSR_LOG_BODY_FULL || text.length <= BODY_MAX_CHARS) return text;
+  return `${text.slice(0, BODY_MAX_CHARS)}\n… (${text.length - BODY_MAX_CHARS}자 생략, 전체는 SSR_LOG_BODY=full)`;
+}
+
+/**
  * 공개 API GET. 백엔드 공통 봉투({success, data, error})를 벗겨 data를 반환한다.
  * 봉투 규약은 client.ts의 응답 인터셉터와 동일하게 맞춘다.
  */
@@ -99,17 +141,28 @@ export async function serverGet<T>(
     throw e;
   }
 
-  if (debug) {
-    const ms = Math.round(performance.now() - startedAt);
-    console.log(`[ssr ←] ${res.status} GET ${path} (${ms}ms)`);
-  }
-
   // 봉투가 실려 오면 에러도 그 안에 있다 — code를 살려 호출부가 분기할 수 있게 한다.
   let body: ApiEnvelope<T> | undefined;
   try {
     body = (await res.json()) as ApiEnvelope<T>;
   } catch {
     body = undefined;
+  }
+
+  // 본문까지 파싱한 뒤에 찍는다 — 응답 줄과 본문이 갈라져 있으면 SSR 이 여러 건
+  // 동시에 나갈 때 어느 본문이 어느 요청 것인지 터미널에서 짝지을 수 없다.
+  if (debug) {
+    const ms = Math.round(performance.now() - startedAt);
+    // 4xx·5xx 를 성공과 같은 마커로 찍으면 훑을 때 놓친다. 실패는 ✕ 로 갈라
+    // 아래 throw 되는 응답임을 줄 첫머리에서 알아보게 한다.
+    const head = `[ssr ${res.ok ? "←" : "✕"}] ${res.status} GET ${path} (${ms}ms)`;
+    // 본문은 기본 off — 켤 때만 찍는다. SSR 로그는 페이지마다 여러 건이 겹쳐
+    // 항상 본문을 뱉으면 터미널이 본문으로만 채워진다.
+    // 다만 에러 본문은 그 자체가 실패 원인이라 스위치와 무관하게 항상 남긴다.
+    const withBody = SSR_LOG_BODY || !res.ok;
+    const line = withBody ? `${head}\n${formatBody(body)}` : head;
+    if (res.ok) console.log(line);
+    else console.warn(line);
   }
 
   if (!res.ok) {
