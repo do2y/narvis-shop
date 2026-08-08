@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import { hoverMuted, pressable } from "../interaction";
 import { toSellerErrorView } from "../sellerError";
 
 /**
@@ -30,7 +32,11 @@ export function SellerErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="h-11 rounded-full border px-5 text-sm font-medium transition-all hover:bg-muted active:scale-95"
+          className={cn(
+            "h-11 rounded-full border px-5 text-sm font-medium",
+            pressable,
+            hoverMuted,
+          )}
         >
           다시 시도
         </button>

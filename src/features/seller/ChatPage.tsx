@@ -12,6 +12,7 @@ import { useChat } from "@/shared/chat/useChat";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { cn } from "@/lib/utils";
 import type { SellerPanel } from "@/shared/types/chat";
+import { hoverMuted, pressable } from "./interaction";
 import { SellerHeader } from "./components/SellerHeader";
 import { SellerWorkspace } from "./components/SellerWorkspace";
 import type { SellerWorkspaceTab } from "./types";
@@ -140,7 +141,12 @@ export default function SellerChatPage() {
         }}
         aria-label="새 대화"
         title="새 대화"
-        className="absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-background/70 text-muted-foreground backdrop-blur transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+        className={cn(
+          "absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-background/70 text-muted-foreground backdrop-blur",
+          pressable,
+          hoverMuted,
+          "hover:[@media(hover:hover)]:text-foreground",
+        )}
       >
         <Plus className="size-4" />
       </button>
@@ -208,10 +214,11 @@ export default function SellerChatPage() {
                 }
               }}
               className={cn(
-                "flex h-12 items-center whitespace-nowrap border-b-2 px-3 text-sm transition-colors",
+                "flex h-12 items-center whitespace-nowrap border-b-2 px-3 text-sm",
+                "transition-[color,border-color] duration-150 ease-out-strong",
                 active
                   ? "border-foreground font-bold text-foreground"
-                  : "border-transparent font-medium text-muted-foreground hover:text-foreground",
+                  : "border-transparent font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
               )}
             >
               {t.label}

@@ -6,6 +6,7 @@ import { ProductImage } from "@/shared/ui/ProductImage";
 import { cn } from "@/lib/utils";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerOrders } from "../api";
+import { numeric } from "../interaction";
 import type { SellerOrder, SellerOrderTab } from "../types";
 import { StatusTabs } from "./StatusTabs";
 import { Pagination } from "./Pagination";
@@ -59,6 +60,13 @@ interface OrderListProps {
   page: number; // 0-base (API 기준)
   onTabChange: (tab: SellerOrderTab) => void;
   onPageChange: (page: number) => void;
+  /**
+   * 표 헤더를 고정할 위치(sticky top). 스크롤 컨테이너가 무엇인지는 부모만 안다 —
+   * 단독 페이지는 뷰포트가 스크롤하고 그 위에 h-16 헤더가 떠 있어 `top-16`,
+   * 챗 워크스페이스는 자체 overflow-y-auto 안이라 `top-0` 이다.
+   * 여기서 한 값으로 고정하면 둘 중 하나는 헤더 뒤로 숨는다.
+   */
+  stickyHeaderClass?: string;
 }
 
 /**
@@ -71,6 +79,7 @@ export function OrderList({
   page,
   onTabChange,
   onPageChange,
+  stickyHeaderClass,
 }: OrderListProps) {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
@@ -112,14 +121,28 @@ export function OrderList({
           <div className="overflow-x-auto rounded-sm border bg-background">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
-                <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
-                  <th className="px-4 py-3 text-left font-semibold">주문번호</th>
-                  <th className="px-4 py-3 text-left font-semibold">상품</th>
-                  <th className="px-4 py-3 text-left font-semibold">주문자</th>
-                  <th className="px-4 py-3 text-right font-semibold">결제금액</th>
-                  <th className="px-4 py-3 text-left font-semibold">결제수단</th>
-                  <th className="px-4 py-3 text-left font-semibold">주문일시</th>
-                  <th className="px-4 py-3 text-left font-semibold">상태</th>
+                {/* 헤더 고정 — 목록이 길어도 어느 열을 보는지 잃지 않게.
+                    th 에 걸어야 한다(thead·tr 은 sticky 가 먹지 않는다).
+                    고정 위치는 부모가 준다(스크롤 컨테이너를 부모만 안다) —
+                    안 주면 고정하지 않는다(잘못된 위치에 붙는 것보다 낫다). */}
+                <tr
+                  className={cn(
+                    "text-xs text-muted-foreground",
+                    "[&>th]:border-b [&>th]:bg-muted/40 [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
+                    stickyHeaderClass &&
+                      cn(
+                        "[&>th]:sticky [&>th]:z-10 [&>th]:backdrop-blur",
+                        stickyHeaderClass,
+                      ),
+                  )}
+                >
+                  <th className="text-left">주문번호</th>
+                  <th className="text-left">상품</th>
+                  <th className="text-left">주문자</th>
+                  <th className="text-right">결제금액</th>
+                  <th className="text-left">결제수단</th>
+                  <th className="text-left">주문일시</th>
+                  <th className="text-left">상태</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,8 +150,18 @@ export function OrderList({
                   const badge = badgeOf(o);
                   const extra = o.myItemCount - 1;
                   return (
-                    <tr key={o.orderId} className="border-b last:border-0">
-                      <td className="whitespace-nowrap px-4 py-3 font-medium">
+                    <tr
+                      key={o.orderId}
+                      // 행 hover — 넓은 표에서 눈이 가로로 이동할 때 줄을 놓치지 않게.
+                      // 터치에는 잔상이 남으므로 게이팅한다.
+                      className="border-b transition-colors duration-150 ease-out-strong last:border-0 hover:[@media(hover:hover)]:bg-muted/40"
+                    >
+                      <td
+                        className={cn(
+                          "whitespace-nowrap px-4 py-3 font-medium",
+                          numeric,
+                        )}
+                      >
                         {displayOrderNo(o.orderNo)}
                       </td>
                       <td className="px-4 py-3">
@@ -156,13 +189,23 @@ export function OrderList({
                       <td className="whitespace-nowrap px-4 py-3">
                         {o.recipientName}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-semibold">
+                      <td
+                        className={cn(
+                          "whitespace-nowrap px-4 py-3 text-right font-semibold",
+                          numeric,
+                        )}
+                      >
                         {o.myItemsAmount.toLocaleString("ko-KR")}원
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {o.paymentMethod}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      <td
+                        className={cn(
+                          "whitespace-nowrap px-4 py-3 text-muted-foreground",
+                          numeric,
+                        )}
+                      >
                         {formatOrderedAt(o.orderedAt)}
                       </td>
                       <td className="px-4 py-3">

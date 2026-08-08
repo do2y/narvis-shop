@@ -19,7 +19,9 @@ export interface SellerMetric {
 export interface SellerAnalysis {
   title: string;
   chartType: "line" | "bar";
-  unit: "KRW" | "COUNT";
+  // PERCENT 는 report.charts(계약 §3.2)가 전환율 차트를 실으면서 추가됐다.
+  // 대시보드 매핑은 KRW·COUNT 만 쓰지만 같은 타입을 공유한다.
+  unit: "KRW" | "COUNT" | "PERCENT";
   series: { label: string; points: { x: string; y: number }[] }[];
   summary?: string; // AI 한 줄 해석
 }

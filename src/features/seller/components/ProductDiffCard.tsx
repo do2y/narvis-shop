@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, CircleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hoverMuted, numeric, pressable } from "../interaction";
 import type {
   ChatAction,
   SellerDraft,
@@ -84,11 +85,21 @@ export function ProductDiffCard({
               </span>
               {/* 좁은 화면에선 전→후가 세로로 쌓이도록 wrap */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-sm bg-muted px-2.5 py-1.5 text-sm text-muted-foreground line-through">
+                <span
+                  className={cn(
+                    "rounded-sm bg-muted px-2.5 py-1.5 text-sm text-muted-foreground line-through",
+                    numeric,
+                  )}
+                >
                   {formatValue(c.field, c.before)}
                 </span>
                 <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-                <span className="rounded-sm bg-brand/10 px-2.5 py-1.5 text-sm font-semibold text-brand">
+                <span
+                  className={cn(
+                    "rounded-sm bg-brand/10 px-2.5 py-1.5 text-sm font-semibold text-brand",
+                    numeric,
+                  )}
+                >
                   {formatValue(c.field, c.after)}
                 </span>
               </div>
@@ -123,7 +134,12 @@ export function ProductDiffCard({
               type="button"
               onClick={() => onConfirm(draft.draftId)}
               disabled={disabled}
-              className="inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground transition-all hover:opacity-90 active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+              className={cn(
+                "inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground",
+                pressable,
+                "hover:[@media(hover:hover)]:opacity-90",
+                "disabled:pointer-events-none disabled:opacity-40",
+              )}
             >
               <Check className="size-4" />
               적용
@@ -132,7 +148,13 @@ export function ProductDiffCard({
               type="button"
               onClick={() => onCancel(draft.draftId)}
               disabled={disabled}
-              className="inline-flex h-11 items-center gap-1.5 rounded-full border px-5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+              className={cn(
+                "inline-flex h-11 items-center gap-1.5 rounded-full border px-5 text-sm font-medium text-muted-foreground",
+                pressable,
+                hoverMuted,
+                "hover:[@media(hover:hover)]:text-foreground",
+                "disabled:pointer-events-none disabled:opacity-40",
+              )}
             >
               <X className="size-4" />
               취소

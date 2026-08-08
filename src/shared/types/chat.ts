@@ -210,6 +210,72 @@ export type SellerDraftField =
   | "status"
   | "stockQuantity";
 
+// ── SELLER report (계약 §3.2 v0.24.0, 이슈 #296) ──
+// 분석 답변의 결과물. 종전엔 token 연문 한 덩어리였고, 이제 구조화 리포트가 별도
+// 이벤트로 온다. token 연문은 그대로 유지되므로(body 와 같은 내용) 채팅 말풍선은
+// 종전대로 흐르고, 우측 패널만 이 구조를 렌더한다.
+
+export type SellerAnalysisType =
+  | "sales_anomaly"
+  | "conversion"
+  | "behavior"
+  | "churn"
+  | "abuse";
+
+export type SellerFindingSeverity = "info" | "warning" | "critical";
+
+export interface SellerReportFinding {
+  analysisType: SellerAnalysisType;
+  severity: SellerFindingSeverity;
+  summary: string;
+  evidence: string[]; // degrade finding 은 빈 배열
+  recommendation: string; // 조치 힌트(선택, "" 가능)
+}
+
+export interface SellerReportRecommendation {
+  /**
+   * 1-base. 목록 순서와 항상 일치하며 "N번 적용해줘"의 그 N 이다.
+   * FE 가 재정렬·재번호하면 사용자가 말한 번호와 서버가 아는 번호가 어긋난다.
+   */
+  index: number;
+  title: string;
+  expectedEffect: string; // "" 가능
+  actionType:
+    | "price_adjust"
+    | "description_update"
+    | "stock_adjust"
+    | "product_visibility"
+    | "promotion";
+  productId: number;
+}
+
+/**
+ * 리포트 차트 — 대시보드의 SellerAnalysis 와 구조가 같다.
+ * 계약 옆에 따로 두는 이유: shared 는 features 를 import 하지 않는다(의존 방향).
+ * 형태가 같으므로 AnalysisChart 가 무수정으로 둘 다 받는다.
+ */
+export interface SellerReportChart {
+  title: string;
+  chartType: "line" | "bar";
+  unit: "KRW" | "COUNT" | "PERCENT";
+  series: { label: string; points: { x: string; y: number }[] }[];
+  summary?: string;
+}
+
+export interface SellerReport {
+  title: string;
+  period: { from: string; to: string }; // YYYY-MM-DD
+  generatedAt: string; // RFC3339, KST(+09:00)
+  summary: string;
+  body: string;
+  findings: SellerReportFinding[];
+  limitations: string[];
+  chartRequested: boolean;
+  charts: SellerReportChart[];
+  recommendations: SellerReportRecommendation[];
+  applyGuide: string; // 추천 없으면 ""
+}
+
 /** 상품 상세 수정/삭제/등록 제안(HITL 승인 대기) */
 export interface SellerDraft {
   draftId: string; // confirm이 참조(보여준 것 == 실행)
@@ -408,6 +474,9 @@ export type ChatEvent =
   // ── SELLER 전용 ──
   | { type: "meta"; data: { lane: SellerLane } }
   | { type: "draft"; data: SellerDraft }
+  // 분석 결과 구조화 리포트. 정확히 1회, token 연문 뒤 done{replace} 앞에 온다.
+  // 되묻기·거절은 이 이벤트 없이 done{keep} 으로 끝난다(계약 §3.2).
+  | { type: "report"; data: SellerReport }
   // ── progress: 두 스트림의 페이로드가 다르다 ──
   // 구매자는 {stage, message?}(기계 판독 가능한 enum), 판매자는 {text}(자유 문자열)로
   // 계약이 확정됐다(2026-08-05 #289). 쉐이프를 맞추는 건 후속 과제라 수신부가 분기해야 한다.

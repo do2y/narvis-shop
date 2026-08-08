@@ -6,8 +6,18 @@ import type {
   ChatResult,
   ConditionChip,
   SellerLane,
+  SellerReport,
   SuggestionChip,
 } from "@/shared/types/chat";
+
+/**
+ * 우측 패널이 렌더할 분석 리포트 — 완전한 report 이벤트 또는 fallback 부분치(body 만).
+ *
+ * fallback 을 별도 boolean 이 아니라 **필드 유무**로 표현한다: ReportView 가 어차피
+ * 모든 선택 섹션을 "값이 있으면 렌더"로 분기하므로, 부분치면 헤더·findings·차트가
+ * 자연스럽게 빠지고 body 만 남아 구버전 서버 화면과 동일해진다(분기 코드 0).
+ */
+export type AnalysisReportView = Partial<SellerReport> & { body: string };
 
 // 현재 챗봇 대화 상태 — persist 안 함(새로고침 소실이 의도된 동작, CLAUDE.md)
 // SHOPPING·CS·SELLER가 같은 스토어를 쓴다. 채널별로 다른 건 results 항목의 kind뿐.
@@ -58,9 +68,11 @@ interface ChatState {
    * 화면에 필요한 건 표시 문구 하나뿐이라 useChat 이 문자열로 정규화해 넣는다.
    */
   progress: string | null;
-  // 분석 리포트 — done{panel:replace}+lane:analysis 시 우측 패널에 표시할 리포트 본문.
-  // 계약상 analysis 답변은 단일 token이라 results 카드가 아니라 이 문자열로 담는다.
-  analysisReport: string | null;
+  // 분석 리포트 — done{panel:replace}+lane:analysis 시 우측 패널에 표시할 리포트.
+  // report 이벤트(계약 §3.2)가 오면 구조화 리포트, 구버전 서버면 token 연문의
+  // 부분치({body})가 들어온다. results 카드가 아닌 이유: 턴당 정확히 1개이고
+  // 누적되지 않는다(다음 분석이 통째로 교체).
+  analysisReport: AnalysisReportView | null;
 
   setSessionId: (id: string | null) => void; // null = 만료된 세션 폐기(다음 전송 때 재발급)
   setThreadId: (id: string) => void;
@@ -86,7 +98,7 @@ interface ChatState {
   setStreaming: (v: boolean) => void;
   setLane: (lane: SellerLane | null) => void;
   setProgress: (text: string | null) => void;
-  setAnalysisReport: (text: string | null) => void;
+  setAnalysisReport: (report: AnalysisReportView | null) => void;
   reset: () => void; // 새 대화
 }
 

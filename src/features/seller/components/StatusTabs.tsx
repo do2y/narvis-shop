@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { numeric } from "../interaction";
 
 interface StatusTabsProps<T extends string> {
   tabs: { key: T; label: string; count?: number; alert?: boolean }[];
@@ -26,10 +27,14 @@ export function StatusTabs<T extends string>({
               onClick={() => onChange(t.key)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm transition-colors",
+                "flex h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm",
+                "transition-[color,border-color] duration-150 ease-out-strong",
                 active
                   ? "border-foreground font-bold text-foreground"
-                  : "border-transparent font-medium text-muted-foreground hover:text-foreground",
+                  : cn(
+                      "border-transparent font-medium text-muted-foreground",
+                      "hover:[@media(hover:hover)]:text-foreground",
+                    ),
               )}
             >
               {t.label}
@@ -37,6 +42,7 @@ export function StatusTabs<T extends string>({
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    numeric,
                     t.alert
                       ? "bg-destructive/10 text-destructive"
                       : active
