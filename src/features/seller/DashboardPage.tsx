@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
@@ -15,7 +16,13 @@ import { SellerHero } from "./components/SellerHero";
 import { SellerErrorState } from "./components/SellerErrorState";
 import { MetricCards } from "./components/MetricCards";
 import { AnalysisChart } from "./components/AnalysisChart";
+import { AiAttributionCard } from "./components/AiAttributionCard";
 import type { SellerMetric } from "./types";
+
+// 매출 추이 차트가 쓰는 서버 기본값(trendDays=7)과 같은 창을 aiAttribution 에도 준다.
+// 어긋나면 "전체 매출의 N%"의 분모만 다른 기간이 되는데, 카드에 기간 라벨이 없어
+// 판매자는 그걸 알 방법이 없다.
+const TREND_DAYS = 7;
 
 // 오늘 할 일 4칸 — 처리해야 할 순서대로. CANCELLED·RETURNED는 활성 주문이 아니라 제외.
 // (구 "배송 준비" 카드는 order_item.status에 PREPARING이 없어 2026-07-21자로 삭제)
@@ -69,6 +76,23 @@ function toMetrics(today: SellerSummary["today"]): SellerMetric[] {
   ];
 }
 
+/**
+ * Date → "YYYY-MM-DD" (로컬 기준).
+ * toISOString() 을 쓰면 UTC 로 변환돼 KST 오전 9시 이전에는 하루 전 날짜가 나온다.
+ */
+function ymd(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** 추이 차트와 같은 창(오늘 포함 최근 TREND_DAYS일)의 from·to */
+function trendRange(): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(from.getDate() - (TREND_DAYS - 1));
+  return { from: ymd(from), to: ymd(to) };
+}
+
 /** "2026-07-15" → "7/15" — 추이 차트 x축은 좁아서 연도를 뺀다 */
 function shortDate(iso: string): string {
   const [, m, d] = iso.split("-");
@@ -79,9 +103,13 @@ export default function DashboardPage() {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
 
+  // 마운트 시점에 한 번 고정한다 — 렌더마다 새로 만들면 queryKey 가 흔들려 재조회가 돈다
+  const { from, to } = useMemo(trendRange, []);
+
   const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: ["seller", "summary"],
-    queryFn: () => fetchSellerSummary(),
+    // 기간을 키에 넣어야 자정을 넘겼을 때 옛 기간 캐시를 그대로 쓰지 않는다
+    queryKey: ["seller", "summary", from, to],
+    queryFn: () => fetchSellerSummary({ from, to }),
     staleTime: 0, // 오늘 할 일·실시간 방문자 — 항상 최신
     enabled: isAuthReady,
   });
@@ -231,22 +259,32 @@ export default function DashboardPage() {
 
             <MetricCards items={toMetrics(data.today)} />
 
-            <AnalysisChart
-              analysis={{
-                title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
-                chartType: "line",
-                unit: "KRW",
-                series: [
-                  {
-                    label: "매출",
-                    points: data.salesTrend.points.map((p) => ({
-                      x: shortDate(p.date),
-                      y: p.sales,
-                    })),
-                  },
-                ],
-              }}
-            />
+            {/* items-start: 카드가 차트보다 짧아 늘어나지 않게.
+                minmax(0,1fr): 차트 열이 콘텐츠 폭에 밀려 넘치지 않게. */}
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+              {/* 이 가드 하나가 곧 실패 처리다 — 집계 실패로 블록이 null 이면 카드가 빠지고
+                  그리드 첫 칸이 사라지며 차트가 자동으로 전폭이 된다. 별도 에러 UI 불필요. */}
+              {data.aiAttribution && (
+                <AiAttributionCard data={data.aiAttribution} />
+              )}
+
+              <AnalysisChart
+                analysis={{
+                  title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
+                  chartType: "line",
+                  unit: "KRW",
+                  series: [
+                    {
+                      label: "매출",
+                      points: data.salesTrend.points.map((p) => ({
+                        x: shortDate(p.date),
+                        y: p.sales,
+                      })),
+                    },
+                  ],
+                }}
+              />
+            </div>
           </section>
         </>
       )}
