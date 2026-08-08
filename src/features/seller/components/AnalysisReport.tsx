@@ -41,6 +41,7 @@ const ANALYSIS_LABEL: Record<SellerAnalysisType, string> = {
   behavior: "고객 행동 분석",
   churn: "고객 이탈 분석",
   abuse: "어뷰징 점검",
+  review: "리뷰 분석",
 };
 
 const ACTION_LABEL: Record<SellerReportRecommendation["actionType"], string> = {

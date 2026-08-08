@@ -220,7 +220,8 @@ export type SellerAnalysisType =
   | "conversion"
   | "behavior"
   | "churn"
-  | "abuse";
+  | "abuse"
+  | "review"; // #297 I-31 리뷰 분석 워커 — BE 는 6종인데 여기가 5종이라 라벨이 비던 것
 
 export type SellerFindingSeverity = "info" | "warning" | "critical";
 
