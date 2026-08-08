@@ -104,7 +104,7 @@ export default function DashboardPage() {
   const isAuthReady = useAuthStore(selectIsAuthReady);
 
   // 마운트 시점에 한 번 고정한다 — 렌더마다 새로 만들면 queryKey 가 흔들려 재조회가 돈다
-  const { from, to } = useMemo(trendRange, []);
+  const { from, to } = useMemo(() => trendRange(), []);
 
   const { data, isPending, isError, error, refetch } = useQuery({
     // 기간을 키에 넣어야 자정을 넘겼을 때 옛 기간 캐시를 그대로 쓰지 않는다
