@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -70,7 +69,17 @@ export function applyWishlistToggle(
  * WISHLIST_DUPLICATE·WISHLIST_NOT_FOUND 는 여기서 다루지 않는다 — 원하는 상태에
  * 이미 도달해 있어 사용자에겐 실패가 아니고, onError 가 서버 기준으로 맞춘다.
  */
-function toWishlistMessage(error: unknown): string | null {
+/**
+ * 성공 토스트 문구.
+ *
+ * 인자는 **요청 당시** 찜 상태다 — 완료 시점의 서버 상태로 판정하면
+ * 재조회가 먼저 끝났을 때 "해제했어요"가 떠야 할 자리에 반대 문구가 나간다.
+ */
+export function wishlistSuccessMessage(wishedBefore: boolean): string {
+  return wishedBefore ? "찜을 해제했어요." : "찜에 담았어요.";
+}
+
+export function toWishlistMessage(error: unknown): string | null {
   if (error instanceof ApiError) {
     if (
       error.code === "WISHLIST_DUPLICATE" ||
@@ -133,7 +142,19 @@ export function useToggleWishlist() {
           error.code === "WISHLIST_NOT_FOUND")
       ) {
         queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+        return;
       }
+
+      // 성공 토스트와 같은 이유로 콜백에서 띄운다(이펙트 관찰은 재조회와 경쟁한다).
+      const message = toWishlistMessage(error);
+      if (message) toast.error(message);
+    },
+
+    onSuccess: (_data, { wished }) => {
+      // 토스트를 여기서 띄운다. mutation 상태(isSuccess)를 이펙트로 관찰하면
+      // onSettled 의 재조회가 리렌더를 유발해 상태가 갈아엎히고, 이펙트가
+      // 읽기 전에 사라져 토스트가 안 뜨는 경쟁이 생긴다.
+      toast.success(wishlistSuccessMessage(wished));
     },
 
     onSettled: () => {
@@ -170,33 +191,9 @@ export function useToggleWishlist() {
     ? !mutation.variables.wished
     : undefined;
 
-  /**
-   * 방금 무엇을 했는지 — 하트 색만으로는 "이미 찜이었나 방금 됐나"가 구분되지 않는다.
-   * 화면에 알리는 방식(토스트)은 useWishlistToggleWithToast 가 맡는다.
-   *
-   * 성공 문구를 wished(요청 당시 상태)로 가르는 이유: 완료 시점의 서버 상태로 판정하면
-   * 재조회가 먼저 끝났을 때 "해제했어요"가 떠야 할 자리에 반대 문구가 나온다.
-   */
-  const doneAction: "added" | "removed" | null =
-    mutation.isSuccess && mutation.variables
-      ? mutation.variables.wished
-        ? "removed"
-        : "added"
-      : null;
-
-  return {
-    toggle,
-    isPending: mutation.isPending,
-    pendingWished,
-    doneAction,
-    /**
-     * 실패 안내. 이미 원하는 상태였던 두 코드는 사용자 입장에서 실패가 아니라
-     * 문구를 내지 않는다(onError 가 서버 기준으로 맞춰준다).
-     */
-    errorMessage: mutation.error ? toWishlistMessage(mutation.error) : null,
-    /** 같은 카드에서 다시 누르면 이전 결과 문구가 남지 않게 호출부가 비운다. */
-    reset: mutation.reset,
-  };
+  // 결과 안내(토스트)는 mutation 콜백이 직접 띄운다 — 상태로 노출해 호출부가
+  // 이펙트로 관찰하면 onSettled 재조회와 경쟁해 발화가 누락된다.
+  return { toggle, isPending: mutation.isPending, pendingWished };
 }
 
 /**
@@ -211,27 +208,14 @@ export function useToggleWishlist() {
  */
 export function useWishlistToggleWithToast(productId: string) {
   const wished = useIsWished(productId);
-  const { toggle, isPending, pendingWished, doneAction, errorMessage, reset } =
-    useToggleWishlist();
+  const { toggle, isPending, pendingWished } = useToggleWishlist();
 
   // 요청 중에는 의도한 상태를 먼저 보여준다. 목록 캐시가 있으면 낙관적 삽입으로
   // wished 가 이미 뒤집혀 있고, 없으면 pendingWished 가 그 자리를 메운다.
   const optimisticWished = pendingWished ?? wished;
 
-  // 발화 후 reset: mutation 상태를 비우지 않으면 리렌더마다 같은 토스트가 다시 나간다.
-  useEffect(() => {
-    if (!doneAction) return;
-    toast.success(
-      doneAction === "added" ? "찜에 담았어요." : "찜을 해제했어요.",
-    );
-    reset();
-  }, [doneAction, reset]);
-
-  useEffect(() => {
-    if (!errorMessage) return;
-    toast.error(errorMessage);
-    reset();
-  }, [errorMessage, reset]);
+  // 토스트는 mutation 콜백(onSuccess·onError)이 띄운다 — 여기서 상태를 관찰하면
+  // onSettled 재조회와 경쟁해 발화가 누락된다.
 
   return {
     wished: optimisticWished,

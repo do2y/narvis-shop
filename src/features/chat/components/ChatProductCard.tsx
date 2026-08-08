@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { toast } from "sonner";
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
@@ -27,28 +25,6 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
 
   const addCart = useAddCartItem();
   const { optionChoices } = addCart;
-
-  /**
-   * 담기 결과도 같은 방식으로 알린다 — 인라인 문구는 카드 높이를 바꿔
-   * 그리드에서 이 카드만 밀려 보였다.
-   *
-   * 옵션 미선택(optionChoices)만 예외로 카드 안에 남긴다: 사용자가 골라야 하는
-   * UI 라 토스트로 띄우면 사라진 뒤 고를 방법이 없다.
-   */
-  const { isSuccess: addCartSuccess, errorMessage: addCartError } = addCart;
-  const addCartReset = addCart.reset;
-  useEffect(() => {
-    if (!addCartSuccess) return;
-    toast.success("장바구니에 담았어요.");
-    addCartReset();
-  }, [addCartSuccess, addCartReset]);
-
-  useEffect(() => {
-    // 옵션 선택으로 이어지는 실패는 칩이 안내를 대신하므로 토스트를 내지 않는다.
-    if (!addCartError || optionChoices) return;
-    toast.error(addCartError);
-    addCartReset();
-  }, [addCartError, optionChoices, addCartReset]);
 
   /**
    * 노출·클릭은 추천 성과(CTR) 측정용이라 추천 카드에만 붙인다 —

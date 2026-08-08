@@ -366,12 +366,8 @@ export default function ProductPage({
                 </button>
               </p>
             )}
-            {/* 재고 부족은 다이얼로그로 알리므로 인라인에서는 제외. */}
-            {addCart.errorMessage && !addCart.isStockError && (
-              <p className="text-sm text-destructive" role="alert">
-                {addCart.errorMessage}
-              </p>
-            )}
+            {/* 담기 실패는 useAddCartItem 이 토스트로 알린다(재고 부족만 예외로
+                아래 다이얼로그). 여기서 또 그리면 같은 말이 두 번 나간다. */}
           </div>
         </div>
 

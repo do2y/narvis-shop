@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addCartItem, fetchCart } from "@/shared/api/cart";
 import { ApiError } from "@/shared/api/client";
@@ -55,7 +56,20 @@ export function useAddCartItem() {
   const mutation = useMutation({
     mutationFn: addCartItem,
     retry: false,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      toast.success("장바구니에 담았어요.");
+    },
+    onError: (error) => {
+      // 옵션 미선택은 카드가 선택 칩을 띄워 안내하므로 토스트를 내지 않는다 —
+      // 사용자가 골라야 하는 UI 라 사라지는 알림으로 대신할 수 없다.
+      if (error instanceof ApiError && error.code === "CART_OPTION_REQUIRED") {
+        return;
+      }
+      // 재고 부족은 상세 페이지가 다이얼로그로 따로 알린다(중복 알림 방지).
+      if (isStockInsufficientError(error)) return;
+      toast.error(toAddCartMessage(error));
+    },
   });
 
   return {

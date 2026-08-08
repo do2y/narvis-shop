@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { applyWishlistToggle } from "./useWishlist";
+import {
+  applyWishlistToggle,
+  toWishlistMessage,
+  wishlistSuccessMessage,
+} from "./useWishlist";
+import { ApiError } from "@/shared/api/client";
 import type { WishlistProduct } from "@/shared/types/wishlist";
 
 const seed = {
@@ -58,5 +63,48 @@ describe("applyWishlistToggle", () => {
     applyWishlistToggle(old, "b", false, seed);
     applyWishlistToggle(old, "a", true);
     expect(old.map((p) => p.productId)).toEqual(["a"]);
+  });
+});
+
+describe("wishlistSuccessMessage", () => {
+  // 인자는 '요청 당시' 상태다 — 완료 시점 서버 상태로 판정하면 재조회가 먼저
+  // 끝났을 때 반대 문구가 나간다.
+  it("찜이 아니었으면 담았다고 알린다", () => {
+    expect(wishlistSuccessMessage(false)).toBe("찜에 담았어요.");
+  });
+
+  it("이미 찜이었으면 해제했다고 알린다", () => {
+    expect(wishlistSuccessMessage(true)).toBe("찜을 해제했어요.");
+  });
+});
+
+describe("toWishlistMessage", () => {
+  const apiError = (code: string, message = "서버 문구") =>
+    new ApiError({ code, message }, 400);
+
+  it("이미 찜한 상품(409)은 문구를 내지 않는다 — 원하는 상태에 이미 도달했다", () => {
+    expect(toWishlistMessage(apiError("WISHLIST_DUPLICATE"))).toBeNull();
+  });
+
+  it("이미 해제된 상품(404)도 문구를 내지 않는다", () => {
+    expect(toWishlistMessage(apiError("WISHLIST_NOT_FOUND"))).toBeNull();
+  });
+
+  it("없는 상품은 그 사유를 알린다 — 위 404 와 뭉치면 진짜 실패를 놓친다", () => {
+    expect(toWishlistMessage(apiError("PRODUCT_NOT_FOUND"))).toBe(
+      "상품을 찾을 수 없어요.",
+    );
+  });
+
+  it("그 외 ApiError 는 서버 문구를 그대로 쓴다", () => {
+    expect(toWishlistMessage(apiError("SOMETHING_ELSE", "권한이 없어요."))).toBe(
+      "권한이 없어요.",
+    );
+  });
+
+  it("네트워크 오류 등 알 수 없는 실패는 재시도를 권한다", () => {
+    expect(toWishlistMessage(new Error("network"))).toBe(
+      "잠시 후 다시 시도해주세요.",
+    );
   });
 });
