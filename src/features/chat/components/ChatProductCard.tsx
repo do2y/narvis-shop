@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
@@ -9,17 +11,44 @@ import {
   VISIBLE_MS,
   VISIBLE_RATIO,
 } from "@/shared/analytics/useVisibleOnce";
-import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
+import { useWishlistToggleWithToast } from "@/shared/hooks/useWishlist";
 import { useAddCartItem } from "@/shared/hooks/useCart";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import type { ProductCard } from "@/shared/types/chat";
 
 export function ChatProductCard({ product }: { product: ProductCard }) {
   // 찜 상태는 서버 목록에서 파생 — 로컬 토글이면 새로고침·다른 화면과 어긋난다.
-  const wished = useIsWished(product.productId);
-  const { toggle, isPending } = useToggleWishlist();
+  // 결과 토스트와 낙관적 하트는 훅이 함께 맡는다.
+  const {
+    wished: optimisticWished,
+    isPending,
+    toggle,
+  } = useWishlistToggleWithToast(product.productId);
+
   const addCart = useAddCartItem();
   const { optionChoices } = addCart;
+
+  /**
+   * 담기 결과도 같은 방식으로 알린다 — 인라인 문구는 카드 높이를 바꿔
+   * 그리드에서 이 카드만 밀려 보였다.
+   *
+   * 옵션 미선택(optionChoices)만 예외로 카드 안에 남긴다: 사용자가 골라야 하는
+   * UI 라 토스트로 띄우면 사라진 뒤 고를 방법이 없다.
+   */
+  const { isSuccess: addCartSuccess, errorMessage: addCartError } = addCart;
+  const addCartReset = addCart.reset;
+  useEffect(() => {
+    if (!addCartSuccess) return;
+    toast.success("장바구니에 담았어요.");
+    addCartReset();
+  }, [addCartSuccess, addCartReset]);
+
+  useEffect(() => {
+    // 옵션 선택으로 이어지는 실패는 칩이 안내를 대신하므로 토스트를 내지 않는다.
+    if (!addCartError || optionChoices) return;
+    toast.error(addCartError);
+    addCartReset();
+  }, [addCartError, optionChoices, addCartReset]);
 
   /**
    * 노출·클릭은 추천 성과(CTR) 측정용이라 추천 카드에만 붙인다 —
@@ -82,6 +111,26 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
       },
     );
   };
+  /**
+   * 찜 토글 — 낙관적 반영에 쓸 카드 데이터를 함께 넘긴다.
+   * 넘기지 않으면 목록 캐시에 끼울 수 없어 하트가 서버 응답까지 안 움직인다.
+   */
+  const toggleWishlist = () => {
+    toggle({
+      name: product.name,
+      brandName: product.brandName,
+      price: product.price,
+      originalPrice: product.originalPrice,
+      imageUrl: product.imageUrl,
+      rating: product.rating,
+      reviewCount: product.reviewCount,
+      // 챗 카드에는 purchaseState 가 없다 — 못 사는 상품은 BE 가 목록에서
+      // 드롭하므로 남은 카드는 항상 구매 가능하다(chat.ts ProductCard 주석).
+      // 어차피 onSettled 재조회가 서버 값으로 덮는다.
+      purchaseState: "AVAILABLE",
+    });
+  };
+
   const hasDiscount = product.originalPrice > product.price;
   const discountRate = hasDiscount
     ? Math.round((1 - product.price / product.originalPrice) * 100)
@@ -115,16 +164,18 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
         </a>
         <button
           type="button"
-          onClick={() => toggle(product.productId, wished)}
+          onClick={toggleWishlist}
           disabled={isPending}
-          aria-label={wished ? "찜 해제" : "찜하기"}
-          aria-pressed={wished}
-          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90 disabled:opacity-50"
+          aria-label={optimisticWished ? "찜 해제" : "찜하기"}
+          aria-pressed={optimisticWished}
+          // 요청 중에도 흐려지지 않는다 — 낙관적 하트가 켜진 채로 반투명해지면
+          // "눌렀는데 뭔가 안 됐다"로 읽힌다. 연타는 disabled 로 이미 막힌다.
+          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90"
         >
           <Heart
             className={cn(
-              "size-5 transition-transform",
-              wished
+              "size-5 transition-all duration-200",
+              optimisticWished
                 ? "scale-110 fill-red-500 text-red-500"
                 : "text-muted-foreground",
             )}
@@ -198,17 +249,6 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             <ShoppingCart className="size-4" />
           </button>
         </div>
-
-        {addCart.isSuccess && (
-          <p className="text-xs text-muted-foreground" role="status">
-            장바구니에 담았어요.
-          </p>
-        )}
-        {addCart.errorMessage && (
-          <p className="text-xs text-destructive" role="alert">
-            {addCart.errorMessage}
-          </p>
-        )}
 
         {/* 옵션 미선택으로 막혔으면 서버가 준 선택지를 그대로 띄운다(C-2 detail.options).
             카드에는 옵션 UI 가 없어 문구만 보여주면 사용자가 뭘 골라야 할지 알 수 없다 —

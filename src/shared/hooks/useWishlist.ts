@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -32,6 +34,56 @@ export function useIsWished(productId: string): boolean {
   return !!data?.some((p) => p.productId === productId);
 }
 
+/**
+ * 낙관적 추가에 쓸 카드 데이터.
+ *
+ * 호출부가 이미 화면에 그리고 있는 값이라 그대로 넘기면 된다. 넘기지 않으면
+ * 추가 쪽 낙관적 반영은 생략되고 서버 재조회로만 확정된다(종전 동작).
+ */
+export type WishlistSeed = Omit<WishlistProduct, "productId">;
+
+/**
+ * 낙관적 목록 갱신 — 훅 밖에 두어 테스트로 고정한다.
+ *
+ * 경계 조건이 셋이라 인라인으로 두면 검증할 수가 없다:
+ *  - 목록 캐시가 아직 없으면(undefined) 만들지 않는다. 빈 배열을 세우면
+ *    "찜이 이것뿐"이라고 단정하는 셈이라 찜 목록 화면이 잘못 그려진다
+ *  - 이미 있는 상품은 중복 삽입하지 않는다(연타·중복 이벤트)
+ *  - 추가인데 seed 가 없으면 건드리지 않는다 — 서버 재조회에 맡긴다
+ */
+export function applyWishlistToggle(
+  old: WishlistProduct[] | undefined,
+  productId: string,
+  wished: boolean,
+  seed?: WishlistSeed,
+): WishlistProduct[] | undefined {
+  if (wished) return old?.filter((p) => p.productId !== productId);
+  if (!old || !seed) return old;
+  if (old.some((p) => p.productId === productId)) return old;
+  // 찜 목록이 최신순이라 맨 앞에 넣어야 재조회 결과와 순서가 어긋나지 않는다.
+  return [{ productId, ...seed }, ...old];
+}
+
+/**
+ * 찜 실패 안내 문구 (담기의 toAddCartMessage 와 같은 역할).
+ *
+ * WISHLIST_DUPLICATE·WISHLIST_NOT_FOUND 는 여기서 다루지 않는다 — 원하는 상태에
+ * 이미 도달해 있어 사용자에겐 실패가 아니고, onError 가 서버 기준으로 맞춘다.
+ */
+function toWishlistMessage(error: unknown): string | null {
+  if (error instanceof ApiError) {
+    if (
+      error.code === "WISHLIST_DUPLICATE" ||
+      error.code === "WISHLIST_NOT_FOUND"
+    ) {
+      return null;
+    }
+    if (error.code === "PRODUCT_NOT_FOUND") return "상품을 찾을 수 없어요.";
+    if (error.displayMessage) return error.displayMessage;
+  }
+  return "잠시 후 다시 시도해주세요.";
+}
+
 // 찜 추가·해제 토글.
 // 게스트가 누르면 로그인으로 보낸다(returnUrl로 복귀).
 // 낙관적 업데이트 — 하트가 즉시 반응해야 하므로. 실패 시 롤백.
@@ -43,19 +95,25 @@ export function useToggleWishlist() {
   const isAuthed = useAuthStore((s) => s.user !== null);
 
   const mutation = useMutation({
-    mutationFn: ({ productId, wished }: { productId: string; wished: boolean }) =>
-      wished ? removeWishlistItem(productId) : addWishlistItem(productId),
+    mutationFn: ({
+      productId,
+      wished,
+    }: {
+      productId: string;
+      wished: boolean;
+      /** 낙관적 삽입용. 서버 요청에는 쓰지 않는다(productId 만 보낸다). */
+      seed?: WishlistSeed;
+    }) => (wished ? removeWishlistItem(productId) : addWishlistItem(productId)),
 
-    onMutate: async ({ productId, wished }) => {
+    onMutate: async ({ productId, wished, seed }) => {
       await queryClient.cancelQueries({ queryKey: ["wishlist"] });
       const previous = queryClient.getQueryData<WishlistProduct[]>(["wishlist"]);
-      // 해제는 목록에서 제거. 추가는 카드 데이터를 모를 수 있어 목록을 건드리지 않고
-      // onSettled의 재조회에 맡긴다(하트 상태는 서버 응답 후 확정).
-      if (wished) {
-        queryClient.setQueryData<WishlistProduct[]>(["wishlist"], (old) =>
-          old?.filter((p) => p.productId !== productId),
-        );
-      }
+
+      // 하트는 목록에서 파생되므로(useIsWished) 이 갱신이 없으면 서버 응답이
+      // 올 때까지 눌러도 아무 반응이 없다 — 눌렸는지조차 알 수 없었다.
+      queryClient.setQueryData<WishlistProduct[]>(["wishlist"], (old) =>
+        applyWishlistToggle(old, productId, wished, seed),
+      );
       return { previous };
     },
 
@@ -83,7 +141,12 @@ export function useToggleWishlist() {
     },
   });
 
-  const toggle = (productId: string, wished: boolean) => {
+  // seed 는 추가 시 낙관적 반영에만 쓴다 — 해제 경로에는 필요 없다.
+  const toggle = (
+    productId: string,
+    wished: boolean,
+    seed?: WishlistSeed,
+  ) => {
     if (!isAuthed) {
       const returnUrl = encodeURIComponent(
         window.location.pathname + window.location.search,
@@ -91,8 +154,89 @@ export function useToggleWishlist() {
       router.push(`/login?returnUrl=${returnUrl}`);
       return;
     }
-    mutation.mutate({ productId, wished });
+    mutation.mutate({ productId, wished, seed });
   };
 
-  return { toggle, isPending: mutation.isPending };
+  /**
+   * 요청이 도는 동안 "이렇게 될 것"인 찜 상태.
+   *
+   * 목록 캐시에서 파생하는 useIsWished 만으로는 부족하다 — 찜 목록을 아직 한 번도
+   * 받지 않았으면(챗 화면 첫 방문) 낙관적 삽입이 생략되고, 하트가 서버 응답까지
+   * 아무 반응을 안 한다. 그 구간을 mutation 변수로 메운다.
+   *
+   * pending 이 끝나면 undefined 가 되어 서버 파생 상태(useIsWished)로 돌아간다.
+   */
+  const pendingWished = mutation.isPending
+    ? !mutation.variables.wished
+    : undefined;
+
+  /**
+   * 방금 무엇을 했는지 — 하트 색만으로는 "이미 찜이었나 방금 됐나"가 구분되지 않는다.
+   * 화면에 알리는 방식(토스트)은 useWishlistToggleWithToast 가 맡는다.
+   *
+   * 성공 문구를 wished(요청 당시 상태)로 가르는 이유: 완료 시점의 서버 상태로 판정하면
+   * 재조회가 먼저 끝났을 때 "해제했어요"가 떠야 할 자리에 반대 문구가 나온다.
+   */
+  const doneAction: "added" | "removed" | null =
+    mutation.isSuccess && mutation.variables
+      ? mutation.variables.wished
+        ? "removed"
+        : "added"
+      : null;
+
+  return {
+    toggle,
+    isPending: mutation.isPending,
+    pendingWished,
+    doneAction,
+    /**
+     * 실패 안내. 이미 원하는 상태였던 두 코드는 사용자 입장에서 실패가 아니라
+     * 문구를 내지 않는다(onError 가 서버 기준으로 맞춰준다).
+     */
+    errorMessage: mutation.error ? toWishlistMessage(mutation.error) : null,
+    /** 같은 카드에서 다시 누르면 이전 결과 문구가 남지 않게 호출부가 비운다. */
+    reset: mutation.reset,
+  };
+}
+
+/**
+ * 찜 토글 + 결과 토스트.
+ *
+ * 찜 버튼이 챗봇 카드·브랜드 카드·상품 상세 세 곳에 있어, 발화 규칙을 각자
+ * useEffect 로 베끼면 문구와 타이밍이 화면마다 갈린다. 여기 한 번만 둔다.
+ *
+ * 하트 상태(optimisticWished)까지 함께 돌려주는 이유: 호출부가 useIsWished 와
+ * pendingWished 를 매번 조합해야 하는데, 그 조합을 빠뜨리면 "목록 캐시가 없을 때
+ * 하트가 안 움직이는" 원래 증상이 그대로 재현된다.
+ */
+export function useWishlistToggleWithToast(productId: string) {
+  const wished = useIsWished(productId);
+  const { toggle, isPending, pendingWished, doneAction, errorMessage, reset } =
+    useToggleWishlist();
+
+  // 요청 중에는 의도한 상태를 먼저 보여준다. 목록 캐시가 있으면 낙관적 삽입으로
+  // wished 가 이미 뒤집혀 있고, 없으면 pendingWished 가 그 자리를 메운다.
+  const optimisticWished = pendingWished ?? wished;
+
+  // 발화 후 reset: mutation 상태를 비우지 않으면 리렌더마다 같은 토스트가 다시 나간다.
+  useEffect(() => {
+    if (!doneAction) return;
+    toast.success(
+      doneAction === "added" ? "찜에 담았어요." : "찜을 해제했어요.",
+    );
+    reset();
+  }, [doneAction, reset]);
+
+  useEffect(() => {
+    if (!errorMessage) return;
+    toast.error(errorMessage);
+    reset();
+  }, [errorMessage, reset]);
+
+  return {
+    wished: optimisticWished,
+    isPending,
+    /** seed 를 넘기면 목록 캐시에 낙관적으로 끼워 하트가 즉시 반응한다. */
+    toggle: (seed?: WishlistSeed) => toggle(productId, wished, seed),
+  };
 }

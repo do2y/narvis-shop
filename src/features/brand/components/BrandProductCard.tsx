@@ -3,7 +3,7 @@
 import { Heart, Star } from "lucide-react";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { useGoToProduct } from "@/shared/hooks/useGoToProduct";
-import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
+import { useWishlistToggleWithToast } from "@/shared/hooks/useWishlist";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { unavailableLabel } from "@/shared/types/product";
 import { cn } from "@/lib/utils";
@@ -14,8 +14,9 @@ import type { BrandProduct } from "../types";
 // 카드에 브랜드명을 반복 표기하지 않는다(브랜드 홈은 전부 같은 브랜드) — 시딩에는 사용.
 export function BrandProductCard({ product }: { product: BrandProduct }) {
   const goToProduct = useGoToProduct();
-  const wished = useIsWished(product.productId);
-  const { toggle } = useToggleWishlist();
+  const { wished, isPending: wishPending, toggle } = useWishlistToggleWithToast(
+    product.productId,
+  );
 
   const hasDiscount = product.originalPrice > product.price;
   const discountRate = hasDiscount
@@ -86,7 +87,23 @@ export function BrandProductCard({ product }: { product: BrandProduct }) {
           이미지 위 반투명 레이어라 backdrop-blur로 사진 위에서도 읽히게 한다(apple-design §12) */}
       <button
         type="button"
-        onClick={() => toggle(product.productId, wished)}
+        onClick={() =>
+          // 카드가 이미 그리고 있는 값을 넘겨 목록 캐시에 낙관적으로 끼운다 —
+          // 없으면 하트가 서버 응답까지 반응하지 않는다.
+          toggle({
+            name: product.name,
+            brandName: product.brandName,
+            price: product.price,
+            originalPrice: product.originalPrice,
+            imageUrl: product.imageUrl,
+            rating: product.rating,
+            reviewCount: product.reviewCount,
+            // P-6은 재고를 거르지 않아 SOLD_OUT 이 섞여 온다. 값이 없으면
+            // 구매 가능으로 두되, onSettled 재조회가 서버 값으로 덮는다.
+            purchaseState: product.purchaseState ?? "AVAILABLE",
+          })
+        }
+        disabled={wishPending}
         aria-label={wished ? "찜 해제" : "찜하기"}
         aria-pressed={wished}
         className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 shadow-sm backdrop-blur transition duration-100 ease-out hover:bg-background active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100"

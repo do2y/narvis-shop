@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { Heart, ShoppingCart } from "lucide-react";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { formatPrice } from "@/shared/utils/formatPrice";
@@ -10,9 +12,30 @@ import { isPurchasable, unavailableLabel } from "@/shared/types/product";
 import type { WishlistProduct } from "@/shared/types/wishlist";
 
 export function WishlistCard({ product }: { product: WishlistProduct }) {
-  const remove = useRemoveWishlistItem();
+  const remove = useRemoveWishlistItem(product.productId);
   const addCart = useAddCartItem();
   const goToProduct = useGoToProduct();
+
+  /**
+   * 담기 결과는 토스트로 — 인라인 문구는 이 카드만 세로로 늘려 그리드에서
+   * 옆 카드와 높이가 어긋나게 만든다(챗봇 카드와 같은 이유).
+   *
+   * 구매 불가 안내는 카드에 남긴다: 상태를 계속 알려야 하는 정보라
+   * 잠깐 떴다 사라지면 안 된다.
+   */
+  const { isSuccess: addCartSuccess, errorMessage: addCartError } = addCart;
+  const addCartReset = addCart.reset;
+  useEffect(() => {
+    if (!addCartSuccess) return;
+    toast.success("장바구니에 담았어요.");
+    addCartReset();
+  }, [addCartSuccess, addCartReset]);
+
+  useEffect(() => {
+    if (!addCartError) return;
+    toast.error(addCartError);
+    addCartReset();
+  }, [addCartError, addCartReset]);
 
   // WishlistProduct는 시딩 계약을 전부 갖고 있어 그대로 승계한다.
   const goToDetail = () => goToProduct(product);
@@ -39,7 +62,7 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
 
         <button
           type="button"
-          onClick={() => remove.mutate(product.productId)}
+          onClick={() => remove.mutate()}
           disabled={remove.isPending}
           aria-label="찜 해제"
           aria-pressed
@@ -87,16 +110,6 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
         </p>
       )}
 
-      {addCart.isSuccess && (
-        <p className="mt-2 text-xs text-muted-foreground" role="status">
-          장바구니에 담았어요.
-        </p>
-      )}
-      {addCart.errorMessage && (
-        <p className="mt-2 text-xs text-destructive" role="alert">
-          {addCart.errorMessage}
-        </p>
-      )}
     </article>
   );
 }
