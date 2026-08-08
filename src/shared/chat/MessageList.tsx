@@ -51,6 +51,8 @@ export function MessageList({
         // (계약 CH-2 §progress). 빈 말풍선일 때는 버블 안에서 이미 보여주므로 제외.
         const showStatusLine =
           isPending && Boolean(msg.text) && Boolean(progress);
+        // 답변이 아직 없고 진행 문구만 있는 상태 — 말풍선을 씌우지 않는다.
+        const showStatusOnly = showTyping && Boolean(progress);
 
         return msg.role === "user" ? (
           <div
@@ -96,14 +98,25 @@ export function MessageList({
               <div className="flex min-w-0 max-w-[80%] flex-col items-start gap-1.5">
                 <span
                   className={cn(
-                    "whitespace-pre-wrap rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5 text-sm leading-relaxed",
-                    showTyping && "py-3",
+                    "whitespace-pre-wrap text-sm leading-relaxed",
+                    // 진행 문구는 답변이 아니라 상태다 — 말풍선을 씌우면 AI 가 뱉은
+                    // 발화처럼 읽히고, 답변이 도착하는 순간 같은 버블이 내용만 갈리며
+                    // 튄다. 버블 없이 같은 자리에 얹어 "아직 말이 시작되지 않았음"을
+                    // 형태로 구분한다.
+                    // pt 를 pb 보다 키워 아래로 내린다 — 버블을 벗기면서 세로 패딩이
+                    // 함께 빠져 문구가 아바타 위쪽에 붙어 보였다. 바깥 gap 이 아니라
+                    // 여기서 조절해야 답변 도착 후 버블로 바뀔 때 자리가 흔들리지 않는다.
+                    showStatusOnly
+                      ? "px-1 pb-1 pt-2.5 text-muted-foreground"
+                      : "rounded-2xl rounded-tl-sm bg-muted px-4 py-2.5",
+                    showTyping && !showStatusOnly && "py-3",
                   )}
+                  aria-live={showStatusOnly ? "polite" : undefined}
                 >
                   {showTyping ? (
                     // 진행 텍스트(progress)가 있으면 로딩 문구로, 없으면 점 애니메이션
                     progress ? (
-                      <span className="flex items-center gap-2 text-muted-foreground">
+                      <span className="flex items-center gap-3">
                         <TypingIndicator />
                         {progress}
                       </span>
