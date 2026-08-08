@@ -1,5 +1,7 @@
 "use client";
 
+import { createElement } from "react";
+import { HeartOff } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -150,11 +152,32 @@ export function useToggleWishlist() {
       if (message) toast.error(message);
     },
 
-    onSuccess: (_data, { wished }) => {
+    onSuccess: (_data, { productId, wished }) => {
       // 토스트를 여기서 띄운다. mutation 상태(isSuccess)를 이펙트로 관찰하면
       // onSettled 의 재조회가 리렌더를 유발해 상태가 갈아엎히고, 이펙트가
       // 읽기 전에 사라져 토스트가 안 뜨는 경쟁이 생긴다.
-      toast.success(wishlistSuccessMessage(wished));
+      //
+      // 담기와 해제를 같은 모양으로 알리지 않는다(apple-design §16 피드백 4종):
+      //  - 담기는 완료(completion) — 체크 아이콘으로 "됐다"를 확인해 준다
+      //  - 해제는 상태 변화(status) — 되돌린 것이라 성공 체크가 붙으면 어색하다.
+      //    대신 하트 아이콘으로 무엇이 바뀌었는지 보여주고, 되돌릴 길을 준다
+      //    (§16 Agency: 슬립에는 확인 대화상자가 아니라 쉬운 undo).
+      if (wished) {
+        toast(wishlistSuccessMessage(true), {
+          icon: createElement(HeartOff, { className: "size-4" }),
+          // 되돌릴 것이 있으면 읽고 누를 시간이 필요하다 — 기본 2.5초는
+          // 버튼을 인지하기도 전에 사라진다.
+          duration: 5000,
+          action: {
+            label: "실행 취소",
+            // 되돌리기는 같은 뮤테이션을 반대 방향으로 한 번 더 태운다.
+            // seed 는 없어도 된다 — 되돌린 직후 onSettled 재조회가 목록을 맞춘다.
+            onClick: () => mutation.mutate({ productId, wished: false }),
+          },
+        });
+        return;
+      }
+      toast.success(wishlistSuccessMessage(false));
     },
 
     onSettled: () => {

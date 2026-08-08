@@ -71,14 +71,21 @@ export function Toaster() {
           ].join(" "),
           // 어두운 바탕 위 보조 설명 — 본문보다 한 단계 낮추되 흐려서 안 읽히면 안 된다.
           description: "!text-background/70 !font-normal",
-          // 색은 불투명 레이어에 얹는다(§12: 반투명 전경에 색을 칠하지 않는다).
-          // 바탕이 어두우므로 버튼은 반대로 밝게 둔다.
-          actionButton:
-            "!rounded-full !bg-background !text-foreground !font-medium",
+          // 되돌리기(실행 취소) 같은 보조 액션이다 — 알림보다 시끄러우면 안 되므로
+          // 솔리드 흰 버튼 대신 같은 재질 위 옅은 판으로 둔다(§16 절제).
+          // 누를 수 있다는 것은 테두리와 press 반응으로 전한다(§1 즉시 피드백).
+          actionButton: [
+            "!rounded-full !bg-white/15 !text-background !font-medium",
+            "!border !border-white/20 !px-2.5",
+            "hover:!bg-white/25 active:!scale-95 !transition-all",
+          ].join(" "),
           cancelButton: "!rounded-full !bg-white/15 !text-background",
+          // 아이콘은 currentColor SVG 라 색만 바꾸면 된다. 어두운 바탕이므로
+          // 기본값을 밝은 쪽으로 잡는다 — 커스텀 아이콘(toast() 기본형)은
+          // success/error 클래스를 타지 않아 여기서 색을 받는다.
+          icon: "!text-background/70",
           // 성공/실패는 아이콘 색으로만 가른다 — 배경까지 물들이면 재질이 깨지고,
           // 실패가 성공보다 시끄러워야 할 이유도 없다(§16 절제).
-          // sonner 아이콘은 currentColor SVG 라 색만 바꾸면 된다.
           success: "[&_[data-icon]]:!text-background/70",
           // 어두운 바탕에서 destructive(짙은 빨강)는 묻힌다 — 밝은 쪽으로 올린다.
           error: "[&_[data-icon]]:!text-red-400",
