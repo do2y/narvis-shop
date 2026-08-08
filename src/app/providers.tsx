@@ -6,6 +6,7 @@ import { useRestoreSession } from "@/shared/hooks/useRestoreSession";
 import { useAuthSync } from "@/shared/hooks/useAuthSync";
 import { AnalyticsProvider } from "@/shared/analytics/AnalyticsProvider";
 import { SellerIsolation } from "@/shared/auth/SellerIsolation";
+import { Toaster } from "@/shared/ui/Toaster";
 
 // 새로고침 시 RT 쿠키로 세션을 복원하고(원본 App.tsx와 동일 역할),
 // 다른 탭의 로그인·로그아웃도 이 탭에 반영한다.
@@ -28,6 +29,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AnalyticsProvider />
       {/* 판매자 격리(원본 BlockSeller) */}
       <SellerIsolation>{children}</SellerIsolation>
+      {/* 전역 토스트 자리. 카드·목록 안에 문구를 넣으면 그 카드만 높이가 늘어
+          옆 카드와 어긋나므로, 레이아웃 밖에서 띄운다 */}
+      <Toaster />
     </QueryClientProvider>
   );
 }

@@ -10,9 +10,12 @@ import { isPurchasable, unavailableLabel } from "@/shared/types/product";
 import type { WishlistProduct } from "@/shared/types/wishlist";
 
 export function WishlistCard({ product }: { product: WishlistProduct }) {
-  const remove = useRemoveWishlistItem();
+  const remove = useRemoveWishlistItem(product.productId);
   const addCart = useAddCartItem();
   const goToProduct = useGoToProduct();
+
+  // 담기 결과 토스트는 useAddCartItem 이 띄운다. 구매 불가 안내(품절·판매종료)만
+  // 카드에 남긴다 — 상태를 계속 알려야 하는 정보라 잠깐 떴다 사라지면 안 된다.
 
   // WishlistProduct는 시딩 계약을 전부 갖고 있어 그대로 승계한다.
   const goToDetail = () => goToProduct(product);
@@ -39,7 +42,7 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
 
         <button
           type="button"
-          onClick={() => remove.mutate(product.productId)}
+          onClick={() => remove.mutate()}
           disabled={remove.isPending}
           aria-label="찜 해제"
           aria-pressed
@@ -87,16 +90,6 @@ export function WishlistCard({ product }: { product: WishlistProduct }) {
         </p>
       )}
 
-      {addCart.isSuccess && (
-        <p className="mt-2 text-xs text-muted-foreground" role="status">
-          장바구니에 담았어요.
-        </p>
-      )}
-      {addCart.errorMessage && (
-        <p className="mt-2 text-xs text-destructive" role="alert">
-          {addCart.errorMessage}
-        </p>
-      )}
     </article>
   );
 }

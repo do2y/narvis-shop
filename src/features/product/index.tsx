@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Heart, Star } from "lucide-react";
 import { track } from "@/shared/analytics/track";
-import { useIsWished, useToggleWishlist } from "@/shared/hooks/useWishlist";
+import { useWishlistToggleWithToast } from "@/shared/hooks/useWishlist";
 import { cn } from "@/lib/utils";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { Button } from "@/shared/ui/button";
@@ -49,9 +49,11 @@ export default function ProductPage({
   initialDetail?: ProductDetail;
 }) {
   const router = useRouter();
-  const wished = useIsWished(id);
-  const { toggle: toggleWishlist, isPending: wishlistPending } =
-    useToggleWishlist();
+  const {
+    wished,
+    isPending: wishlistPending,
+    toggle: toggleWishlist,
+  } = useWishlistToggleWithToast(id);
 
   // OptionSelector의 최신 선택값을 담아두는 ref. 렌더 유발이 필요 없어 state 대신 ref 사용.
   const selectionRef = useRef<OptionSelection>({ option: null, quantity: 1 });
@@ -306,7 +308,13 @@ export default function ProductPage({
                 size="icon"
                 aria-label={wished ? "찜 해제" : "찜하기"}
                 aria-pressed={wished}
-                onClick={() => toggleWishlist(id, wished)}
+                // view 는 상세·시딩을 정규화한 값이라 seed 필드와 그대로 맞는다.
+                onClick={() =>
+                  toggleWishlist({
+                    ...view,
+                    purchaseState: detail?.purchaseState ?? "AVAILABLE",
+                  })
+                }
                 disabled={wishlistPending}
                 className="size-11 shrink-0"
               >
@@ -358,12 +366,8 @@ export default function ProductPage({
                 </button>
               </p>
             )}
-            {/* 재고 부족은 다이얼로그로 알리므로 인라인에서는 제외. */}
-            {addCart.errorMessage && !addCart.isStockError && (
-              <p className="text-sm text-destructive" role="alert">
-                {addCart.errorMessage}
-              </p>
-            )}
+            {/* 담기 실패는 useAddCartItem 이 토스트로 알린다(재고 부족만 예외로
+                아래 다이얼로그). 여기서 또 그리면 같은 말이 두 번 나간다. */}
           </div>
         </div>
 
