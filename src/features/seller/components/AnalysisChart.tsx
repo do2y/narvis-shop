@@ -53,6 +53,17 @@ export function AnalysisChart({
 
   const total = points.reduce((sum, p) => sum + p.y, 0);
 
+  // 헤더 숫자는 집계 방식에 따라 달라진다 — 평점 차트에 "합계 61.4점"을 찍으면
+  // 무의미하고, 가격·재고는 현재 시점 스냅샷이라 합계도 평균도 뜻이 없다.
+  // 대시보드(SellerAnalysis)엔 aggregate 가 없으므로 sum 으로 떨어뜨려 기존 동작을 지킨다.
+  const aggregate = "aggregate" in analysis ? analysis.aggregate : "sum";
+  const headerStat =
+    aggregate === "avg"
+      ? { label: "평균", value: total / points.length }
+      : aggregate === "none"
+        ? null
+        : { label: "합계", value: total };
+
   // 라벨을 몇 개 걸러 찍을지 — 31점이면 4칸마다(8개), 7점이면 전부.
   const labelStep = Math.ceil(points.length / MAX_X_LABELS);
 
@@ -60,12 +71,14 @@ export function AnalysisChart({
     <section className="flex flex-col gap-4 rounded-sm border bg-background p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-base font-bold tracking-tight">{analysis.title}</h3>
-        <span className="text-sm text-muted-foreground">
-          합계{" "}
-          <span className="font-semibold tabular-nums text-foreground">
-            {formatMetric(total, unit)}
+        {headerStat && (
+          <span className="text-sm text-muted-foreground">
+            {headerStat.label}{" "}
+            <span className="font-semibold tabular-nums text-foreground">
+              {formatMetric(headerStat.value, unit)}
+            </span>
           </span>
-        </span>
+        )}
       </div>
 
       <svg
@@ -156,7 +169,11 @@ export function AnalysisChart({
           labelStep === 1 || i % labelStep === 0 ? (
             <span
               key={p.x}
-              className="absolute -translate-x-1/2 whitespace-nowrap"
+              // 상품별 차트는 x 가 상품명이라 길다 — 날짜(07-14)는 max-w 에 안 걸려
+              // 기존과 동일하게 나온다. 서버도 12자에서 자르지만 이름 길이는
+              // 브랜드마다 달라 화면에서도 막는다
+              title={p.x}
+              className="absolute max-w-20 -translate-x-1/2 truncate"
               // viewBox 좌표를 폭 비율로 환산 — SVG 와 같은 x 를 쓰므로 항상 정렬된다
               style={{ left: `${(x(i) / W) * 100}%` }}
             >
