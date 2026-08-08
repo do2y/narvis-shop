@@ -179,20 +179,7 @@ export default function ProductPage({
         quantity,
       },
       {
-        // 담기 성공 후에만 수집한다(명세: 실패 건은 세지 않음).
-        // 단가는 buyNow와 동일한 식(판매가 + 옵션 추가금).
-        onSuccess: () =>
-          track("add_to_cart", {
-            productId: id,
-            properties: {
-              quantity,
-              // 명세 키는 price 다(구 unitPrice). 값은 판매가 + 옵션 추가금.
-              price: (view?.price ?? 0) + (option?.extraPrice ?? 0),
-              ...(option?.optionId !== undefined
-                ? { optionId: option.optionId }
-                : {}),
-            },
-          }),
+        // add_to_cart 수집은 BE CartService 로 이관됨(A 문서, 2026-08-06).
         // 재고 부족만 다이얼로그로 알린다. 그 외 에러는 하단 인라인(errorMessage).
         onError: (error) => {
           if (isStockInsufficientError(error)) setStockDialogOpen(true);
