@@ -26,17 +26,21 @@ import { Toaster as SonnerToaster } from "sonner";
  *   블러를 끄고 불투명하게, prefers-contrast: more 에서는 테두리를 진하게 세운다.
  *   (모션은 sonner 가 prefers-reduced-motion 을 자체 처리한다)
  *
- * 위치를 하단 중앙으로 둔 이유: 상단은 AppHeader 와 겹치고, 챗 화면에서는
- * 우측 상단에 상품 카드의 찜 버튼이 있어 방금 누른 곳을 토스트가 가린다.
+ * 위치는 상단 중앙. 헤더와 겹치지 않게 그 높이(64px)만큼 내려서 띄운다 —
+ * 반투명끼리 포개지면 둘 다 읽기 어려워진다(§12).
  */
 export function Toaster() {
   return (
     <SonnerToaster
-      position="bottom-center"
+      position="top-center"
       // 기본 4초는 한 줄 안내로는 길다. 읽고 넘기기 충분한 정도만.
       duration={2500}
-      // 모바일에서 화면 가장자리에 붙지 않게(CLAUDE.md 반응형 규칙)
-      offset={16}
+      // AppHeader 가 sticky top-0 에 h-16(64px)이라 그 아래로 내린다 —
+      // 겹치면 반투명끼리 포개져 둘 다 읽기 어려워진다(§12: 밝은 반투명을
+      // 다른 반투명 위에 쌓지 않는다). 가장자리 여백 16px 을 더해 80px.
+      offset={80}
+      // 모바일은 헤더가 화면을 더 많이 차지해 같은 값이면 답답하다.
+      mobileOffset={72}
       // 같은 동작을 연달아 하면 알림이 쌓여 화면을 가린다. 최신 것만 남긴다
       // (§16 단순함 — 모든 것을 다 보여주는 게 친절한 게 아니다).
       visibleToasts={2}
