@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
+import {
+  clampQuantity,
+  resolveOptionSelection,
+} from "../utils/optionSelection";
 import type { ProductOption } from "../types";
 
 export interface OptionSelection {
@@ -38,24 +50,18 @@ export function OptionSelector({
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
 
-  // 미선택이면 첫 옵션을 기본값으로 본다 — select의 표시값과 항상 일치시킨다.
-  // 품절 옵션은 기본 선택에서 건너뛴다 — 첫 옵션이 품절이면 화면에 열자마자
-  // 담기 버튼이 막힌 채로 시작해 살 수 있는 색이 있는데도 없는 것처럼 보인다.
-  const firstAvailable =
-    options.find((o) => o.purchaseState === "AVAILABLE") ?? options[0] ?? null;
-  const selected =
-    options.find((o) => o.optionId === pickedId) ?? firstAvailable;
+  // 선택·재고 판정은 순수 함수로 뺐다(utils/optionSelection) — 재고 조합이
+  // 화면으로는 재현되지 않아 테스트로 검증한다.
+  const {
+    selected,
+    soldOut: selectedSoldOut,
+    stockLimit,
+  } = resolveOptionSelection({ options, pickedId, productStock: maxQuantity });
   const optionId = selected?.optionId ?? null;
-  const selectedSoldOut = selected?.purchaseState === "SOLD_OUT";
-
-  // 수량 상한 — 옵션이 있으면 그 옵션 재고, 없으면 상품 재고.
-  const stockLimit = selected ? selected.stockQuantity : maxQuantity;
 
   // 재고가 줄어(다른 창에서 담기 등) qty가 상한을 넘어도 표시·전파는 상한으로 클램프한다.
   // state를 effect에서 되돌리는 대신 렌더 중 파생값으로 계산 → cascading render 회피.
-  // (1 이상은 항상 허용, 재고가 0이어도 최소 1)
-  const quantity =
-    stockLimit != null ? Math.min(qty, Math.max(1, stockLimit)) : qty;
+  const quantity = clampQuantity(qty, stockLimit);
 
   // 재고가 있으면 상한을 넘겨 담지 못하게 막는다(1 이상은 항상 허용).
   // 품절 옵션은 애초에 담을 수 없어 수량 안내가 의미 없으므로 제외한다.
@@ -71,41 +77,72 @@ export function OptionSelector({
     <div className="flex flex-col gap-5">
       {options.length > 0 && (
         <Field label="옵션">
-          <div className="relative">
-            <select
-              value={optionId ?? ""}
-              // Number() 로 바꾸지 말 것 — optionId 는 64비트 ID라 숫자로 만들면
-              // 끝자리가 조용히 바뀌어 서버가 CART_OPTION_INVALID 로 거부한다.
-              onChange={(e) => setPickedId(e.target.value)}
-              aria-label="옵션 선택"
-              className="h-11 w-full appearance-none rounded-sm border bg-background px-4 pr-10 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+          {/* 네이티브 select 를 쓰지 않는다 — <option> 안에는 요소를 넣을 수 없어
+              품절을 글자색과 꼬리말로만 표현하게 되고, 그러면 목록을 훑어서는
+              구분되지 않는다(배지·행 배경이 불가능). */}
+          <Select
+            value={optionId ?? ""}
+            // string 으로 다룬다 — optionId 는 64비트 ID라 숫자로 바꾸면 끝자리가
+            // 조용히 바뀌어 서버가 CART_OPTION_INVALID 로 거부한다.
+            onValueChange={(next) => setPickedId(next)}
+          >
+            <SelectTrigger aria-label="옵션 선택">
+              {/* 값(optionId)이 아니라 옵션명을 보여준다 — 기본 렌더는 raw value 다 */}
+              <SelectValue>
+                {(value) => {
+                  const opt = options.find((o) => o.optionId === value);
+                  if (!opt) return null;
+                  return (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">
+                        {opt.extraPrice > 0
+                          ? `${opt.name} (+${opt.extraPrice.toLocaleString("ko-KR")}원)`
+                          : opt.name}
+                      </span>
+                      {opt.purchaseState === "SOLD_OUT" && (
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          품절
+                        </span>
+                      )}
+                    </span>
+                  );
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
               {options.map((opt) => {
                 // 품절 옵션도 목록에 남긴다 — 숨기면 "원래 없는 옵션"과 구분되지 않아
                 // 재입고를 기다릴지 판단할 수 없다(명세의 의도). 대신 고르지 못하게 막는다.
                 const optSoldOut = opt.purchaseState === "SOLD_OUT";
                 return (
-                  <option
+                  <SelectItem
                     key={opt.optionId}
                     value={opt.optionId}
                     disabled={optSoldOut}
                   >
-                    {/* 추가금이 있는 옵션만 금액을 함께 노출 */}
-                    {opt.extraPrice > 0
-                      ? `${opt.name} (+${opt.extraPrice.toLocaleString("ko-KR")}원)`
-                      : opt.name}
-                    {optSoldOut && " — 품절"}
-                  </option>
+                    <SelectItemText>
+                      {/* 추가금이 있는 옵션만 금액을 함께 노출 */}
+                      {opt.extraPrice > 0
+                        ? `${opt.name} (+${opt.extraPrice.toLocaleString("ko-KR")}원)`
+                        : opt.name}
+                    </SelectItemText>
+                    {/* 색만으로 알리지 않는다 — 배지 글자가 상태를 직접 말한다.
+                        경고가 아니라 "고를 수 없음"이라 중립 회색으로 둔다. */}
+                    {optSoldOut && (
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        품절
+                      </span>
+                    )}
+                  </SelectItem>
                 );
               })}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
-          {/* 전 옵션 품절이면 기본 선택이 품절 옵션으로 잡힌다 — 왜 담기지 않는지
+            </SelectContent>
+          </Select>
+          {/* 고른 뒤 재고가 소진되면 선택값이 품절인 채로 남는다 — 왜 담기지 않는지
               알려주지 않으면 버튼만 막힌 채 이유를 알 수 없다. */}
           {selectedSoldOut && (
             <p className="text-xs text-muted-foreground" role="status">
-              품절된 옵션이에요. 다른 옵션을 골라주세요.
+              현재 선택한 옵션은 품절되었습니다. 다른 옵션을 골라주세요.
             </p>
           )}
         </Field>
