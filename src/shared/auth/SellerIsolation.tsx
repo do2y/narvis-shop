@@ -11,10 +11,16 @@ import { useAuthStore } from "@/shared/stores/authStore";
  * 같은 형태로 하려면 폴더를 라우트 그룹으로 대거 이동해야 하는데, 그건 1:1 이식
  * 범위를 넘는 구조 변경이라 루트 레이아웃에서 경로로 판정한다(동작은 동일).
  *
- * 통과시키는 경로: /seller/* (판매자 자기 영역), /login·/signup (판매자도 접근해야 함).
+ * 통과시키는 경로: /seller/* (판매자 자기 영역), /login·/signup (판매자도 접근해야 함),
+ * /landing (서비스 소개 — 판매자도 자기 쪽 소개를 봐야 한다).
  * 그 외 경로에 SELLER가 오면 /seller로 돌려보낸다.
+ *
+ * /landing 을 허용하는 이유: 이 화면은 쇼핑 기능이 아니라 **서비스 소개**다.
+ * 판매자 탭이 그 안에 있어서 막으면 판매자가 자기 대상 소개 페이지에 못 들어간다.
+ * 소개일 뿐이라 격리가 지키려는 것(판매자가 구매자 기능을 쓰는 것)은 그대로 막힌다 —
+ * 랜딩의 구매자 CTA도 판매자에게는 판매자 채팅을 가리킨다(features/landing/cta.ts).
  */
-const ALLOWED_PREFIXES = ["/seller", "/login", "/signup"];
+const ALLOWED_PREFIXES = ["/seller", "/login", "/signup", "/landing"];
 
 export function SellerIsolation({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
