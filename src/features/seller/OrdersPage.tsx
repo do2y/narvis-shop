@@ -52,9 +52,6 @@ export default function OrdersPage() {
         page={page}
         onTabChange={(t) => update({ tab: t })}
         onPageChange={(p) => update({ page: p })}
-        // 뷰포트가 스크롤하고 그 위에 sticky 헤더(h-16)가 떠 있다 —
-        // container 로 두면 열 이름이 그 헤더 뒤로 들어가 가려진다.
-        stickyHeader="page"
       />
     </div>
   );

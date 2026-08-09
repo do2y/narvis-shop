@@ -60,18 +60,6 @@ interface OrderListProps {
   page: number; // 0-base (API 기준)
   onTabChange: (tab: SellerOrderTab) => void;
   onPageChange: (page: number) => void;
-  /**
-   * 표 헤더 고정 기준. 스크롤 컨테이너가 무엇인지는 부모만 안다 —
-   * 단독 페이지는 뷰포트가 스크롤하고 그 위에 h-16 헤더가 떠 있어 "page",
-   * 챗 워크스페이스는 자체 overflow-y-auto 안이라 "container" 다.
-   * 생략하면 고정하지 않는다(잘못된 위치에 붙는 것보다 낫다).
-   *
-   * 클래스 문자열 대신 두 값으로 받는 이유: Tailwind 는 클래스명을 정적으로
-   * 스캔하므로 바깥에서 조립해 넘긴 문자열은 CSS 가 생성되지 않을 수 있다.
-   * (실제로 호출부가 `[&>th]:top-16` 을 넘겨 이중 래핑되면서 top 규칙이
-   *  통째로 누락됐다 — sticky 만 걸리고 top:auto 라 헤더가 제자리를 잃었다.)
-   */
-  stickyHeader?: "page" | "container";
 }
 
 /**
@@ -84,7 +72,6 @@ export function OrderList({
   page,
   onTabChange,
   onPageChange,
-  stickyHeader,
 }: OrderListProps) {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
@@ -123,28 +110,20 @@ export function OrderList({
 
       {data && data.content.length > 0 && (
         <>
-          {/* overflow-x-auto 를 쓰면 이 div 가 sticky 의 스크롤 컨테이너가 된다
-              (overflow-x:auto 는 overflow-y 를 auto 로 만든다). 그러면 헤더가
-              뷰포트가 아니라 이 상자 안에서 top 만큼 내려가 박혀 행을 덮는다.
-              가로 스크롤은 살리고 세로는 clip 으로 두면 sticky 기준이 뷰포트로 돌아온다. */}
-          <div className="overflow-x-auto overflow-y-clip rounded-sm border bg-background">
+          <div className="overflow-x-auto rounded-sm border bg-background">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
-                {/* 헤더 고정 — 목록이 길어도 어느 열을 보는지 잃지 않게.
-                    th 에 걸어야 한다(thead·tr 은 sticky 가 먹지 않는다).
-                    고정 위치는 부모가 준다(스크롤 컨테이너를 부모만 안다) —
-                    안 주면 고정하지 않는다(잘못된 위치에 붙는 것보다 낫다). */}
+                {/* 헤더는 고정하지 않는다.
+                    표가 가로 스크롤을 위해 overflow-x-auto 안에 있는데, overflow 가
+                    auto/hidden/clip 중 무엇이든 그 div 가 sticky 의 스크롤 컨테이너가
+                    된다. 그러면 th 는 뷰포트가 아니라 그 상자 기준으로 top 만큼
+                    내려간 자리에 박혀 첫 행을 덮는다(실측: thead y=211, th y=275).
+                    가로 스크롤을 포기하지 않는 한 이 조합으로는 sticky 를 쓸 수 없고,
+                    한 페이지 10건 남짓이라 고정의 이득도 크지 않다. */}
                 <tr
                   className={cn(
                     "text-xs text-muted-foreground",
-                    // 헤더 배경은 불투명이어야 한다 — 반투명이면 고정된 헤더 뒤로
-                    // 지나가는 행이 비쳐 글자가 겹쳐 읽힌다
                     "[&>th]:border-b [&>th]:bg-muted [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
-                    // 클래스는 리터럴로 적는다 — 조립하면 Tailwind 가 못 찾는다
-                    stickyHeader === "page" &&
-                      "[&>th]:sticky [&>th]:top-16 [&>th]:z-10",
-                    stickyHeader === "container" &&
-                      "[&>th]:sticky [&>th]:top-0 [&>th]:z-10",
                   )}
                 >
                   <th className="text-left">주문번호</th>
