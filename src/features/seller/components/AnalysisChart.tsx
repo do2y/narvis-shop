@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { cn } from "@/lib/utils";
 import type { SellerReportChart } from "@/shared/types/chat";
 import type { SellerAnalysis } from "../types";
 import { formatMetric } from "../utils/formatMetric";
@@ -25,10 +26,17 @@ const PAD = { top: 12, right: 12, bottom: 24, left: 12 };
  */
 export function AnalysisChart({
   analysis,
+  compact = false,
 }: {
   // 대시보드(SellerAnalysis)와 리포트(SellerReportChart)가 같은 형태를 쓴다.
   // 후자는 계약 타입이라 shared 에 있다(shared → features 역참조 금지).
   analysis: SellerAnalysis | SellerReportChart;
+  /**
+   * 대시보드용 축소 높이. 대시보드는 이 차트 아래로 「오늘 할 일」이 이어지는데
+   * 기본 높이면 첫 화면이 차트로 다 차서 아래에 뭐가 있는지 보이지 않는다.
+   * 리포트 패널은 차트가 주인공이라 기본값을 쓴다.
+   */
+  compact?: boolean;
 }) {
   const gradientId = useId();
   const { series, chartType, unit } = analysis;
@@ -68,7 +76,12 @@ export function AnalysisChart({
   const labelStep = Math.ceil(points.length / MAX_X_LABELS);
 
   return (
-    <section className="flex flex-col gap-4 rounded-sm border bg-background p-4 sm:p-6">
+    <section
+      className={cn(
+        "flex flex-col rounded-sm border bg-background",
+        compact ? "gap-3 p-4 sm:p-5" : "gap-4 p-4 sm:p-6",
+      )}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-base font-bold tracking-tight">{analysis.title}</h3>
         {headerStat && (
@@ -84,7 +97,7 @@ export function AnalysisChart({
       <svg
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
-        className="h-44 w-full"
+        className={cn("w-full", compact ? "h-28" : "h-44")}
         role="img"
         aria-label={`${analysis.title} ${chartType === "line" ? "선" : "막대"} 그래프`}
       >

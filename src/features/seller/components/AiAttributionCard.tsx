@@ -20,7 +20,7 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
   const aiPct = total > 0 ? (data.aiSales / total) * 100 : 0;
 
   return (
-    <section className="flex flex-col gap-4 rounded-sm border border-l-2 border-l-brand bg-background p-4 sm:p-6">
+    <section className="flex flex-col gap-3 rounded-sm border border-l-2 border-l-brand bg-background p-4 sm:p-5">
       {/* 값이 주인공이라 제목은 한 단 내린다 — 같은 무게면 시선이 갈린다.
           (한글이라 uppercase·wide tracking 은 쓰지 않는다 — 자간만 벌어져 읽기 나빠진다) */}
       <h3 className="text-sm font-medium text-muted-foreground">

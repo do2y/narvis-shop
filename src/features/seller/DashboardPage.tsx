@@ -142,6 +142,7 @@ export default function DashboardPage() {
             )}
 
             <AnalysisChart
+              compact
               analysis={{
                 title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
                 chartType: "line",
@@ -318,8 +319,8 @@ function DashboardSkeleton() {
       {/* 순서는 실제 화면과 같게 둔다 — 다르면 데이터가 도착하는 순간 블록이 뛴다.
           매출 현황(AI 카드 + 추이 차트) → 오늘 할 일 → 지표 카드 */}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Skeleton className="h-52 rounded-sm" />
-        <Skeleton className="h-64 rounded-sm" />
+        <Skeleton className="h-44 rounded-sm" />
+        <Skeleton className="h-44 rounded-sm" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
