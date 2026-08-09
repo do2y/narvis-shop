@@ -61,12 +61,17 @@ interface OrderListProps {
   onTabChange: (tab: SellerOrderTab) => void;
   onPageChange: (page: number) => void;
   /**
-   * 표 헤더를 고정할 위치(sticky top). 스크롤 컨테이너가 무엇인지는 부모만 안다 —
-   * 단독 페이지는 뷰포트가 스크롤하고 그 위에 h-16 헤더가 떠 있어 `top-16`,
-   * 챗 워크스페이스는 자체 overflow-y-auto 안이라 `top-0` 이다.
-   * 여기서 한 값으로 고정하면 둘 중 하나는 헤더 뒤로 숨는다.
+   * 표 헤더 고정 기준. 스크롤 컨테이너가 무엇인지는 부모만 안다 —
+   * 단독 페이지는 뷰포트가 스크롤하고 그 위에 h-16 헤더가 떠 있어 "page",
+   * 챗 워크스페이스는 자체 overflow-y-auto 안이라 "container" 다.
+   * 생략하면 고정하지 않는다(잘못된 위치에 붙는 것보다 낫다).
+   *
+   * 클래스 문자열 대신 두 값으로 받는 이유: Tailwind 는 클래스명을 정적으로
+   * 스캔하므로 바깥에서 조립해 넘긴 문자열은 CSS 가 생성되지 않을 수 있다.
+   * (실제로 호출부가 `[&>th]:top-16` 을 넘겨 이중 래핑되면서 top 규칙이
+   *  통째로 누락됐다 — sticky 만 걸리고 top:auto 라 헤더가 제자리를 잃었다.)
    */
-  stickyHeaderClass?: string;
+  stickyHeader?: "page" | "container";
 }
 
 /**
@@ -79,7 +84,7 @@ export function OrderList({
   page,
   onTabChange,
   onPageChange,
-  stickyHeaderClass,
+  stickyHeader,
 }: OrderListProps) {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
@@ -128,12 +133,14 @@ export function OrderList({
                 <tr
                   className={cn(
                     "text-xs text-muted-foreground",
-                    "[&>th]:border-b [&>th]:bg-muted/40 [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
-                    stickyHeaderClass &&
-                      cn(
-                        "[&>th]:sticky [&>th]:z-10 [&>th]:backdrop-blur",
-                        stickyHeaderClass,
-                      ),
+                    // 헤더 배경은 불투명이어야 한다 — 반투명이면 고정된 헤더 뒤로
+                    // 지나가는 행이 비쳐 글자가 겹쳐 읽힌다
+                    "[&>th]:border-b [&>th]:bg-muted [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
+                    // 클래스는 리터럴로 적는다 — 조립하면 Tailwind 가 못 찾는다
+                    stickyHeader === "page" &&
+                      "[&>th]:sticky [&>th]:top-16 [&>th]:z-10",
+                    stickyHeader === "container" &&
+                      "[&>th]:sticky [&>th]:top-0 [&>th]:z-10",
                   )}
                 >
                   <th className="text-left">주문번호</th>
