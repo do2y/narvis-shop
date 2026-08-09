@@ -220,7 +220,8 @@ export type SellerAnalysisType =
   | "conversion"
   | "behavior"
   | "churn"
-  | "abuse";
+  | "abuse"
+  | "review"; // #297 I-31 리뷰 분석 워커 — BE 는 6종인데 여기가 5종이라 라벨이 비던 것
 
 export type SellerFindingSeverity = "info" | "warning" | "critical";
 
@@ -257,7 +258,17 @@ export interface SellerReportRecommendation {
 export interface SellerReportChart {
   title: string;
   chartType: "line" | "bar";
-  unit: "KRW" | "COUNT" | "PERCENT";
+  /** RATING 은 상품별 평균 평점 차트(2026-08-08 신설) — 1~5 실수 */
+  unit: "KRW" | "COUNT" | "PERCENT" | "RATING";
+  /**
+   * 이 계열을 어떻게 집계했는가 (2026-08-08 신설).
+   * 서버가 소스 레지스트리에서 채워 보낸다 — unit 으로 추측하지 말 것
+   * (같은 COUNT 라도 판매 수량은 sum, 재고는 none 이다).
+   *  sum  합계가 의미 있음
+   *  avg  평균 (평점)
+   *  none 스냅샷이라 합계·평균 둘 다 무의미 (가격·재고)
+   */
+  aggregate: "sum" | "avg" | "none";
   series: { label: string; points: { x: string; y: number }[] }[];
   summary?: string;
 }
@@ -272,6 +283,21 @@ export interface SellerReport {
   limitations: string[];
   chartRequested: boolean;
   charts: SellerReportChart[];
+  /**
+   * 차트 기간이 분석 기간과 다를 때만 온다 (2026-08-08 신설). 없으면 period 와 같다.
+   * "지난달 이탈 보고서 + 최근 7일 매출 그래프" 같은 요청에서 갈린다 —
+   * 표기하지 않으면 판매자가 7일 그래프를 지난달 그래프로 읽는다.
+   */
+  chartPeriod?: { from: string; to: string };
+  /**
+   * 차트를 못 만든 사유 (2026-08-08 신설). 차트 일부만 성공하면
+   * charts 와 이 배열이 동시에 온다.
+   *
+   * reason 을 닫힌 유니온으로 두지 않는 이유는 progress.stage 와 같다 —
+   * 사유가 늘 때마다 FE 배포를 기다리게 하지 않으려는 것이다.
+   * 화면에는 message 를 그대로 싣고(서버가 완성 문장으로 준다) reason 은 로깅·QA 용이다.
+   */
+  chartUnavailable?: { reason: string; message: string }[];
   recommendations: SellerReportRecommendation[];
   applyGuide: string; // 추천 없으면 ""
 }

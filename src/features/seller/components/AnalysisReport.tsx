@@ -41,6 +41,7 @@ const ANALYSIS_LABEL: Record<SellerAnalysisType, string> = {
   behavior: "고객 행동 분석",
   churn: "고객 이탈 분석",
   abuse: "어뷰징 점검",
+  review: "리뷰 분석",
 };
 
 const ACTION_LABEL: Record<SellerReportRecommendation["actionType"], string> = {
@@ -310,14 +311,42 @@ export function AnalysisReport({ report, loading }: AnalysisReportProps) {
         </section>
       ) : null}
 
-      {/* ⑥ 차트 — 요청했는데 못 만든 경우엔 그 사실만 한 줄로 알린다 */}
-      {report.charts?.length
-        ? report.charts.map((c, i) => <AnalysisChart key={i} analysis={c} />)
-        : report.chartRequested && (
-            <p className="rounded-sm bg-muted/60 px-3 py-2 text-[13px] text-muted-foreground">
-              요청하신 차트를 만들지 못했습니다 — 데이터 부족으로 생략합니다.
-            </p>
-          )}
+      {/* ⑥ 차트 — 부분 성공이 있어 블록을 나눈다. 하나로 묶으면(삼항) 차트가
+          한 장이라도 있을 때 실패 안내가 통째로 사라진다 */}
+
+      {/* 차트 기간이 분석 기간과 다를 때만 온다. 헤더 뱃지는 분석 기간이라
+          이걸 안 그리면 판매자가 두 기간을 같은 것으로 읽는다 */}
+      {report.chartPeriod && (
+        <p className="text-[13px] text-muted-foreground">
+          그래프 기간{" "}
+          <span className="tabular-nums">
+            {report.chartPeriod.from} ~ {report.chartPeriod.to}
+          </span>
+        </p>
+      )}
+
+      {report.charts?.map((c, i) => <AnalysisChart key={i} analysis={c} />)}
+
+      {/* message 는 서버가 완성한 문장이라 그대로 싣는다 — reason 으로 분기해
+          FE 가 문구를 만들면 지원 축이 늘 때마다 배포를 기다려야 한다 */}
+      {report.chartUnavailable?.map((u, i) => (
+        <p
+          key={i}
+          className="rounded-sm bg-muted/60 px-3 py-2 text-[13px] text-muted-foreground"
+        >
+          {u.message}
+        </p>
+      ))}
+
+      {/* 구버전 서버 폴백 — chartUnavailable 을 안 주는 배포와 겹칠 때만 탄다.
+          원인을 모르므로 특정 원인("데이터 부족")을 단정하지 않는다 */}
+      {report.chartRequested &&
+        !report.charts?.length &&
+        !report.chartUnavailable?.length && (
+          <p className="rounded-sm bg-muted/60 px-3 py-2 text-[13px] text-muted-foreground">
+            요청하신 차트를 만들지 못했습니다.
+          </p>
+        )}
 
       {/* ⑦ 추천 행동 — index 는 서버값 그대로("N번 적용해줘"의 그 N) */}
       {report.recommendations?.length ? (
