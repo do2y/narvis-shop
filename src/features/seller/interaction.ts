@@ -33,9 +33,14 @@ export const pressable = cn(
   reduceSafe,
 );
 
-/** 카드처럼 큰 면적을 누를 때 — 면적이 넓어 같은 배율도 더 크게 읽히므로 약하게 */
+/**
+ * 카드처럼 큰 면적을 누를 때 — 면적이 넓어 같은 배율도 더 크게 읽히므로 약하게.
+ *
+ * background-color 도 대상에 넣는다: 테두리·그림자 대신 배경톤으로 면을 구분하는
+ * 자리(대시보드 할 일 타일)가 생겼는데, 빠져 있으면 hover 색이 트랜지션 없이 튄다.
+ */
 export const pressableCard = cn(
-  "transition-[transform,scale,box-shadow,border-color]",
+  "transition-[transform,scale,box-shadow,border-color,background-color]",
   "duration-150 ease-out-strong",
   "active:scale-[0.99]",
   reduceSafe,

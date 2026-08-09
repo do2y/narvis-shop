@@ -27,6 +27,7 @@ const PAD = { top: 12, right: 12, bottom: 24, left: 12 };
 export function AnalysisChart({
   analysis,
   compact = false,
+  bare = false,
 }: {
   // 대시보드(SellerAnalysis)와 리포트(SellerReportChart)가 같은 형태를 쓴다.
   // 후자는 계약 타입이라 shared 에 있다(shared → features 역참조 금지).
@@ -37,6 +38,12 @@ export function AnalysisChart({
    * 리포트 패널은 차트가 주인공이라 기본값을 쓴다.
    */
   compact?: boolean;
+  /**
+   * 테두리·안쪽 여백을 빼고 그림만 그린다. 대시보드처럼 바깥에서 이미 섹션을
+   * 나눠 놓은 자리에 쓴다 — 거기에 또 테두리를 그리면 상자 안의 상자가 된다.
+   * 리포트 패널은 카드들이 나열되는 곳이라 기본값(테두리 있음)을 쓴다.
+   */
+  bare?: boolean;
 }) {
   const gradientId = useId();
   const { series, chartType, unit } = analysis;
@@ -78,12 +85,30 @@ export function AnalysisChart({
   return (
     <section
       className={cn(
-        "flex flex-col rounded-sm border bg-background",
-        compact ? "gap-3 p-4 sm:p-5" : "gap-4 p-4 sm:p-6",
+        "flex flex-col",
+        bare
+          ? compact
+            ? "gap-3"
+            : "gap-4"
+          : cn(
+              "rounded-sm border bg-background",
+              compact ? "gap-3 p-4 sm:p-5" : "gap-4 p-4 sm:p-6",
+            ),
       )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-base font-bold tracking-tight">{analysis.title}</h3>
+        <h3
+          className={cn(
+            "tracking-tight",
+            // 테두리 없는 자리에선 제목이 섹션 안의 소제목이라 한 단 낮춘다 —
+            // 카드일 때의 굵은 제목을 그대로 두면 바깥 섹션 제목과 경쟁한다
+            bare
+              ? "text-sm font-medium text-muted-foreground"
+              : "text-base font-bold",
+          )}
+        >
+          {analysis.title}
+        </h3>
         {headerStat && (
           <span className="text-sm text-muted-foreground">
             {headerStat.label}{" "}
