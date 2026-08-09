@@ -69,6 +69,10 @@ export interface SellerSummary {
     activeTotal: number; // CANCELLED·RETURNED 제외 합계
     // 배송 완료 건이 없으면 null 이 온다(집계할 표본이 없음).
     // S-1 조인 교체(C 문서, 2026-08-06)로 null 이 나올 확률이 올라가 타입에 명시한다.
+    //
+    // 화면에는 쓰지 않는다(2026-08-09) — 종전엔 "배송중" 카드에 붙였으나
+    // 표본이 없으면 그 줄만 비어 카드 높이가 어긋났다. 서버가 계속 내려주는
+    // 필드라 계약은 남긴다.
     avgDeliveryDays: number | null;
   };
 
