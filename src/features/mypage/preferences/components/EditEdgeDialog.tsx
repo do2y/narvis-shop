@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Check } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { cn } from "@/lib/utils";
 import {
   EDITABLE_PREDICATES,
+  PREDICATE_HINT,
   PREDICATE_LABEL,
   type EditEdgeObject,
   type EditEdgeRequest,
@@ -119,38 +121,97 @@ export function EditEdgeDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogTitle className="pr-8 text-base">취향 수정</DialogTitle>
+      {/* p-6 → p-5, 그림자를 한 단계 낮춰 내용에 비해 커 보이던 인상을 줄인다 */}
+      <DialogContent className="max-w-[26rem] gap-0 p-5 shadow-md sm:p-6">
+        <DialogTitle className="pr-8 text-base tracking-tight">
+          취향 수정하기
+        </DialogTitle>
+        {/*
+          무엇을 고치는 중인지 창 안에 다시 적는다 — 모달이 항목을 가리므로
+          이게 없으면 "지금 어느 걸 고치는 거지?"를 확인할 방법이 없다.
+        */}
+        <p className="mt-1.5 pr-8 text-sm leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">
+            ‘{currentObject.label}’
+          </span>
+          에 대한 현재 취향을 알려주세요.
+        </p>
 
         <div className="mt-5 flex flex-col gap-5">
-          {/* 관계 — "구매"는 선택지에서 뺀다. 서버가 400으로 거절한다
-              (구매는 의견이 아니라 사실이라 사용자가 만들 수 없다). */}
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">관계</span>
-            <div className="flex flex-wrap gap-2">
-              {EDITABLE_PREDICATES.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPredicate(p)}
-                  aria-pressed={predicate === p}
-                  className={cn(
-                    "h-11 rounded-full border px-4 text-sm font-medium transition-colors",
-                    predicate === p
-                      ? "border-foreground bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {PREDICATE_LABEL[p]}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/*
+            라벨을 "관계"라고 쓰지 않는다 — predicate 를 그대로 옮긴 개발자
+            언어다. 사용자가 하려는 일은 "지금 어떻게 느끼는지"를 고르는
+            것이므로 그 말로 묻는다. ("구매"는 선택지에서 뺀다 — 의견이 아니라
+            사실이라 사용자가 만들 수 없고, 보내면 서버가 400을 낸다.)
 
-          {/* 대상 — 자동완성 목록에서 선택 또는 직접 입력 */}
-          <div className="flex flex-col gap-2">
+            radiogroup 으로 두는 이유: 하나만 고를 수 있는 선택지라
+            스크린리더가 "4개 중 2번째"처럼 읽어주고, 방향키로 이동한다.
+            aria-pressed 버튼 4개는 각각 독립 토글로 읽혀 관계가 드러나지 않는다.
+          */}
+          <fieldset className="flex flex-col gap-2.5">
+            <legend className="text-sm font-medium">
+              지금은 어떤 관계인가요?
+            </legend>
+            {/*
+              라벨은 계약 어휘(PREDICATE_LABEL) 그대로 쓴다 — 그래프·목록의
+              그룹 헤더와 같은 말이어야 "선호 그룹에 있던 걸 관심으로 옮겼다"가
+              읽힌다. 다만 "선호"와 "좋아함"은 이름만으로 구분되지 않아
+              뜻을 아래에 함께 적는다.
+            */}
+            <div role="radiogroup" className="grid grid-cols-2 gap-2">
+              {EDITABLE_PREDICATES.map((p) => {
+                const selected = predicate === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setPredicate(p)}
+                    className={cn(
+                      "flex min-h-[3.25rem] flex-col items-start justify-center gap-0.5 rounded-sm border px-3 py-2 text-left",
+                      "transition-[background-color,border-color,color] duration-150",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "active:scale-[0.98] motion-reduce:active:scale-100",
+                      selected
+                        ? // 마이페이지의 선택·활성 상태는 전부 primary(검정)다 —
+                          // 네비·기본 배송지 배지·개인화 스위치·뷰 토글이 같다.
+                          // brand(틸그린)는 랜딩·챗봇 전용이라 여기서 쓰면
+                          // 같은 화면의 뷰 토글과 어긋난다.
+                          // 배경·테두리·체크를 함께 줘 색만으로 전달하지 않는다.
+                          "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-foreground/25 hover:bg-muted",
+                    )}
+                  >
+                    <span className="flex items-center gap-1.5 text-sm font-medium">
+                      {selected ? (
+                        <Check
+                          className="size-3.5 shrink-0"
+                          strokeWidth={2.5}
+                        />
+                      ) : null}
+                      {PREDICATE_LABEL[p]}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs leading-tight",
+                        selected
+                          ? "text-primary-foreground/70"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {PREDICATE_HINT[p]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {/* 자동완성 목록에서 선택 또는 직접 입력 */}
+          <div className="flex flex-col gap-2.5">
             <label htmlFor="edit-edge-object" className="text-sm font-medium">
-              대상
+              어떤 취향을 수정할까요?
             </label>
             <Input
               id="edit-edge-object"
@@ -162,12 +223,12 @@ export function EditEdgeDialog({
                 setPicked(null);
               }}
               placeholder="예: 노이즈캔슬링"
-              className="h-11 rounded-sm"
+              className="h-10 rounded-sm"
               autoComplete="off"
             />
 
             {suggestions.length > 0 ? (
-              <ul className="flex flex-col gap-1 rounded-sm border border-border p-1">
+              <ul className="flex max-h-44 flex-col gap-0.5 overflow-y-auto rounded-sm border border-border p-1">
                 {suggestions.map((node) => (
                   <li key={node.nodeId}>
                     <button
@@ -176,7 +237,7 @@ export function EditEdgeDialog({
                         setPicked(node);
                         setQuery(node.label);
                       }}
-                      className="flex h-11 w-full items-center rounded-sm px-3 text-left text-sm transition-colors hover:bg-muted"
+                      className="flex h-9 w-full items-center rounded-sm px-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                     >
                       {node.label}
                     </button>
@@ -187,11 +248,13 @@ export function EditEdgeDialog({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+        {/* 모바일은 세로로 쌓아 전체 너비 — 좁은 화면에서 두 버튼이 나란히
+            있으면 각각이 좁아져 누르기 어렵다. 주 버튼이 위로 온다 */}
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-2.5">
           <Button
             type="button"
             variant="outline"
-            className="h-11 rounded-full px-5"
+            className="h-10 rounded-full px-5 transition-transform active:scale-[0.98] motion-reduce:active:scale-100"
             onClick={onClose}
             disabled={isPending}
           >
@@ -200,11 +263,11 @@ export function EditEdgeDialog({
           {/* 저장 중에는 비활성 — 연타로 두 번 보내지 않게 한다 */}
           <Button
             type="button"
-            className="h-11 rounded-full px-5"
+            className="h-10 rounded-full px-5 transition-transform active:scale-[0.98] motion-reduce:active:scale-100"
             onClick={submit}
             disabled={!canSave}
           >
-            {isPending ? "저장 중…" : "저장"}
+            {isPending ? "저장 중…" : "취향 저장하기"}
           </Button>
         </div>
       </DialogContent>

@@ -1,6 +1,10 @@
 "use client";
 
-import type { PreferenceEdge, PreferenceGroupData } from "../types";
+import type {
+  PreferenceEdge,
+  PreferenceGroupData,
+  PreferenceObject,
+} from "../types";
 
 /**
  * 스크린리더 전용 취향 목록.
@@ -41,9 +45,23 @@ export function ScreenReaderList({ groups }: { groups: PreferenceGroupData[] }) 
   );
 }
 
+/**
+ * 대상 종류 — 그래프에서는 노드 모양(사각형/원)으로 구분하는 정보다.
+ * 형태는 스크린리더에 전달되지 않으므로 여기서 말로 옮긴다.
+ */
+const TYPE_LABEL: Record<PreferenceObject["type"], string> = {
+  product: "제품",
+  brand: "브랜드",
+  category: "카테고리",
+  attribute: "속성",
+  priceBand: "가격대",
+  ratingBand: "평점대",
+  situation: "상황",
+};
+
 /** 항목 하나를 한 문장으로 */
 function describeEdge(edge: PreferenceEdge): string {
-  const parts = [edge.object.label];
+  const parts = [`${edge.object.label} (${TYPE_LABEL[edge.object.type]})`];
 
   if (edge.challenged) parts.push("최근 취향이 바뀐 것 같아요");
   if (!edge.editable) parts.push("구매 기록이라 수정할 수 없어요");
