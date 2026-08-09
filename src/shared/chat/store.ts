@@ -51,6 +51,21 @@ export interface ClaimFailure {
   retrying: boolean;
 }
 
+/**
+ * 검토 대기 중인 등록 초안 — **순수 FE 표시 상태**다.
+ *
+ * 서버에 보내지 않는다. 서버는 이미 checkpoint 에 초안을 갖고 있어 FE 가 알려줄
+ * 필요가 없고, FE 가 보낸 값을 서버가 신뢰하면 위조가 가능해진다.
+ *
+ * TTL 을 FE 가 재는 이유: 초안은 서버에서 10분 뒤 사라지는데 그 시점엔 SSE 스트림이
+ * 이미 끝나 있어 **서버가 알려줄 경로가 없다**. 이게 없으면 판매자가 죽은 초안에 갇힌다.
+ */
+export interface ActiveDraft {
+  draftId: string;
+  /** Date.now() + 10분 */
+  expiresAt: number;
+}
+
 interface ChatState {
   sessionId: string | null;
   threadId: string | null; // 판매자 챗 계약: 대화 스레드 식별자(목록 전환·패널 변경에 불변)
@@ -73,6 +88,8 @@ interface ChatState {
   // 부분치({body})가 들어온다. results 카드가 아닌 이유: 턴당 정확히 1개이고
   // 누적되지 않는다(다음 분석이 통째로 교체).
   analysisReport: AnalysisReportView | null;
+  /** 검토 대기 중인 등록 초안. null 이면 평범한 대화 상태다. */
+  activeDraft: ActiveDraft | null;
 
   setSessionId: (id: string | null) => void; // null = 만료된 세션 폐기(다음 전송 때 재발급)
   setThreadId: (id: string) => void;
@@ -99,8 +116,16 @@ interface ChatState {
   setLane: (lane: SellerLane | null) => void;
   setProgress: (text: string | null) => void;
   setAnalysisReport: (report: AnalysisReportView | null) => void;
+  /**
+   * 등록 초안 진입·해제. draftId 를 주면 만료 시각을 지금부터 10분 뒤로 새로 잡는다 —
+   * 수정 턴에서 같은 코드가 다시 돌아 draftId 와 타이머가 함께 갱신된다(별도 분기 불필요).
+   */
+  setActiveDraft: (draftId: string | null) => void;
   reset: () => void; // 새 대화
 }
+
+/** 초안 TTL — 서버 checkpoint 보관 시간과 맞춘다 */
+const DRAFT_TTL_MS = 10 * 60_000;
 
 const initial = {
   sessionId: null,
@@ -114,6 +139,7 @@ const initial = {
   lane: null,
   progress: null,
   analysisReport: null,
+  activeDraft: null,
 };
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -189,6 +215,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setLane: (lane) => set({ lane }),
   setProgress: (progress) => set({ progress }),
   setAnalysisReport: (analysisReport) => set({ analysisReport }),
+  setActiveDraft: (draftId) =>
+    set({
+      activeDraft: draftId
+        ? { draftId, expiresAt: Date.now() + DRAFT_TTL_MS }
+        : null,
+    }),
   // 새 대화 — 화면 상태만 비운다. 방 id 는 sessionStorage(threadId.ts), 세션은
   // 코디네이터가 들고 있어 여기서 지워지지 않는다("새 대화"=새 방, 세션 유지).
   reset: () => set({ ...initial }),

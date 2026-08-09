@@ -63,6 +63,9 @@ export default function SellerChatPage() {
   const messages = useChatStore((s) => s.messages);
   const results = useChatStore((s) => s.results);
   const dropDraft = useChatStore((s) => s.dropDraft);
+  // 등록 초안 검토 중 — 입력창 안내를 바꾸고 TTL 타이머를 건다
+  const activeDraft = useChatStore((s) => s.activeDraft);
+  const setActiveDraft = useChatStore((s) => s.setActiveDraft);
   // 판매자 화면 전환 신호 — lane(즉시 로딩 준비)·analysisReport(분석 리포트 본문)
   const lane = useChatStore((s) => s.lane);
   const analysisReport = useChatStore((s) => s.analysisReport);
@@ -123,10 +126,31 @@ export default function SellerChatPage() {
   const confirmDraft = (draftId: string) => confirm(draftId);
   const cancelDraft = (draftId: string) => {
     dropDraft(draftId);
+    // 취소한 것이 검토 중이던 등록 초안이면 입력창도 평상시로 되돌린다
+    if (activeDraft?.draftId === draftId) setActiveDraft(null);
     if (results.filter((r) => r.kind === "draft").length <= 1) {
       setShowResults(false); // 마지막 카드였으면 목록으로 복귀
     }
   };
+
+  // 초안 TTL — 서버는 10분 뒤 초안을 버리는데 그 시점엔 SSE 가 끝나 있어
+  // 알려줄 경로가 없다. FE 가 재서 스스로 풀지 않으면 판매자가 죽은 초안에 갇힌다.
+  //
+  // deps 가 draftId 인 것이 중요하다. 객체를 넣으면 렌더마다 재실행되고,
+  // 정리(clearTimeout)를 빠뜨리면 수정 턴에서 새 초안이 첫 초안 기준 10분에 사라진다.
+  const activeDraftId = activeDraft?.draftId;
+  const activeDraftExpiresAt = activeDraft?.expiresAt;
+  useEffect(() => {
+    if (!activeDraftId || !activeDraftExpiresAt) return;
+    const timer = setTimeout(
+      () => {
+        setActiveDraft(null);
+        dropDraft(activeDraftId);
+      },
+      Math.max(0, activeDraftExpiresAt - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [activeDraftId, activeDraftExpiresAt, setActiveDraft, dropDraft]);
 
   const started = messages.length > 0;
 
@@ -151,13 +175,27 @@ export default function SellerChatPage() {
         <Plus className="size-4" />
       </button>
       <ChatConversation
-        onSend={send}
+        // 입력창은 (message, imageUrls) 로 주지만 send 의 2번째 자리는 조건 칩이다 —
+        // 구매자 전용이라 판매자 챗에서는 넘길 값이 없다
+        onSend={(message, imageUrls) => send(message, undefined, { imageUrls })}
         onRetry={retry}
         isStreaming={isStreaming}
-        placeholder="상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
+        // 사진을 올려 상품 등록 초안을 받는 경로 — 판매자 챗에만 연다
+        allowImage
+        // 초안 검토 중에도 입력창은 활성이다 — 수정 요청("카테고리가 틀렸어")을
+        // 받아야 하고, 딴 주제인지 아닌지는 서버가 가른다. 안내만 바꾼다.
+        placeholder={
+          activeDraft
+            ? "초안을 수정하려면 알려주세요 · 등록·취소는 오른쪽 버튼"
+            : "상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
+        }
         aboveInput={
-          // 대화 시작 전에만 추천 질문 노출
-          !started ? (
+          activeDraft ? (
+            <p className="rounded-full border border-brand/20 bg-brand/5 px-3 py-1.5 text-center text-xs font-medium text-brand">
+              등록 초안 검토 중
+            </p>
+          ) : !started ? (
+            // 대화 시작 전에만 추천 질문 노출
             <SuggestedQuestions
               questions={SELLER_QUESTIONS}
               onSelect={send}

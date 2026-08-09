@@ -128,6 +128,7 @@ export function useChat({
     setLane,
     setProgress,
     setAnalysisReport,
+    setActiveDraft,
     reset,
   } = useChatStore();
 
@@ -328,6 +329,10 @@ export function useChat({
             }
             case "draft":
               pushResult({ kind: "draft", draft: e.data });
+              // 등록 초안이 뜨면 입력창을 초안 모드로 — 딴 주제로 넘어가 초안이
+              // 방치되지 않게 한다. 수정 턴에서 새 draft 가 오면 같은 코드가 다시
+              // 돌아 draftId·타이머가 함께 갱신된다(별도 분기 불필요).
+              if (e.data.op === "create") setActiveDraft(e.data.draftId);
               break;
             case "report":
               // 보관만 하고 화면에 꽂지 않는다 — 커밋 신호는 done{replace} 다.
@@ -346,16 +351,30 @@ export function useChat({
                 action.type === "PRODUCT_UPDATED" ||
                 action.type === "PRODUCT_UPDATE_FAILED"
               ) {
-                const pending = useChatStore
+                const drafts = useChatStore
                   .getState()
-                  .results.find(
+                  .results.filter((r) => r.kind === "draft" && !r.settled);
+                // 등록 초안은 productId 가 null 이다(아직 상품이 없으니까) —
+                // productId 로만 찾으면 등록 결과가 카드에 영원히 반영되지 않는다.
+                // 등록은 확정 대기 중인 create 초안을 대상으로 잡는다.
+                const pending =
+                  drafts.find(
                     (r) =>
                       r.kind === "draft" &&
-                      !r.settled &&
                       r.draft.productId === action.productId,
+                  ) ??
+                  drafts.find(
+                    (r) => r.kind === "draft" && r.draft.op === "create",
                   );
                 if (pending?.kind === "draft") {
                   settleDraft(pending.draft.draftId, action);
+                  // 등록이 끝났으면 초안 모드를 푼다(실패면 계속 고칠 수 있게 유지)
+                  if (
+                    pending.draft.op === "create" &&
+                    action.type === "PRODUCT_UPDATED"
+                  ) {
+                    setActiveDraft(null);
+                  }
                 }
               }
               // 이 경로에서는 행동 이벤트를 쏘지 않는다.
@@ -495,13 +514,29 @@ export function useChat({
       setLane,
       setProgress,
       setAnalysisReport,
+      setActiveDraft,
       acquireTicket,
       channel,
     ],
   );
 
   const send = useCallback(
-    (message: string, conditionActions?: ConditionAction[]) => {
+    (
+      message: string,
+      conditionActions?: ConditionAction[],
+      /**
+       * 추가 전송 값. 인자를 늘리지 않고 객체로 받는 이유는 호출부마다 채우는 것이
+       * 달라서다 — 조건 칩은 구매자, 이미지는 판매자 전용이다.
+       */
+      opts?: {
+        /**
+         * 상품 등록용 이미지(판매자). **새로 첨부한 턴에만 넘긴다** —
+         * 후속 턴에도 실으면 AI 가 매 턴 사진을 다시 분석해 상품명이 흔들린다.
+         * 호출부가 첨부 여부를 알고 있으므로 여기서 판단하지 않는다.
+         */
+        imageUrls?: string[];
+      },
+    ) => {
       const trimmed = message.trim();
       // 계약 CH-2: message 와 conditionActions 가 둘 다 비면 400. 하나만 있으면 정상이다.
       if (!trimmed && !conditionActions?.length) return;
@@ -530,6 +565,7 @@ export function useChat({
           message: trimmed,
           ...(conditionActions?.length ? { conditionActions } : {}),
           ...(screen ? { screen } : {}),
+          ...(opts?.imageUrls?.length ? { imageUrls: opts.imageUrls } : {}),
         }),
         // 칩 제거만 있는 턴은 사용자 말풍선을 남기지 않는다 — 제어 신호이지 발화가 아니다
         // (판매자 confirm 과 동일 처리, 계약 CH-2).

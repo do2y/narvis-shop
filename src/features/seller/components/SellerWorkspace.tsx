@@ -16,6 +16,7 @@ import { AnalysisReport } from "./AnalysisReport";
 import { OrderList } from "./OrderList";
 import { ProductList } from "./ProductList";
 import { ProductDiffCard } from "./ProductDiffCard";
+import { ProductCreateCard } from "./ProductCreateCard";
 
 interface SellerWorkspaceProps {
   tab: SellerWorkspaceTab;
@@ -132,13 +133,25 @@ export function SellerWorkspace({
                   key={r.draft.draftId ?? i}
                   className="animate-in duration-200 fade-in slide-in-from-bottom-2 ease-out-strong motion-reduce:animate-none"
                 >
-                  <ProductDiffCard
-                    draft={r.draft}
-                    settled={r.settled}
-                    onConfirm={onConfirmDraft}
-                    onCancel={onCancelDraft}
-                    disabled={isStreaming}
-                  />
+                  {/* 등록은 before 가 전부 비어 있어 전·후 비교가 무의미하다 —
+                      diff 카드에 태우면 취소선 친 빈 칸만 늘어선다 */}
+                  {r.draft.op === "create" ? (
+                    <ProductCreateCard
+                      draft={r.draft}
+                      settled={r.settled}
+                      onConfirm={onConfirmDraft}
+                      onCancel={onCancelDraft}
+                      disabled={isStreaming}
+                    />
+                  ) : (
+                    <ProductDiffCard
+                      draft={r.draft}
+                      settled={r.settled}
+                      onConfirm={onConfirmDraft}
+                      onCancel={onCancelDraft}
+                      disabled={isStreaming}
+                    />
+                  )}
                 </div>
               ) : null,
             )}
