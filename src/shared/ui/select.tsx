@@ -85,7 +85,11 @@ function SelectContent({
   );
 }
 
-function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Props) {
+function SelectItem({
+  className,
+  children,
+  ...props
+}: SelectPrimitive.Item.Props) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -97,7 +101,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
         "data-highlighted:bg-muted data-selected:font-semibold",
         // 고를 수 없는 항목은 hover 반응을 전부 걷어낸다. 밝아지기만 해도
         // 누를 수 있는 것처럼 보인다.
-        "data-disabled:pointer-events-none data-disabled:bg-muted/30 data-disabled:text-muted-foreground",
+        "data-disabled:pointer-events-none data-disabled:bg-muted/60 data-disabled:text-muted-foreground",
         className,
       )}
       {...props}

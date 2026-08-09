@@ -99,8 +99,10 @@ export function OptionSelector({
                           ? `${opt.name} (+${opt.extraPrice.toLocaleString("ko-KR")}원)`
                           : opt.name}
                       </span>
+                      {/* 목록 배지와 같은 값을 쓴다 — 닫힌 상태와 펼친 상태에서
+                          같은 것이 다르게 보이면 다른 상태로 읽힌다 */}
                       {opt.purchaseState === "SOLD_OUT" && (
-                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        <span className="shrink-0 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                           품절
                         </span>
                       )}
@@ -127,9 +129,11 @@ export function OptionSelector({
                         : opt.name}
                     </SelectItemText>
                     {/* 색만으로 알리지 않는다 — 배지 글자가 상태를 직접 말한다.
-                        경고가 아니라 "고를 수 없음"이라 중립 회색으로 둔다. */}
+                        경고가 아니라 "고를 수 없음"이라 중립 회색으로 둔다.
+                        배경은 행보다 한 단계 진해야 한다 — 같은 명도면 배지가
+                        행에 묻혀 글자만 떠 있는 것처럼 보인다. */}
                     {optSoldOut && (
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      <span className="shrink-0 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                         품절
                       </span>
                     )}
