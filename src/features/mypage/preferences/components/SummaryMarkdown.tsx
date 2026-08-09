@@ -41,14 +41,16 @@ export function SummaryMarkdown({ markdown }: { markdown: string }) {
   if (blocks.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
+    <div className="flex flex-col gap-3 text-muted-foreground">
       {blocks.map((block, i) => {
         if (block.type === "heading") {
           const Tag = HEADING_TAG[block.level];
           return (
             <Tag
               key={i}
-              className="text-[15px] font-semibold tracking-tight text-foreground"
+              // 요약 제목은 패널 라벨 역할이라 작고 조용하게 — 본문(핵심 문장)이
+              // 가장 크게 읽혀야 위계가 맞는다
+              className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground"
             >
               <Inlines inlines={block.inlines} />
             </Tag>
@@ -57,10 +59,17 @@ export function SummaryMarkdown({ markdown }: { markdown: string }) {
 
         if (block.type === "list") {
           return (
-            <ul key={i} className="flex list-disc flex-col gap-1 pl-5">
+            // 근거 항목 — 본문보다 한 단계 작고, 줄 길이를 제한해 빠르게 읽힌다
+            <ul key={i} className="flex flex-col gap-1.5 text-sm">
               {block.items.map((item, j) => (
-                <li key={j}>
-                  <Inlines inlines={item} />
+                <li key={j} className="flex gap-2.5 leading-relaxed">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[0.5em] size-1 shrink-0 rounded-full bg-muted-foreground/50"
+                  />
+                  <span className="min-w-0">
+                    <Inlines inlines={item} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -68,7 +77,11 @@ export function SummaryMarkdown({ markdown }: { markdown: string }) {
         }
 
         return (
-          <p key={i}>
+          // 핵심 요약 문장 — 이 패널에서 가장 먼저 읽혀야 하는 줄
+          <p
+            key={i}
+            className="text-[15px] leading-relaxed text-foreground/90 sm:text-base"
+          >
             <Inlines inlines={block.inlines} />
           </p>
         );

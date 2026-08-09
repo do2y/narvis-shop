@@ -6,13 +6,11 @@ import {
   GROUP_DISPLAY_LIMIT,
   type PreferenceEdge,
   type PreferenceGroupData,
-  type PreferenceNode,
 } from "../types";
 import { PreferenceItem } from "./PreferenceItem";
 
 interface PreferenceGroupProps {
   group: PreferenceGroupData;
-  nodes: Map<string, PreferenceNode>;
   /** 다른 그룹이 포커스 모드에 들어갔는가 — 그러면 이 그룹은 축소·흐리게 */
   dimmed: boolean;
   focused: boolean;
@@ -26,14 +24,14 @@ interface PreferenceGroupProps {
  *
  * **접기/펼치기가 없다.** 이 화면의 목적이 "AI가 나에 대해 뭘 아는지 확인하고
  * 고치기"인데 접혀 있으면 확인에 클릭이 한 번 더 든다. 보통 10~30개라
- * 대부분은 상한에 걸리지 않고 전부 보인다(노션 3.2).
+ * 대부분은 상한에 걸리지 않고 전부 보인다.
  *
- * 대신 그룹당 12개 상한이 있다 — 200개가 한 번에 올 수 있어서, 제한이 없으면
- * 라벨이 겹쳐 아무것도 안 읽힌다. **상한은 접기가 아니라 잘라내는 것이다.**
+ * 대신 그룹당 표시 상한이 있다 — **서버 상한이 폐지되어 edges가 전량 오므로**
+ * 제한이 없으면 한 그룹이 화면을 통째로 삼킨다. 상한은 접기가 아니라
+ * 잘라내는 것이고, 넘친 만큼은 `+N개 더`로 그 그룹만 펼친다.
  */
 export function PreferenceGroup({
   group,
-  nodes,
   dimmed,
   focused,
   onFocus,
@@ -57,9 +55,18 @@ export function PreferenceGroup({
         isEmpty && "opacity-60",
       )}
     >
-      <h3 className="flex items-baseline gap-2 text-sm font-semibold tracking-tight">
+      {/* 관계명 + 개수. 개수를 알약으로 감싸 그래프의 관계 노드와 같은 정보를
+          같은 모양으로 전한다 — 뷰를 옮겨도 읽는 방식이 바뀌지 않게 */}
+      <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
         {group.label}
-        <span className="text-xs font-normal text-muted-foreground">
+        <span
+          className={cn(
+            "rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums",
+            isEmpty
+              ? "text-muted-foreground"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
           {total}
         </span>
       </h3>
@@ -80,7 +87,6 @@ export function PreferenceGroup({
               <PreferenceItem
                 key={edge.edgeId}
                 edge={edge}
-                node={nodes.get(edge.to)}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />

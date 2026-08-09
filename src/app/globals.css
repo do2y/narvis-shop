@@ -225,4 +225,20 @@
        페이지 이동 시 헤더 요소가 밀리는 것을 방지 */
     scrollbar-gutter: stable;
   }
+
+  /*
+    모션 감소 설정 — 없애는 게 아니라 "이동"만 걷어낸다.
+    투명도·색 전환은 상태 변화를 이해시키는 정보라 남긴다(그래서 0이 아니라 1ms).
+    반복 애니메이션(히어로 흐름, 아바타 펄스)은 한 번만 돌고 멈춘다.
+  */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
