@@ -68,7 +68,8 @@ export default function ChatPage() {
   const { data: popularCards } = useQuery({
     queryKey: ["chat", "popular"],
     queryFn: () => fetchPopularAsCards(),
-    staleTime: 30 * 60 * 1000,
+    // 홈과 같은 P-4 데이터 — 값이 다르면 두 화면의 인기상품이 어긋나 보인다 (CLAUDE.md 5분)
+    staleTime: 5 * 60 * 1000,
   });
 
   const popularTitle = "지금 인기 상품";
