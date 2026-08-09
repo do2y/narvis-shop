@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Check, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
@@ -39,6 +40,10 @@ export function CartItemCard({
   // 구버전 응답 대비로 값이 없으면 제한하지 않는다(서버가 최종 판정).
   const atMax = item.maxQuantity != null && item.quantity >= item.maxQuantity;
 
+  // 상세 진입은 Link만 — CartItem에는 rating·reviewCount가 없어 SeededProductCard를
+  // 채우지 못하므로 useGoToProduct의 캐시 시딩을 쓸 수 없다(주문 상세와 동일).
+  const detailHref = `/products/${item.productId}`;
+
   return (
     <article className="flex gap-4 rounded-sm border bg-background p-4 sm:p-5">
       {/* 선택 체크박스 */}
@@ -60,19 +65,26 @@ export function CartItemCard({
         )}
       </button>
 
-      <ProductImage
-        src={item.imageUrl}
-        alt=""
-        className={cn(
-          "size-20 shrink-0 rounded-sm bg-muted object-cover sm:size-24",
-          disabled && "opacity-50",
-        )}
-      />
+      <Link href={detailHref} className="shrink-0">
+        <ProductImage
+          src={item.imageUrl}
+          alt=""
+          className={cn(
+            "size-20 rounded-sm bg-muted object-cover transition-transform hover:scale-[1.03] sm:size-24",
+            disabled && "opacity-50",
+          )}
+        />
+      </Link>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{item.name}</p>
+            <Link
+              href={detailHref}
+              className="block truncate text-sm font-medium hover:underline"
+            >
+              {item.name}
+            </Link>
             {/* 품절은 기다리면 되고 판매 종료는 빼야 한다 — 할 일이 다르니 문구도 나눈다 */}
             {unavailable && (
               <p className="mt-0.5 text-xs text-red-500">
