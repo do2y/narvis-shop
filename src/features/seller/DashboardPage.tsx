@@ -164,10 +164,15 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold tracking-tight">오늘 할 일</h2>
+                {/* 처리할 일이 있을 때만 배지가 눈에 띈다 — 0건에도 같은 톤이면
+                    "할 일 있음"으로 잘못 읽힌다 */}
                 <span
                   className={cn(
-                    "rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold text-muted-foreground",
+                    "rounded-full px-2.5 py-0.5 text-sm font-semibold",
                     numeric,
+                    data.orderStatus.activeTotal > 0
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground",
                   )}
                 >
                   {data.orderStatus.activeTotal}건
@@ -179,7 +184,14 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {TODO_CARDS.map((c) => (
+              {TODO_CARDS.map((c) => {
+                const count = data.orderStatus.counts[c.status] ?? 0;
+                // 0건이면 눌러도 빈 목록이다 — 같은 무게로 두면 처리할 일이 있는
+                // 카드와 구분이 안 된다. 숫자를 흐리게 내려 "여긴 볼 것 없다"를
+                // 한눈에 읽히게 한다. 카드 자체는 남긴다 — 자리가 고정돼야 다음에 찾기 쉽다.
+                const idle = count === 0;
+
+                return (
                 <Link
                   key={c.status}
                   href={`/seller/orders?status=${c.status}`}
@@ -187,13 +199,17 @@ export default function DashboardPage() {
                     "flex flex-col gap-3 rounded-sm border bg-background p-4 sm:p-5",
                     pressableCard,
                     "hover:[@media(hover:hover)]:shadow-md",
-                    c.primary && "border-foreground",
+                    // 강조는 처리할 일이 실제로 있을 때만 — 0건인데 테두리가 진하면
+                    // 시선을 뺏고도 알려줄 게 없다
+                    c.primary && !idle && "border-foreground",
                   )}
                 >
                   <span
                     className={cn(
                       "text-sm font-semibold",
-                      c.primary ? "text-foreground" : "text-muted-foreground",
+                      c.primary && !idle
+                        ? "text-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     {c.label}
@@ -202,9 +218,10 @@ export default function DashboardPage() {
                     className={cn(
                       "text-2xl font-bold tracking-tight",
                       numeric,
+                      idle && "text-muted-foreground/40",
                     )}
                   >
-                    {data.orderStatus.counts[c.status] ?? 0}건
+                    {count}건
                   </span>
                   {/* 배송 중 카드에만 평균 배송일 — 나머지는 붙일 지표가 없다.
                       표본(배송 완료 건)이 없으면 null 이라 문구를 숨긴다 —
@@ -216,7 +233,8 @@ export default function DashboardPage() {
                       : " "}
                   </span>
                 </Link>
-              ))}
+                );
+              })}
             </div>
 
             {/* 재고 부족 알림 */}

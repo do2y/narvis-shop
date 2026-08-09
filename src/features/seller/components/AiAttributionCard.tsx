@@ -21,10 +21,21 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
 
   return (
     <section className="flex flex-col gap-4 rounded-sm border border-l-2 border-l-brand bg-background p-4 sm:p-6">
-      <h3 className="text-base font-bold tracking-tight">AI 추천 경유 매출</h3>
+      {/* 값이 주인공이라 제목은 한 단 내린다 — 같은 무게면 시선이 갈린다.
+          (한글이라 uppercase·wide tracking 은 쓰지 않는다 — 자간만 벌어져 읽기 나빠진다) */}
+      <h3 className="text-sm font-medium text-muted-foreground">
+        AI 추천 경유 매출
+      </h3>
 
       <div>
-        <p className={cn("text-3xl font-bold tracking-tight", numeric)}>
+        {/* 큰 숫자일수록 자간이 벌어져 보인다 — 행간을 좁혀 금액 덩어리가
+            하나로 읽히게 한다(작은 본문은 건드리지 않는다) */}
+        <p
+          className={cn(
+            "text-3xl font-bold leading-tight tracking-tight",
+            numeric,
+          )}
+        >
           {formatMetric(data.aiSales, "KRW")}
         </p>
         <p className="text-sm text-muted-foreground">
