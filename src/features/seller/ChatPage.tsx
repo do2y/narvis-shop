@@ -62,6 +62,12 @@ export default function SellerChatPage() {
 
   const messages = useChatStore((s) => s.messages);
   const results = useChatStore((s) => s.results);
+  // 마지막 응답이 실패로 끝났으면 그 문구를 우측 검토 패널에도 전달한다.
+  // 스트림 실패는 settled(=confirm 결과)에 담기지 않아, 이걸 넘기지 않으면
+  // 좌측엔 "통신 실패"인데 우측엔 [등록]이 살아 있는 모순된 화면이 된다.
+  const lastMessage = messages[messages.length - 1];
+  const streamError =
+    lastMessage?.role === "assistant" ? lastMessage.error : undefined;
   const dropDraft = useChatStore((s) => s.dropDraft);
   // 등록 초안 검토 중 — 입력창 안내를 바꾸고 TTL 타이머를 건다
   const activeDraft = useChatStore((s) => s.activeDraft);
@@ -186,13 +192,16 @@ export default function SellerChatPage() {
         // 받아야 하고, 딴 주제인지 아닌지는 서버가 가른다. 안내만 바꾼다.
         placeholder={
           activeDraft
-            ? "초안을 수정하려면 알려주세요 · 등록·취소는 오른쪽 버튼"
+            ? "수정할 내용을 입력해 주세요 — 예: 재고를 30개로 바꿔줘"
             : "상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
         }
         aboveInput={
           activeDraft ? (
-            <p className="rounded-full border border-brand/20 bg-brand/5 px-3 py-1.5 text-center text-xs font-medium text-brand">
-              등록 초안 검토 중
+            // 상태("검토 중")는 실제 작업이 일어나는 우측 패널 제목이 말한다.
+            // 여기서는 지금 이 입력창으로 무엇을 할 수 있는지만 짧게 알린다 —
+            // 좌우에 같은 상태를 두 번 적으면 어느 쪽이 진짜인지 모호해진다.
+            <p className="px-1 text-xs text-muted-foreground">
+              채팅으로 고치면 오른쪽 초안에 바로 반영돼요.
             </p>
           ) : !started ? (
             // 대화 시작 전에만 추천 질문 노출
@@ -219,6 +228,8 @@ export default function SellerChatPage() {
       onBackToList={() => setShowResults(false)}
       onConfirmDraft={confirmDraft}
       onCancelDraft={cancelDraft}
+      streamError={streamError}
+      onRetry={retry}
     />
   );
 

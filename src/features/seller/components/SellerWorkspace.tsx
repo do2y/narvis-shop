@@ -32,6 +32,12 @@ interface SellerWorkspaceProps {
   onBackToList: () => void;
   onConfirmDraft: (draftId: string) => void;
   onCancelDraft: (draftId: string) => void;
+  /**
+   * 이번 턴이 오류로 끝났으면 그 문구. 좌측 말풍선의 실패를 우측 검토 패널에도
+   * 반영한다 — 없으면 "통신 실패" 아래에서 [등록]이 눌리는 모순된 화면이 된다.
+   */
+  streamError?: string;
+  onRetry?: () => void;
 }
 
 const WORKSPACE_TABS: { key: SellerWorkspaceTab; label: string }[] = [
@@ -54,6 +60,8 @@ export function SellerWorkspace({
   onBackToList,
   onConfirmDraft,
   onCancelDraft,
+  streamError,
+  onRetry,
 }: SellerWorkspaceProps) {
   // 목록 필터·페이지는 워크스페이스 로컬 상태(URL과 분리 — 채팅 화면은 딥링크 대상이 아님)
   const [orderTab, setOrderTab] = useState<SellerOrderTab>("ALL");
@@ -142,6 +150,8 @@ export function SellerWorkspace({
                       onConfirm={onConfirmDraft}
                       onCancel={onCancelDraft}
                       disabled={isStreaming}
+                      streamError={streamError}
+                      onRetry={onRetry}
                     />
                   ) : (
                     <ProductDiffCard
