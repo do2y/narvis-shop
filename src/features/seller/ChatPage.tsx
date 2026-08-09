@@ -175,9 +175,13 @@ export default function SellerChatPage() {
         <Plus className="size-4" />
       </button>
       <ChatConversation
-        onSend={send}
+        // 입력창은 (message, imageUrls) 로 주지만 send 의 2번째 자리는 조건 칩이다 —
+        // 구매자 전용이라 판매자 챗에서는 넘길 값이 없다
+        onSend={(message, imageUrls) => send(message, undefined, { imageUrls })}
         onRetry={retry}
         isStreaming={isStreaming}
+        // 사진을 올려 상품 등록 초안을 받는 경로 — 판매자 챗에만 연다
+        allowImage
         // 초안 검토 중에도 입력창은 활성이다 — 수정 요청("카테고리가 틀렸어")을
         // 받아야 하고, 딴 주제인지 아닌지는 서버가 가른다. 안내만 바꾼다.
         placeholder={

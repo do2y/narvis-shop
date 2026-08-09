@@ -521,7 +521,22 @@ export function useChat({
   );
 
   const send = useCallback(
-    (message: string, conditionActions?: ConditionAction[]) => {
+    (
+      message: string,
+      conditionActions?: ConditionAction[],
+      /**
+       * 추가 전송 값. 인자를 늘리지 않고 객체로 받는 이유는 호출부마다 채우는 것이
+       * 달라서다 — 조건 칩은 구매자, 이미지는 판매자 전용이다.
+       */
+      opts?: {
+        /**
+         * 상품 등록용 이미지(판매자). **새로 첨부한 턴에만 넘긴다** —
+         * 후속 턴에도 실으면 AI 가 매 턴 사진을 다시 분석해 상품명이 흔들린다.
+         * 호출부가 첨부 여부를 알고 있으므로 여기서 판단하지 않는다.
+         */
+        imageUrls?: string[];
+      },
+    ) => {
       const trimmed = message.trim();
       // 계약 CH-2: message 와 conditionActions 가 둘 다 비면 400. 하나만 있으면 정상이다.
       if (!trimmed && !conditionActions?.length) return;
@@ -550,6 +565,7 @@ export function useChat({
           message: trimmed,
           ...(conditionActions?.length ? { conditionActions } : {}),
           ...(screen ? { screen } : {}),
+          ...(opts?.imageUrls?.length ? { imageUrls: opts.imageUrls } : {}),
         }),
         // 칩 제거만 있는 턴은 사용자 말풍선을 남기지 않는다 — 제어 신호이지 발화가 아니다
         // (판매자 confirm 과 동일 처리, 계약 CH-2).
