@@ -131,9 +131,10 @@ export default function DashboardPage() {
       {data && (
         <>
           {/* 매출 현황 — 판매자가 가장 먼저 보는 숫자라 맨 위에 둔다.
-              items-start: 카드가 차트보다 짧아 늘어나지 않게.
+              높이는 grid 기본값(stretch)으로 둘을 맞춘다 — items-start 로 두면
+              짧은 카드 아래에 빈 공간이 남아 두 박스가 어긋나 보인다.
               minmax(0,1fr): 차트 열이 콘텐츠 폭에 밀려 넘치지 않게. */}
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
             {/* 이 가드 하나가 곧 실패 처리다 — 집계 실패로 블록이 null 이면 카드가 빠지고
                 그리드 첫 칸이 사라지며 차트가 자동으로 전폭이 된다. 별도 에러 UI 불필요. */}
             {data.aiAttribution && (

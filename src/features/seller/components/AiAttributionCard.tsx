@@ -36,7 +36,9 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
         </p>
       </div>
 
-      <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+      {/* mt-auto: 차트와 높이를 맞추느라 카드가 늘어날 때 남는 공간을 여기서 흡수한다.
+          안 주면 여백이 항목 사이사이로 갈려 들어가 요소가 흩어져 보인다 */}
+      <div className="mt-auto flex h-2 overflow-hidden rounded-full bg-muted">
         <div className="bg-brand" style={{ width: `${aiPct}%` }} />
       </div>
 
