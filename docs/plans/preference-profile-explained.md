@@ -1,5 +1,11 @@
 # 취향 프로필이 뭐고 뭘 할 수 있나
 
+> ⚠️ **응답 필드 설명이 낡았다 (2026-08-09 확정본으로 대체됨).**
+> 3장의 배지 필드 대부분(`confidence`·`source`·`lastConfirmedAt`·`origin`·`verified`·
+> `derivedFromSensitive`)은 **확정 응답에 실리지 않는다.** `nodes[]` 배열도 없다(`object` 인라인).
+> **계약은 [personalization-contract-2026-08-09.md](personalization-contract-2026-08-09.md) 를 정본으로 볼 것.**
+> 개념 설명(나→관계→대상, 관계 5종의 의미, 왜 다단계 그래프가 아닌지)은 여전히 유효하다.
+
 > 노션 「개인화 마이페이지 구현」을 **기능 관점으로 다시 쓴 것**.
 > 구현 순서·파일 구조는 [personalization-mypage.md](personalization-mypage.md) 참조.
 
