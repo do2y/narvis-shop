@@ -141,7 +141,11 @@ export function ProductList({
 
       {data && data.content.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-sm border bg-background">
+          {/* overflow-x-auto 를 쓰면 이 div 가 sticky 의 스크롤 컨테이너가 된다
+              (overflow-x:auto 는 overflow-y 를 auto 로 만든다). 그러면 헤더가
+              뷰포트가 아니라 이 상자 안에서 top 만큼 내려가 박혀 행을 덮는다.
+              가로 스크롤은 살리고 세로는 clip 으로 두면 sticky 기준이 뷰포트로 돌아온다. */}
+          <div className="overflow-x-auto overflow-y-clip rounded-sm border bg-background">
             <table className="w-full min-w-[760px] border-collapse text-sm">
               <thead>
                 {/* 헤더 고정 — 목록이 길어도 어느 열을 보는지 잃지 않게.
