@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryParams } from "@/shared/hooks/useQueryParams";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 import { ChatConversation } from "@/shared/chat/ChatConversation";
+import { NewChatButton } from "@/shared/chat/NewChatButton";
 import { SuggestedQuestions } from "@/shared/chat/SuggestedQuestions";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { cn } from "@/lib/utils";
 import type { SellerPanel } from "@/shared/types/chat";
-import { hoverMuted, pressable } from "./interaction";
 import { SellerHeader } from "./components/SellerHeader";
 import { SellerWorkspace } from "./components/SellerWorkspace";
 import type { SellerWorkspaceTab } from "./types";
@@ -160,26 +159,15 @@ export default function SellerChatPage() {
 
   const started = messages.length > 0;
 
+  // "새 대화"는 헤더로 옮겼다 — 대화 영역 우상단 floating 은 스크롤되는 메시지 위에
+  // 겹쳐 첫 줄을 가렸고, 구매자 챗(/chat)과 자리가 달라 같은 동작이 다른 곳에 있었다.
+  const handleNewChat = () => {
+    startNewChat();
+    setShowResults(false);
+  };
+
   const conversation = (
-    // 대화 영역과 하나로 보이도록 별도 헤더 바 없이, "새 대화"만 우상단에 floating
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <button
-        type="button"
-        onClick={() => {
-          startNewChat();
-          setShowResults(false);
-        }}
-        aria-label="새 대화"
-        title="새 대화"
-        className={cn(
-          "absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-background/70 text-muted-foreground backdrop-blur",
-          pressable,
-          hoverMuted,
-          "hover:[@media(hover:hover)]:text-foreground",
-        )}
-      >
-        <Plus className="size-4" />
-      </button>
+    <div className="flex min-h-0 flex-1 flex-col">
       <ChatConversation
         // 입력창은 (message, imageUrls) 로 주지만 send 의 2번째 자리는 조건 칩이다 —
         // 구매자 전용이라 판매자 챗에서는 넘길 값이 없다
@@ -235,8 +223,12 @@ export default function SellerChatPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      {/* 이 화면은 우측에서 주문·상품을 다루므로 헤더 네비를 숨겨 워크스페이스에 집중시킨다 */}
-      <SellerHeader showNav={false} />
+      {/* 이 화면은 우측에서 주문·상품을 다루므로 헤더 네비를 숨겨 워크스페이스에 집중시킨다.
+          "새 대화"는 구매자 챗과 같이 로고 옆에 둔다 */}
+      <SellerHeader
+        showNav={false}
+        leftSlot={<NewChatButton onClick={handleNewChat} />}
+      />
 
       {/* 모바일·태블릿: 세 영역 동시 표시 금지 → 탭 전환 */}
       <div className="flex items-center gap-1 border-b px-3 lg:hidden">
