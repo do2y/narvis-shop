@@ -40,6 +40,11 @@ interface SellerHeaderProps {
    * (돌아가는 길은 로고→홈/대시보드가 담당).
    */
   showNav?: boolean;
+  /**
+   * 로고 오른쪽 슬롯 — 그 화면에서만 쓰는 동작 버튼을 넣는다("새 대화").
+   * AppHeader 와 같은 이름·같은 자리다. 두 챗 화면이 같은 위치에서 같게 동작해야 한다.
+   */
+  leftSlot?: React.ReactNode;
 }
 
 /**
@@ -47,7 +52,7 @@ interface SellerHeaderProps {
  * AppHeader(찜·장바구니 등 쇼핑 동선)는 판매자 업무와 무관해 쓰지 않는다.
  * AI 협업은 네비의 "AI 어시스턴트"(/seller/chat)로 진입한다.
  */
-export function SellerHeader({ showNav = true }: SellerHeaderProps) {
+export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
   const user = useAuthStore((s) => s.user);
   const handleLogout = useLogout();
   const pathname = usePathname();
@@ -55,30 +60,34 @@ export function SellerHeader({ showNav = true }: SellerHeaderProps) {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
       <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-        {/* 로고 → 쇼핑몰 홈(판매자도 구매자 화면으로 돌아갈 수 있어야 함) */}
-        <Link
-          href="/"
-          aria-label="Narvis 홈"
-          className="flex shrink-0 items-center gap-2.5"
-        >
-          {/* 구매자 헤더와 같은 심볼 — 두 화면이 같은 로고로 읽혀야 한다 */}
-          <img
-            src="/logo-mark.png"
-            alt=""
-            aria-hidden
-            className="size-7 shrink-0"
-          />
-          {/* 워드마크와 Seller 는 baseline 으로 맞춘다 — 크기가 달라 가운데 정렬하면
-              글자 밑선이 어긋난다. 심볼만 바깥에서 세로 가운데로 맞춘다. */}
-          <span className="flex items-baseline gap-2">
-            <span className="text-lg font-bold tracking-tight text-wordmark">
-              Narvis
+        {/* 로고 + 화면별 동작 슬롯 — AppHeader 와 같은 묶음·같은 gap-4 */}
+        <div className="flex min-w-0 items-center gap-4">
+          {/* 로고 → 쇼핑몰 홈(판매자도 구매자 화면으로 돌아갈 수 있어야 함) */}
+          <Link
+            href="/"
+            aria-label="Narvis 홈"
+            className="flex shrink-0 items-center gap-2.5"
+          >
+            {/* 구매자 헤더와 같은 심볼 — 두 화면이 같은 로고로 읽혀야 한다 */}
+            <img
+              src="/logo-mark.png"
+              alt=""
+              aria-hidden
+              className="size-7 shrink-0"
+            />
+            {/* 워드마크와 Seller 는 baseline 으로 맞춘다 — 크기가 달라 가운데 정렬하면
+                글자 밑선이 어긋난다. 심볼만 바깥에서 세로 가운데로 맞춘다. */}
+            <span className="flex items-baseline gap-2">
+              <span className="text-lg font-bold tracking-tight text-wordmark">
+                Narvis
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Seller
+              </span>
             </span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Seller
-            </span>
-          </span>
-        </Link>
+          </Link>
+          {leftSlot}
+        </div>
 
         {/* 데스크탑: 헤더 안 네비 / 모바일: 아래 줄로 분리 */}
         <nav className={cn("hidden", showNav && "md:block")}>

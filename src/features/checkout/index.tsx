@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Check } from "lucide-react";
 import { track } from "@/shared/analytics/track";
+import { ApiError } from "@/shared/api/client";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
@@ -155,20 +156,10 @@ export default function CheckoutPage() {
     );
   }
 
-  // 결제 성공 경로가 신규 주문·재결제 두 갈래라 양쪽에서 부른다
-  // (한쪽만 넣으면 재결제로 성사된 주문이 집계에서 빠진다).
-  const trackPurchase = (orderId: number) => {
-    // productId 는 대표 상품 1개다(명세) — 판매자 집계에는 쓰이지 않는다
-    // (order_item × product × brand 집계가 정본).
-    // properties 는 계약 표대로 orderId·amount 만. 선택 키는 없다(E-1).
-    track("purchase_complete", {
-      productId: items[0]?.product.productId,
-      properties: {
-        orderId,
-        amount: itemsTotal - discount,
-      },
-    });
-  };
+  // purchase_complete 는 FE 가 쏘지 않는다 — 주문 성사는 서버가 정본이고,
+  // FE 는 결제 성공 응답을 받아야만 쏠 수 있어 응답 직전에 탭이 닫히거나
+  // 네트워크가 끊기면 이미 서버에 생성된 주문이 집계에서 통째로 빠진다.
+  // 적재는 BE 주문 처리에서 한다.
 
   // 결제 실패 안내 — 사유마다 사용자가 할 일이 다르다(2026-08-05 failureReason).
   // 재고 부족은 재결제가 무의미하므로 장바구니로, 거절은 결제 수단을 바꿔 재시도로 보낸다.
@@ -180,6 +171,17 @@ export default function CheckoutPage() {
       : paymentFailed.reason === "MOCK_DECLINED"
         ? "결제가 거절됐어요. 결제 수단을 확인한 뒤 다시 시도해주세요."
         : "결제에 실패했어요. 결제 수단을 확인한 뒤 다시 시도해주세요.";
+
+  // 다시 눌러도 성공할 수 없는 실패 — 결제 버튼을 장바구니 이동으로 바꾼다.
+  // 두 경로가 같은 "재고 없음"인데 응답이 갈린다:
+  //   200 PAYMENT_FAILED + OUT_OF_STOCK — 선검증을 통과한 뒤 경합으로 밀린 건
+  //   400 ORDER_PRODUCT_UNAVAILABLE     — 선검증에서 걸린 건(품절·판매중지)
+  // 400 쪽이 빠져 있어 "장바구니에서 빼고 다시 시도하세요"라고 안내하면서도
+  // 결제 버튼이 살아 있었다(08-05 재고 선검증이 400으로 갈라질 때 누락).
+  const orderRejected =
+    createOrder.error instanceof ApiError &&
+    createOrder.error.code === "ORDER_PRODUCT_UNAVAILABLE";
+  const unrecoverable = paymentFailed?.reason === "OUT_OF_STOCK" || orderRejected;
 
   const handleSubmit = async () => {
     if (createOrder.isPending || retryPayment.isPending) return;
@@ -209,7 +211,6 @@ export default function CheckoutPage() {
           setPaymentFailed({ reason: retried.failureReason ?? null });
           return;
         }
-        trackPurchase(retried.orderId);
         setOrderCompleteState<OrderCompleteState>({
           order: {
             orderId: retried.orderId,
@@ -270,8 +271,6 @@ export default function CheckoutPage() {
         setFailedOrderId(result.orderId);
         return;
       }
-
-      trackPurchase(result.orderId);
 
       const order: OrderCompleteState["order"] = {
         orderId: result.orderId,
@@ -371,8 +370,11 @@ export default function CheckoutPage() {
                 retryPayment.errorMessage
               }
               // 재고 부족은 재결제해도 실패하므로 결제 버튼 자체를 장바구니 이동으로 바꾼다
-              unrecoverable={paymentFailed?.reason === "OUT_OF_STOCK"}
+              unrecoverable={unrecoverable}
               onSubmit={handleSubmit}
+              // 결제 항목은 sessionStorage 스냅샷이라 장바구니에서 빼고 와도 그대로 남는다.
+              // 비우지 않으면 뒤로가기로 돌아왔을 때 방금 뺀 상품이 다시 보인다.
+              onLeave={clearCheckoutState}
             />
           </div>
         </div>

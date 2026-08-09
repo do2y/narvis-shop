@@ -44,9 +44,6 @@ export default function ProductsPage() {
         onTabChange={(t) => update({ tab: t })}
         onSortChange={(s) => update({ sort: s })}
         onPageChange={(p) => update({ page: p })}
-        // 뷰포트가 스크롤하고 그 위에 sticky 헤더(h-16)가 떠 있다 —
-        // top-0 으로 두면 열 이름이 헤더 뒤로 들어가 가려진다.
-        stickyHeaderClass="[&>th]:top-16"
       />
     </div>
   );

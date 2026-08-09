@@ -6,10 +6,12 @@ import { ChatInput } from "./ChatInput";
 import { useChatStore } from "./store";
 
 interface ChatConversationProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, imageUrls?: string[]) => void;
   onRetry: () => void;
   isStreaming: boolean;
   placeholder?: string;
+  /** 이미지 첨부 허용(판매자 상품 등록). 구매자 챗은 쓸 곳이 없어 기본 꺼짐 */
+  allowImage?: boolean;
   /** 대화 입력창 위 영역(조건 칩·추천 질문 등) — 채널별 주입 */
   aboveInput?: React.ReactNode;
   /**
@@ -33,6 +35,7 @@ export function ChatConversation({
   onRetry,
   isStreaming,
   placeholder,
+  allowImage,
   aboveInput,
   headerSlot,
   noticeSlot,
@@ -76,6 +79,7 @@ export function ChatConversation({
           onSend={onSend}
           disabled={isStreaming}
           placeholder={placeholder}
+          allowImage={allowImage}
         />
       </div>
     </div>

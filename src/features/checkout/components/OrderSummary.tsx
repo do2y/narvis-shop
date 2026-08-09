@@ -16,6 +16,7 @@ export function OrderSummary({
   error,
   unrecoverable = false,
   onSubmit,
+  onLeave,
 }: {
   itemsTotal: number;
   discount: number;
@@ -28,6 +29,8 @@ export function OrderSummary({
    */
   unrecoverable?: boolean;
   onSubmit: () => void;
+  /** 장바구니로 떠나기 직전 — 결제 항목 스냅샷을 비우는 데 쓴다 */
+  onLeave?: () => void;
 }) {
   const finalTotal = itemsTotal - discount;
 
@@ -70,6 +73,7 @@ export function OrderSummary({
       {unrecoverable ? (
         <Link
           href="/cart"
+          onClick={onLeave}
           className={cn(
             buttonVariants(),
             "mt-5 h-12 w-full rounded-sm text-base",

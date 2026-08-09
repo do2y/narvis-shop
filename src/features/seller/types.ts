@@ -38,12 +38,36 @@ export interface SellerSummaryParams {
   trendDays?: number; // 기본 7, 1~90
 }
 
-/** 재고 부족 목록의 한 행 — 상품 목록(SellerProductStat)보다 필드가 적다 */
+/**
+ * S-1 AI 추천 경유 매출 (2026-08-07 신설).
+ *
+ * 화면에서 쓰는 4개 필드만 선언한다 — 응답에는 confirmedSales·estimatedSales·
+ * funnel·coverage·policyVersion·windowDays·aiOrderCount 도 오지만 이번 카드는 싣지 않는다.
+ */
+export interface SellerAiAttribution {
+  totalSales: number;
+  aiSales: number;
+  directSales: number;
+  // 분모(전체 매출)가 0이면 null — 0%가 아니라 "계산 불가"다.
+  // today 의 *ChangeRate 와 같은 규칙이라 표기도 똑같이 "—" 로 맞춘다.
+  aiShare: number | null;
+}
+
+/**
+ * 재고 부족 목록의 한 행 — 상품 목록(SellerProductStat)보다 필드가 적다.
+ *
+ * 2026-08-09 재고가 옵션별로 내려가면서 **한 줄 = 상품이 아니라 옵션**이 됐다.
+ * 한 상품의 여러 옵션이 동시에 부족하면 같은 productId가 여러 줄로 나온다
+ * (판매자가 채워넣을 대상이 상품이 아니라 옵션이라 묶지 않는다 — 명세).
+ * optionId·optionName은 옵션 없는 상품에서 둘 다 null이다.
+ */
 export interface SellerLowStockItem {
   productId: string;
   name: string;
   imageUrl: string;
   stockQuantity: number;
+  optionId: string | null;
+  optionName: string | null;
 }
 
 export interface SellerSummary {
@@ -54,6 +78,10 @@ export interface SellerSummary {
     activeTotal: number; // CANCELLED·RETURNED 제외 합계
     // 배송 완료 건이 없으면 null 이 온다(집계할 표본이 없음).
     // S-1 조인 교체(C 문서, 2026-08-06)로 null 이 나올 확률이 올라가 타입에 명시한다.
+    //
+    // 화면에는 쓰지 않는다(2026-08-09) — 종전엔 "배송중" 카드에 붙였으나
+    // 표본이 없으면 그 줄만 비어 카드 높이가 어긋났다. 서버가 계속 내려주는
+    // 필드라 계약은 남긴다.
     avgDeliveryDays: number | null;
   };
 
@@ -79,14 +107,10 @@ export interface SellerSummary {
     items: SellerLowStockItem[];
   };
 
-  // 화면에는 쓰지 않는다 — AI 채팅·타 화면이 소비하는 상품 퍼널 데이터
-  products: {
-    productId: string;
-    name: string;
-    viewCount: number;
-    cartCount: number;
-    salesCount: number;
-  }[];
+  // null 가능 — S-1 은 서브쿼리 8개를 한 응답에 묶는데 귀속 집계 3개만 실패를 격리한다
+  // (대시보드 전체가 500이 되면 안 되므로). 나머지 5개는 하나만 실패해도 전체 500이지만
+  // 이 블록은 실패 시 null 로 내려온다. `| null` 을 빼면 집계가 실패하는 날 런타임에서 터진다.
+  aiAttribution: SellerAiAttribution | null;
 }
 
 // ── 주문  ──

@@ -4,15 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryParams } from "@/shared/hooks/useQueryParams";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 import { ChatConversation } from "@/shared/chat/ChatConversation";
+import { NewChatButton } from "@/shared/chat/NewChatButton";
 import { SuggestedQuestions } from "@/shared/chat/SuggestedQuestions";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { cn } from "@/lib/utils";
 import type { SellerPanel } from "@/shared/types/chat";
-import { hoverMuted, pressable } from "./interaction";
 import { SellerHeader } from "./components/SellerHeader";
 import { SellerWorkspace } from "./components/SellerWorkspace";
 import type { SellerWorkspaceTab } from "./types";
@@ -62,7 +61,16 @@ export default function SellerChatPage() {
 
   const messages = useChatStore((s) => s.messages);
   const results = useChatStore((s) => s.results);
+  // 마지막 응답이 실패로 끝났으면 그 문구를 우측 검토 패널에도 전달한다.
+  // 스트림 실패는 settled(=confirm 결과)에 담기지 않아, 이걸 넘기지 않으면
+  // 좌측엔 "통신 실패"인데 우측엔 [등록]이 살아 있는 모순된 화면이 된다.
+  const lastMessage = messages[messages.length - 1];
+  const streamError =
+    lastMessage?.role === "assistant" ? lastMessage.error : undefined;
   const dropDraft = useChatStore((s) => s.dropDraft);
+  // 등록 초안 검토 중 — 입력창 안내를 바꾸고 TTL 타이머를 건다
+  const activeDraft = useChatStore((s) => s.activeDraft);
+  const setActiveDraft = useChatStore((s) => s.setActiveDraft);
   // 판매자 화면 전환 신호 — lane(즉시 로딩 준비)·analysisReport(분석 리포트 본문)
   const lane = useChatStore((s) => s.lane);
   const analysisReport = useChatStore((s) => s.analysisReport);
@@ -123,41 +131,68 @@ export default function SellerChatPage() {
   const confirmDraft = (draftId: string) => confirm(draftId);
   const cancelDraft = (draftId: string) => {
     dropDraft(draftId);
+    // 취소한 것이 검토 중이던 등록 초안이면 입력창도 평상시로 되돌린다
+    if (activeDraft?.draftId === draftId) setActiveDraft(null);
     if (results.filter((r) => r.kind === "draft").length <= 1) {
       setShowResults(false); // 마지막 카드였으면 목록으로 복귀
     }
   };
 
+  // 초안 TTL — 서버는 10분 뒤 초안을 버리는데 그 시점엔 SSE 가 끝나 있어
+  // 알려줄 경로가 없다. FE 가 재서 스스로 풀지 않으면 판매자가 죽은 초안에 갇힌다.
+  //
+  // deps 가 draftId 인 것이 중요하다. 객체를 넣으면 렌더마다 재실행되고,
+  // 정리(clearTimeout)를 빠뜨리면 수정 턴에서 새 초안이 첫 초안 기준 10분에 사라진다.
+  const activeDraftId = activeDraft?.draftId;
+  const activeDraftExpiresAt = activeDraft?.expiresAt;
+  useEffect(() => {
+    if (!activeDraftId || !activeDraftExpiresAt) return;
+    const timer = setTimeout(
+      () => {
+        setActiveDraft(null);
+        dropDraft(activeDraftId);
+      },
+      Math.max(0, activeDraftExpiresAt - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [activeDraftId, activeDraftExpiresAt, setActiveDraft, dropDraft]);
+
   const started = messages.length > 0;
 
+  // "새 대화"는 헤더로 옮겼다 — 대화 영역 우상단 floating 은 스크롤되는 메시지 위에
+  // 겹쳐 첫 줄을 가렸고, 구매자 챗(/chat)과 자리가 달라 같은 동작이 다른 곳에 있었다.
+  const handleNewChat = () => {
+    startNewChat();
+    setShowResults(false);
+  };
+
   const conversation = (
-    // 대화 영역과 하나로 보이도록 별도 헤더 바 없이, "새 대화"만 우상단에 floating
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <button
-        type="button"
-        onClick={() => {
-          startNewChat();
-          setShowResults(false);
-        }}
-        aria-label="새 대화"
-        title="새 대화"
-        className={cn(
-          "absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-background/70 text-muted-foreground backdrop-blur",
-          pressable,
-          hoverMuted,
-          "hover:[@media(hover:hover)]:text-foreground",
-        )}
-      >
-        <Plus className="size-4" />
-      </button>
+    <div className="flex min-h-0 flex-1 flex-col">
       <ChatConversation
-        onSend={send}
+        // 입력창은 (message, imageUrls) 로 주지만 send 의 2번째 자리는 조건 칩이다 —
+        // 구매자 전용이라 판매자 챗에서는 넘길 값이 없다
+        onSend={(message, imageUrls) => send(message, undefined, { imageUrls })}
         onRetry={retry}
         isStreaming={isStreaming}
-        placeholder="상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
+        // 사진을 올려 상품 등록 초안을 받는 경로 — 판매자 챗에만 연다
+        allowImage
+        // 초안 검토 중에도 입력창은 활성이다 — 수정 요청("카테고리가 틀렸어")을
+        // 받아야 하고, 딴 주제인지 아닌지는 서버가 가른다. 안내만 바꾼다.
+        placeholder={
+          activeDraft
+            ? "수정할 내용을 입력해 주세요 — 예: 재고를 30개로 바꿔줘"
+            : "상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
+        }
         aboveInput={
-          // 대화 시작 전에만 추천 질문 노출
-          !started ? (
+          activeDraft ? (
+            // 상태("검토 중")는 실제 작업이 일어나는 우측 패널 제목이 말한다.
+            // 여기서는 지금 이 입력창으로 무엇을 할 수 있는지만 짧게 알린다 —
+            // 좌우에 같은 상태를 두 번 적으면 어느 쪽이 진짜인지 모호해진다.
+            <p className="px-1 text-xs text-muted-foreground">
+              채팅으로 고치면 오른쪽 초안에 바로 반영돼요.
+            </p>
+          ) : !started ? (
+            // 대화 시작 전에만 추천 질문 노출
             <SuggestedQuestions
               questions={SELLER_QUESTIONS}
               onSelect={send}
@@ -181,13 +216,19 @@ export default function SellerChatPage() {
       onBackToList={() => setShowResults(false)}
       onConfirmDraft={confirmDraft}
       onCancelDraft={cancelDraft}
+      streamError={streamError}
+      onRetry={retry}
     />
   );
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      {/* 이 화면은 우측에서 주문·상품을 다루므로 헤더 네비를 숨겨 워크스페이스에 집중시킨다 */}
-      <SellerHeader showNav={false} />
+      {/* 이 화면은 우측에서 주문·상품을 다루므로 헤더 네비를 숨겨 워크스페이스에 집중시킨다.
+          "새 대화"는 구매자 챗과 같이 로고 옆에 둔다 */}
+      <SellerHeader
+        showNav={false}
+        leftSlot={<NewChatButton onClick={handleNewChat} />}
+      />
 
       {/* 모바일·태블릿: 세 영역 동시 표시 금지 → 탭 전환 */}
       <div className="flex items-center gap-1 border-b px-3 lg:hidden">

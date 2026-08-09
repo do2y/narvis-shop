@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:   # Actions 탭에서 수동 실행 가능
 
-# 워크플로 동시 실행 방지 — 두 개가 겹치면 두 서버가 동시에 대상그룹에서 빠질 수 있음
+# 워크플로 동시 실행 방지 — 두 개가 겹치면 여러 서버가 동시에 대상그룹에서 빠질 수 있음
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -49,14 +49,21 @@ jobs:
     permissions:
       packages: read   # EC2에서 GHCR pull 시 필요
     strategy:
-      max-parallel: 1   # 동시 배포 금지 — 두 대가 동시에 빠지면 서비스 중단
-      fail-fast: true   # 1호기 실패 시 2호기 중단
+      # 4대 중 2대씩 교체 — 배포 중에도 항상 2대가 트래픽을 받는다(증설 전 상시 대수와 동일).
+      # 2대 시절에는 1이었다. 한 대만 빼도 남는 게 한 대뿐이라 2 이상이면 전면 중단이었다.
+      # 3 이상으로 올리면 살아남는 대수가 1대 이하가 되므로 올리지 말 것.
+      max-parallel: 2
+      fail-fast: true   # 앞 배치가 실패하면 뒤 배치는 시작하지 않음
       matrix:
         include:
           - host: EC2_HOST
             instance: i-07d7478729bc460da   # jarvis-backend-server
           - host: EC2_HOST_2
             instance: i-0605ad8b59fc4b03e   # jarvis-backend-server2
+          - host: EC2_HOST_3
+            instance: i-03f32c3c7a9145f64   # jarvis-backend-server3
+          - host: EC2_HOST_4
+            instance: i-00518087caef51eb8   # jarvis-backend-server4
     env:
       # 인스턴스를 재생성하면 ID가 바뀌므로 matrix 값도 함께 수정해야 함
       TG_ARN: arn:aws:elasticloadbalancing:ap-northeast-2:049705857330:targetgroup/jarvis-nginx-tg/d471e3090ff3c8b1

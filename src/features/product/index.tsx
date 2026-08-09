@@ -56,7 +56,15 @@ export default function ProductPage({
   } = useWishlistToggleWithToast(id);
 
   // OptionSelector의 최신 선택값을 담아두는 ref. 렌더 유발이 필요 없어 state 대신 ref 사용.
-  const selectionRef = useRef<OptionSelection>({ option: null, quantity: 1 });
+  const selectionRef = useRef<OptionSelection>({
+    option: null,
+    quantity: 1,
+    soldOut: false,
+  });
+
+  // 품절 여부만 state로도 복제한다 — 버튼 비활성이 렌더에 반영돼야 해서
+  // ref 로는 부족하다(ref 변경은 리렌더를 일으키지 않는다).
+  const [optionSoldOut, setOptionSoldOut] = useState(false);
 
   // 상세 API가 정본. 도착 전에는 카드 시딩 데이터(캐시 승계)로 즉시 렌더한다.
   const { data: detail, isError } = useProductDetail(id, initialDetail);
@@ -170,8 +178,10 @@ export default function ProductPage({
   // 서버 400(CART_OPTION_REQUIRED) 전에 프론트에서 먼저 막는다.
   const needsOption = (detail?.options.length ?? 0) > 0;
   const addToCart = () => {
-    const { option, quantity } = selectionRef.current;
-    if (!purchasable || (needsOption && !option)) return;
+    const { option, quantity, soldOut: optionOut } = selectionRef.current;
+    // 상품 purchaseState 는 전 옵션이 품절일 때만 SOLD_OUT 이라, 일부 색만 품절인
+    // 경우는 여기서 막지 않으면 담기 요청이 서버까지 갔다가 거절된다.
+    if (!purchasable || optionOut || (needsOption && !option)) return;
     addCart.mutate(
       {
         productId: id,
@@ -179,20 +189,7 @@ export default function ProductPage({
         quantity,
       },
       {
-        // 담기 성공 후에만 수집한다(명세: 실패 건은 세지 않음).
-        // 단가는 buyNow와 동일한 식(판매가 + 옵션 추가금).
-        onSuccess: () =>
-          track("add_to_cart", {
-            productId: id,
-            properties: {
-              quantity,
-              // 명세 키는 price 다(구 unitPrice). 값은 판매가 + 옵션 추가금.
-              price: (view?.price ?? 0) + (option?.extraPrice ?? 0),
-              ...(option?.optionId !== undefined
-                ? { optionId: option.optionId }
-                : {}),
-            },
-          }),
+        // add_to_cart 수집은 BE CartService 로 이관됨(A 문서, 2026-08-06).
         // 재고 부족만 다이얼로그로 알린다. 그 외 에러는 하단 인라인(errorMessage).
         onError: (error) => {
           if (isStockInsufficientError(error)) setStockDialogOpen(true);
@@ -202,7 +199,7 @@ export default function ProductPage({
   };
 
   const buyNow = () => {
-    if (!purchasable) return;
+    if (!purchasable || selectionRef.current.soldOut) return;
     // 구매는 로그인 필요(CLAUDE.md). 게스트면 현재 상세로 복귀하도록 returnUrl 걸어 로그인 유도.
     // (state는 리다이렉트로 유실되므로 로그인 후 상세에서 다시 "바로 구매"하게 한다.)
     // 클릭 시점 값이면 충분해 구독 없이 getState로 읽는다(렌더 중 비구독 읽기 방지).
@@ -298,6 +295,7 @@ export default function ProductPage({
               maxQuantity={detail?.stockQuantity}
               onChange={(sel) => {
                 selectionRef.current = sel;
+                setOptionSoldOut(sel.soldOut);
               }}
             />
 
@@ -329,14 +327,14 @@ export default function ProductPage({
                 variant="outline"
                 className="h-11 flex-1"
                 onClick={addToCart}
-                disabled={addCart.isPending || !purchasable}
+                disabled={addCart.isPending || !purchasable || optionSoldOut}
               >
                 {addCart.isPending ? "담는 중…" : "장바구니"}
               </Button>
               <Button
                 className="h-11 flex-1"
                 onClick={buyNow}
-                disabled={!purchasable}
+                disabled={!purchasable || optionSoldOut}
               >
                 바로 구매
               </Button>

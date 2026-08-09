@@ -16,6 +16,7 @@ import { AnalysisReport } from "./AnalysisReport";
 import { OrderList } from "./OrderList";
 import { ProductList } from "./ProductList";
 import { ProductDiffCard } from "./ProductDiffCard";
+import { ProductCreateCard } from "./ProductCreateCard";
 
 interface SellerWorkspaceProps {
   tab: SellerWorkspaceTab;
@@ -31,6 +32,12 @@ interface SellerWorkspaceProps {
   onBackToList: () => void;
   onConfirmDraft: (draftId: string) => void;
   onCancelDraft: (draftId: string) => void;
+  /**
+   * 이번 턴이 오류로 끝났으면 그 문구. 좌측 말풍선의 실패를 우측 검토 패널에도
+   * 반영한다 — 없으면 "통신 실패" 아래에서 [등록]이 눌리는 모순된 화면이 된다.
+   */
+  streamError?: string;
+  onRetry?: () => void;
 }
 
 const WORKSPACE_TABS: { key: SellerWorkspaceTab; label: string }[] = [
@@ -53,6 +60,8 @@ export function SellerWorkspace({
   onBackToList,
   onConfirmDraft,
   onCancelDraft,
+  streamError,
+  onRetry,
 }: SellerWorkspaceProps) {
   // 목록 필터·페이지는 워크스페이스 로컬 상태(URL과 분리 — 채팅 화면은 딥링크 대상이 아님)
   const [orderTab, setOrderTab] = useState<SellerOrderTab>("ALL");
@@ -132,13 +141,27 @@ export function SellerWorkspace({
                   key={r.draft.draftId ?? i}
                   className="animate-in duration-200 fade-in slide-in-from-bottom-2 ease-out-strong motion-reduce:animate-none"
                 >
-                  <ProductDiffCard
-                    draft={r.draft}
-                    settled={r.settled}
-                    onConfirm={onConfirmDraft}
-                    onCancel={onCancelDraft}
-                    disabled={isStreaming}
-                  />
+                  {/* 등록은 before 가 전부 비어 있어 전·후 비교가 무의미하다 —
+                      diff 카드에 태우면 취소선 친 빈 칸만 늘어선다 */}
+                  {r.draft.op === "create" ? (
+                    <ProductCreateCard
+                      draft={r.draft}
+                      settled={r.settled}
+                      onConfirm={onConfirmDraft}
+                      onCancel={onCancelDraft}
+                      disabled={isStreaming}
+                      streamError={streamError}
+                      onRetry={onRetry}
+                    />
+                  ) : (
+                    <ProductDiffCard
+                      draft={r.draft}
+                      settled={r.settled}
+                      onConfirm={onConfirmDraft}
+                      onCancel={onCancelDraft}
+                      disabled={isStreaming}
+                    />
+                  )}
                 </div>
               ) : null,
             )}

@@ -59,33 +59,16 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
   /**
    * 담기 — 기본(옵션 없음)과 옵션 칩 선택이 같은 경로를 쓴다.
    *
-   * 담기 성공 후에만 수집한다(명세: 실패 건은 세지 않음).
-   * recommendation 을 실으면 서버가 listId 로 추천 경유임을 검증해 귀속시킨다 —
-   * FE 가 "챗봇에서 담았다"고 주장하는 값보다 신뢰할 수 있다(계약 E-1).
-   * 인기상품 카드엔 recommendationContext 가 없어 필드째 빠진다.
+   * add_to_cart 수집은 BE CartService 로 이관됨(A 문서, 2026-08-06).
+   * recommendationContext 는 요청 body 에 그대로 싣는다 — 서버가 추천 귀속에 쓴다.
    */
-  const addToCart = (optionId?: string, extraPrice = 0) => {
-    addCart.mutate(
-      {
-        productId: product.productId,
-        ...(optionId !== undefined ? { optionId } : {}),
-        quantity: 1,
-        recommendationContext: product.recommendationContext,
-      },
-      {
-        onSuccess: () =>
-          track("add_to_cart", {
-            productId: product.productId,
-            recommendation: product.recommendationContext,
-            properties: {
-              quantity: 1,
-              // 단가는 판매가 + 옵션 추가금(상세 페이지와 같은 식)
-              price: product.price + extraPrice,
-              ...(optionId !== undefined ? { optionId } : {}),
-            },
-          }),
-      },
-    );
+  const addToCart = (optionId?: string) => {
+    addCart.mutate({
+      productId: product.productId,
+      ...(optionId !== undefined ? { optionId } : {}),
+      quantity: 1,
+      recommendationContext: product.recommendationContext,
+    });
   };
   /**
    * 찜 토글 — 낙관적 반영에 쓸 카드 데이터를 함께 넘긴다.
@@ -235,7 +218,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
               <button
                 key={opt.optionId}
                 type="button"
-                onClick={() => addToCart(opt.optionId, opt.extraPrice)}
+                onClick={() => addToCart(opt.optionId)}
                 disabled={addCart.isPending}
                 className="rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-muted disabled:opacity-50"
               >
