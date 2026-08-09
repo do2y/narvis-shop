@@ -28,6 +28,20 @@ export interface ApiErrorBody {
   detail?: ApiErrorDetail;
 }
 
+/**
+ * 주문 불가 항목 한 줄 — O-1 ORDER_PRODUCT_UNAVAILABLE의 detail.unavailableItems.
+ *
+ * optionId·optionName은 2026-08-09 옵션별 재고 전환으로 추가됐다.
+ * 옵션 없는 상품과 HIDDEN 사유는 둘 다 null이므로 표기는 조건부여야 한다(명세).
+ */
+export interface UnavailableItem {
+  productId: string;
+  name: string;
+  reason: "SOLD_OUT" | "HIDDEN";
+  optionId: string | null;
+  optionName: string | null;
+}
+
 // 언래핑된 에러. 컴포넌트/훅은 err.code로 분기, err.message는 표시용.
 // AxiosError 대신 이걸 throw하므로 호출부는 봉투 구조를 몰라도 됨.
 export class ApiError extends Error {
@@ -90,20 +104,32 @@ export class ApiError extends Error {
    *
    * reason은 목록·상세의 purchaseState와 같은 어휘다 — 주문 화면과 장바구니가
    * 다른 말을 하지 않게 서버가 한 곳(PurchaseState)에서 판정한다.
+   *
+   * optionId·optionName은 2026-08-09 옵션별 재고 전환으로 추가됐다. 재고가 옵션마다
+   * 따로라 같은 상품의 한 옵션만 품절일 수 있고, 그러면 상품명만으로는 사용자가
+   * 어느 줄을 빼야 할지 알 수 없다. 옵션 없는 상품과 HIDDEN 사유는 둘 다 null이다.
    */
-  get unavailableItems():
-    | { productId: string; name: string; reason: "SOLD_OUT" | "HIDDEN" }[]
-    | undefined {
+  get unavailableItems(): UnavailableItem[] | undefined {
     const value = this.detail?.unavailableItems;
     if (!Array.isArray(value)) return undefined;
-    const parsed = value.filter(
-      (i): i is { productId: string; name: string; reason: "SOLD_OUT" | "HIDDEN" } =>
-        typeof i === "object" &&
-        i !== null &&
-        typeof (i as { name?: unknown }).name === "string" &&
-        ((i as { reason?: unknown }).reason === "SOLD_OUT" ||
-          (i as { reason?: unknown }).reason === "HIDDEN"),
-    );
+    const parsed = value
+      .filter(
+        (i): i is Record<string, unknown> =>
+          typeof i === "object" &&
+          i !== null &&
+          typeof (i as { name?: unknown }).name === "string" &&
+          ((i as { reason?: unknown }).reason === "SOLD_OUT" ||
+            (i as { reason?: unknown }).reason === "HIDDEN"),
+      )
+      // 옵션 두 필드는 명세상 null이 정상값이고, 필드 자체가 없는 구버전 응답도 있다.
+      // 문자열이 아닌 건 전부 null로 접어 읽는 쪽이 한 가지만 검사하게 한다.
+      .map<UnavailableItem>((i) => ({
+        productId: String(i.productId ?? ""),
+        name: i.name as string,
+        reason: i.reason as "SOLD_OUT" | "HIDDEN",
+        optionId: typeof i.optionId === "string" ? i.optionId : null,
+        optionName: typeof i.optionName === "string" ? i.optionName : null,
+      }));
     return parsed.length ? parsed : undefined;
   }
 }

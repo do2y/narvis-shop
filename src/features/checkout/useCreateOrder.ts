@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "@/shared/api/client";
+import { ApiError, type UnavailableItem } from "@/shared/api/client";
 import { withJosa } from "@/shared/utils/josa";
 import { createOrder, retryPayment } from "./api";
 
@@ -12,20 +12,30 @@ function joinNames(names: string[]): string {
 }
 
 /**
+ * 항목 표시명 — 옵션이 있으면 "린넨 셔츠(화이트/M)"로 줄 단위 식별이 되게 한다.
+ *
+ * 2026-08-09 재고가 옵션별로 내려가면서 같은 상품의 한 옵션만 품절일 수 있다.
+ * 상품명만 쓰면 "린넨 셔츠는 품절"이라고 하는데 장바구니엔 멀쩡한 린넨 셔츠가
+ * 남아 있어(다른 색) 사용자가 무엇을 빼야 할지 알 수 없다.
+ * optionName은 옵션 없는 상품과 HIDDEN 사유에서 null이다(명세).
+ */
+function toItemLabel(item: UnavailableItem): string {
+  return item.optionName ? `${item.name}(${item.optionName})` : item.name;
+}
+
+/**
  * 주문 불가 항목 안내(O-1 400 detail.unavailableItems, 2026-08-05).
  *
  * 품절과 판매중지는 사용자가 할 일이 다르다 — 품절은 기다리면 되고 판매중지는 빼야 한다.
  * 그래서 섞여 오면 뭉뚱그리지 않고 사유별로 나눠 말한다.
  * detail이 없는 경우(구버전 응답·파싱 실패)는 종전 문구로 물러난다.
  */
-function toUnavailableMessage(
-  items: { name: string; reason: "SOLD_OUT" | "HIDDEN" }[] | undefined,
-): string {
+function toUnavailableMessage(items: UnavailableItem[] | undefined): string {
   if (!items?.length)
     return "구매할 수 없는 상품이 포함되어 있어요. 장바구니에서 확인해주세요.";
 
-  const soldOut = items.filter((i) => i.reason === "SOLD_OUT").map((i) => i.name);
-  const hidden = items.filter((i) => i.reason === "HIDDEN").map((i) => i.name);
+  const soldOut = items.filter((i) => i.reason === "SOLD_OUT").map(toItemLabel);
+  const hidden = items.filter((i) => i.reason === "HIDDEN").map(toItemLabel);
 
   const parts: string[] = [];
   if (soldOut.length)
