@@ -20,7 +20,10 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
   const aiPct = total > 0 ? (data.aiSales / total) * 100 : 0;
 
   return (
-    <section className="flex flex-col gap-3 rounded-sm border border-l-2 border-l-brand bg-background p-4 sm:p-5">
+    // 테두리 상자 대신 배경톤(muted/40)으로 영역을 잡는다 — 옆의 추이 차트는
+    // 배경 없는 평면이라, 톤 차이만으로 "AI 몫"이 따로 읽힌다.
+    // 왼쪽 brand 선은 남긴다: 이 화면에서 AI 기능을 가리키는 유일한 표식이다.
+    <section className="flex flex-col gap-3 rounded-sm border-l-2 border-l-brand bg-muted/40 p-4 sm:p-5">
       {/* 값이 주인공이라 제목은 한 단 내린다 — 같은 무게면 시선이 갈린다.
           (한글이라 uppercase·wide tracking 은 쓰지 않는다 — 자간만 벌어져 읽기 나빠진다) */}
       <h3 className="text-sm font-medium text-muted-foreground">
@@ -29,10 +32,12 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
 
       <div>
         {/* 큰 숫자일수록 자간이 벌어져 보인다 — 행간을 좁혀 금액 덩어리가
-            하나로 읽히게 한다(작은 본문은 건드리지 않는다) */}
+            하나로 읽히게 한다(작은 본문은 건드리지 않는다).
+            오늘 매출(text-4xl~5xl)보다 한 단 작게 둔다 — 기간 집계라 오늘 숫자보다
+            뒤에 읽혀야 한다 */}
         <p
           className={cn(
-            "text-3xl font-bold leading-tight tracking-tight",
+            "text-2xl font-bold leading-tight tracking-tight",
             numeric,
           )}
         >
@@ -48,8 +53,9 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
       </div>
 
       {/* mt-auto: 차트와 높이를 맞추느라 카드가 늘어날 때 남는 공간을 여기서 흡수한다.
-          안 주면 여백이 항목 사이사이로 갈려 들어가 요소가 흩어져 보인다 */}
-      <div className="mt-auto flex h-2 overflow-hidden rounded-full bg-muted">
+          안 주면 여백이 항목 사이사이로 갈려 들어가 요소가 흩어져 보인다.
+          트랙은 border 톤 — 카드 배경이 muted/40 이라 bg-muted 로는 바가 안 보인다 */}
+      <div className="mt-auto flex h-2 overflow-hidden rounded-full bg-border">
         <div className="bg-brand" style={{ width: `${aiPct}%` }} />
       </div>
 
