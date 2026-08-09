@@ -62,6 +62,16 @@ export interface StreamChatBody {
   screen?: ChatScreenContext; // 사이드 채팅에서만 전송
   action?: "confirm"; // draft 승인 — message 대신 이 필드로 확정
   draftId?: string; // action:"confirm" 일 때 대상 draft
+  /**
+   * 상품 등록용 이미지 (판매자 전용, 2026-08-08 신설).
+   *
+   * **새로 첨부한 턴에만 보낸다.** 첨부 즉시 업로드하는 구조라 FE 가 URL 을 계속
+   * 들고 있게 되는데, 후속 턴에도 실으면 AI 가 매 턴 사진을 다시 분석한다 —
+   * 턴1 에 "코튼 오버핏 셔츠"였던 상품명이 턴2 에 "면 셔츠"로 바뀌고 이미지 토큰도
+   * 매번 나간다. AI 는 첫 분석 결과를 서버에 갖고 있어 안 보내도 이어진다.
+   * (예외: 대화 중 다른 사진을 새로 첨부하면 그 턴에는 보낸다 — 재분석이 목적이다.)
+   */
+  imageUrls?: string[];
 }
 
 /**
@@ -302,17 +312,70 @@ export interface SellerReport {
   applyGuide: string; // 추천 없으면 ""
 }
 
+/**
+ * 등록 초안 카드의 근거·주의 블록 (2026-08-08 신설).
+ *
+ * kind 를 닫힌 유니온으로 두지 않는다 — 종류가 늘어도 FE 배포 없이 서버만 바뀌면 되게.
+ * 아는 값은 source(초안 근거) · warning(승인 전 확인) · note(수정 반영 내역) 3종이고,
+ * **모르는 kind 는 무시한다**(렌더하지 않는다).
+ */
+export interface DraftSection {
+  kind: string;
+  title: string; // 블록 제목 — 그대로 출력
+  items: string[]; // 불릿 항목 — 그대로 출력
+}
+
+/**
+ * 등록 초안의 표시 사본 (op === "create" 에만 존재, 2026-08-08 신설).
+ *
+ * changes 가 실행 정본이고 이쪽은 사람이 읽을 형태로 서버가 옮겨 둔 것이다.
+ * **화면은 preview 만 본다** — changes 로 그리면 "32,000원"에서 32000 을 역파싱하거나
+ * 카테고리 변환·할인율 계산을 FE 가 떠안게 되고, 그 계산이 AI 와 어긋나는 날이 온다.
+ * (preview 를 고쳐 보내도 저장 값은 안 바뀐다 — 승인은 draftId 만 보낸다.)
+ *
+ * 값이 없을 수 있는 필드는 null 로 오지 키가 빠지지 않는다 — undefined 분기 불필요.
+ */
+export interface DraftPreview {
+  title: string;
+  imageUrl: string | null;
+  /** true 면 "이미지 미등록" 배지 — 등록 후에 알아채는 걸 막는 장치 */
+  imagePlaceholder: boolean;
+  /** "32,000원" — 서버가 포맷을 마쳤다. 콤마·단위를 다시 붙이지 말 것 */
+  priceText: string;
+  originalPriceText: string | null;
+  /** 0 이면 할인 배지를 숨긴다 */
+  discountRate: number;
+  stockText: string; // "50개" — 포맷 완료
+  /**
+   * "패션의류/잡화 > 남성의류 > 셔츠".
+   * changes 에는 categoryId 만 있고 이를 경로로 바꾸려면 1,221건짜리 트리가 필요한데
+   * FE 에 그 트리가 없다 — AI 가 스냅샷을 갖고 있어 서버가 변환해 내려준다.
+   */
+  categoryPath: string;
+  summary: string | null;
+  description: string | null;
+  sections: DraftSection[];
+}
+
 /** 상품 상세 수정/삭제/등록 제안(HITL 승인 대기) */
 export interface SellerDraft {
-  draftId: string; // confirm이 참조(보여준 것 == 실행)
+  /**
+   * confirm 이 참조(보여준 것 == 실행).
+   * **캐싱 금지** — 수정 턴마다 새로 발급되고 이전 것은 서버가 무효화한다.
+   * 옛 값으로 confirm 하면 실패한다(브라우저에 남은 카드로 수정 전 값이 등록되는 걸 막는 장치).
+   */
+  draftId: string;
   op: "update" | "create" | "delete";
   productId: string | null; // create는 null 일 수 있음
+  /** 실행 정본 — 승인하면 이 값이 그대로 상품이 된다. 표시에는 쓰지 않는다 */
   changes: {
     field: SellerDraftField | string;
     before: string | number;
     after: string | number;
   }[];
   summary: string; // "가격을 27,500원으로 인하"
+  /** 표시 사본 — op === "create" 에만 온다 */
+  preview?: DraftPreview;
 }
 
 // ── 이벤트 스트림 ──
