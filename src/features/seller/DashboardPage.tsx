@@ -284,8 +284,10 @@ export default function DashboardPage() {
                     <h3 className="text-sm font-semibold text-destructive">
                       재고 부족
                     </h3>
+                    {/* count 는 상품 수가 아니라 재고 부족인 "옵션 수"다(2026-08-09).
+                        "건"으로 두면 상품 개수로 읽혀 실제 목록 길이와 어긋나 보인다. */}
                     <span className={cn("text-sm text-destructive/70", numeric)}>
-                      {data.lowStock.count}건
+                      {data.lowStock.count}개 옵션
                     </span>
                   </div>
                   <Link
@@ -297,11 +299,13 @@ export default function DashboardPage() {
                 </div>
 
                 {/* 카드 격자 대신 구분선 리스트 — 상품명·남은 수량 2개뿐이라
-                    칸을 나눌 이유가 없다. 행이 얇아져 한 번에 더 많이 보인다 */}
+                    칸을 나눌 이유가 없다. 행이 얇아져 한 번에 더 많이 보인다.
+                    한 줄 = 옵션 하나다(2026-08-09) — 같은 상품이 색상별로 여러 줄
+                    나올 수 있어 key 는 productId 만으로는 충돌한다. */}
                 <ul className="flex flex-col divide-y divide-destructive/10">
                   {data.lowStock.items.map((p) => (
                     <li
-                      key={p.productId}
+                      key={p.optionId ?? p.productId}
                       className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
                     >
                       <ProductImage
@@ -309,8 +313,16 @@ export default function DashboardPage() {
                         alt=""
                         className="size-9 shrink-0 rounded-sm bg-muted object-cover"
                       />
+                      {/* 옵션명을 같이 보여야 어느 색을 채울지 알 수 있다 —
+                          상품명만 있으면 같은 이름 줄이 여럿이라 구분되지 않는다 */}
                       <span className="min-w-0 flex-1 truncate text-sm">
                         {p.name}
+                        {p.optionName && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            {p.optionName}
+                          </span>
+                        )}
                       </span>
                       <span
                         className={cn(
