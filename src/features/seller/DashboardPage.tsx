@@ -130,6 +130,34 @@ export default function DashboardPage() {
 
       {data && (
         <>
+          {/* 매출 현황 — 판매자가 가장 먼저 보는 숫자라 맨 위에 둔다.
+              items-start: 카드가 차트보다 짧아 늘어나지 않게.
+              minmax(0,1fr): 차트 열이 콘텐츠 폭에 밀려 넘치지 않게. */}
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+            {/* 이 가드 하나가 곧 실패 처리다 — 집계 실패로 블록이 null 이면 카드가 빠지고
+                그리드 첫 칸이 사라지며 차트가 자동으로 전폭이 된다. 별도 에러 UI 불필요. */}
+            {data.aiAttribution && (
+              <AiAttributionCard data={data.aiAttribution} />
+            )}
+
+            <AnalysisChart
+              analysis={{
+                title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
+                chartType: "line",
+                unit: "KRW",
+                series: [
+                  {
+                    label: "매출",
+                    points: data.salesTrend.points.map((p) => ({
+                      x: shortDate(p.date),
+                      y: p.sales,
+                    })),
+                  },
+                ],
+              }}
+            />
+          </div>
+
           {/* 오늘 할 일 */}
           <section className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -258,33 +286,6 @@ export default function DashboardPage() {
             </h2>
 
             <MetricCards items={toMetrics(data.today)} />
-
-            {/* items-start: 카드가 차트보다 짧아 늘어나지 않게.
-                minmax(0,1fr): 차트 열이 콘텐츠 폭에 밀려 넘치지 않게. */}
-            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-              {/* 이 가드 하나가 곧 실패 처리다 — 집계 실패로 블록이 null 이면 카드가 빠지고
-                  그리드 첫 칸이 사라지며 차트가 자동으로 전폭이 된다. 별도 에러 UI 불필요. */}
-              {data.aiAttribution && (
-                <AiAttributionCard data={data.aiAttribution} />
-              )}
-
-              <AnalysisChart
-                analysis={{
-                  title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
-                  chartType: "line",
-                  unit: "KRW",
-                  series: [
-                    {
-                      label: "매출",
-                      points: data.salesTrend.points.map((p) => ({
-                        x: shortDate(p.date),
-                        y: p.sales,
-                      })),
-                    },
-                  ],
-                }}
-              />
-            </div>
           </section>
         </>
       )}
@@ -295,6 +296,13 @@ export default function DashboardPage() {
 function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-4">
+      {/* 순서는 실제 화면과 같게 둔다 — 다르면 데이터가 도착하는 순간 블록이 뛴다.
+          매출 현황(AI 카드 + 추이 차트) → 오늘 할 일 → 지표 카드 */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <Skeleton className="h-52 rounded-sm" />
+        <Skeleton className="h-64 rounded-sm" />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex flex-col gap-3 rounded-sm border p-5">
@@ -305,7 +313,6 @@ function DashboardSkeleton() {
         ))}
       </div>
       <Skeleton className="h-40 rounded-sm" />
-      <Skeleton className="h-64 rounded-sm" />
     </div>
   );
 }
