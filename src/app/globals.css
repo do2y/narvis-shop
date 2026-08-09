@@ -224,5 +224,28 @@
     /* 스크롤바 폭을 항상 예약 — 스크롤 유무에 따라 뷰포트 너비가 변해
        페이지 이동 시 헤더 요소가 밀리는 것을 방지 */
     scrollbar-gutter: stable;
+    /* 섹션 앵커(#features 등)로 부드럽게 이동한다. JS scrollIntoView 대신
+       CSS로 두는 이유는 아래 모션 감소 블록이 auto 로 덮어주기 때문 —
+       설정 대응을 각 호출부가 따로 신경 쓰지 않아도 된다. */
+    scroll-behavior: smooth;
+    /* sticky 헤더가 앵커 도착 지점을 가리지 않게 그 높이만큼 띄운다.
+       없으면 "주요 기능"으로 이동했을 때 제목이 헤더 뒤에 숨는다. */
+    scroll-padding-top: 5rem;
+  }
+
+  /*
+    모션 감소 설정 — 없애는 게 아니라 "이동"만 걷어낸다.
+    투명도·색 전환은 상태 변화를 이해시키는 정보라 남긴다(그래서 0이 아니라 1ms).
+    반복 애니메이션(히어로 흐름, 아바타 펄스)은 한 번만 돌고 멈춘다.
+  */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
