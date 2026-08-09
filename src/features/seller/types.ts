@@ -53,12 +53,21 @@ export interface SellerAiAttribution {
   aiShare: number | null;
 }
 
-/** 재고 부족 목록의 한 행 — 상품 목록(SellerProductStat)보다 필드가 적다 */
+/**
+ * 재고 부족 목록의 한 행 — 상품 목록(SellerProductStat)보다 필드가 적다.
+ *
+ * 2026-08-09 재고가 옵션별로 내려가면서 **한 줄 = 상품이 아니라 옵션**이 됐다.
+ * 한 상품의 여러 옵션이 동시에 부족하면 같은 productId가 여러 줄로 나온다
+ * (판매자가 채워넣을 대상이 상품이 아니라 옵션이라 묶지 않는다 — 명세).
+ * optionId·optionName은 옵션 없는 상품에서 둘 다 null이다.
+ */
 export interface SellerLowStockItem {
   productId: string;
   name: string;
   imageUrl: string;
   stockQuantity: number;
+  optionId: string | null;
+  optionName: string | null;
 }
 
 export interface SellerSummary {

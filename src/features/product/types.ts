@@ -13,6 +13,18 @@ export interface ProductOption {
   optionId: string;
   name: string; // "화이트/M" — 옵션값 조합
   extraPrice: number; // 옵션 추가금. 선택 시 단가 = price + extraPrice
+  /**
+   * 이 옵션의 남은 재고 (2026-08-09 옵션별 재고 전환).
+   * 상품의 stockQuantity 는 구매 가능한 옵션 재고의 합계라 수량 상한으로 쓸 수 없다
+   * — 합계로 막으면 "빨강 3개 남음"인데 10개까지 담기고 서버가 거절한다.
+   */
+  stockQuantity: number;
+  /**
+   * 옵션은 AVAILABLE·SOLD_OUT 둘뿐이다 — HIDDEN 은 상품 단위 상태라 옵션엔 없다(명세).
+   * 상세는 검색(I-1)과 의도적으로 반대로, 품절 옵션을 숨기지 않고 이유를 보여준다
+   * — "원래 없는 옵션"인지 "품절"인지 구분돼야 재입고를 기다릴지 판단할 수 있다.
+   */
+  purchaseState: Extract<PurchaseState, "AVAILABLE" | "SOLD_OUT">;
 }
 
 // attributes 맵의 값. 백엔드가 필드마다 다른 모양을 넣는다(문자열/null/배열/메타 객체).

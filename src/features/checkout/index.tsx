@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Check } from "lucide-react";
 import { track } from "@/shared/analytics/track";
+import { ApiError } from "@/shared/api/client";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
@@ -170,6 +171,17 @@ export default function CheckoutPage() {
       : paymentFailed.reason === "MOCK_DECLINED"
         ? "결제가 거절됐어요. 결제 수단을 확인한 뒤 다시 시도해주세요."
         : "결제에 실패했어요. 결제 수단을 확인한 뒤 다시 시도해주세요.";
+
+  // 다시 눌러도 성공할 수 없는 실패 — 결제 버튼을 장바구니 이동으로 바꾼다.
+  // 두 경로가 같은 "재고 없음"인데 응답이 갈린다:
+  //   200 PAYMENT_FAILED + OUT_OF_STOCK — 선검증을 통과한 뒤 경합으로 밀린 건
+  //   400 ORDER_PRODUCT_UNAVAILABLE     — 선검증에서 걸린 건(품절·판매중지)
+  // 400 쪽이 빠져 있어 "장바구니에서 빼고 다시 시도하세요"라고 안내하면서도
+  // 결제 버튼이 살아 있었다(08-05 재고 선검증이 400으로 갈라질 때 누락).
+  const orderRejected =
+    createOrder.error instanceof ApiError &&
+    createOrder.error.code === "ORDER_PRODUCT_UNAVAILABLE";
+  const unrecoverable = paymentFailed?.reason === "OUT_OF_STOCK" || orderRejected;
 
   const handleSubmit = async () => {
     if (createOrder.isPending || retryPayment.isPending) return;
@@ -358,8 +370,11 @@ export default function CheckoutPage() {
                 retryPayment.errorMessage
               }
               // 재고 부족은 재결제해도 실패하므로 결제 버튼 자체를 장바구니 이동으로 바꾼다
-              unrecoverable={paymentFailed?.reason === "OUT_OF_STOCK"}
+              unrecoverable={unrecoverable}
               onSubmit={handleSubmit}
+              // 결제 항목은 sessionStorage 스냅샷이라 장바구니에서 빼고 와도 그대로 남는다.
+              // 비우지 않으면 뒤로가기로 돌아왔을 때 방금 뺀 상품이 다시 보인다.
+              onLeave={clearCheckoutState}
             />
           </div>
         </div>
