@@ -11,16 +11,19 @@ import {
   type EditEdgeObject,
   type EditEdgeRequest,
   type PreferenceEdge,
-  type PreferenceNode,
+  type PreferenceObject,
   type PreferencePredicate,
 } from "../types";
 
 interface EditEdgeDialogProps {
   edge: PreferenceEdge;
-  /** 화면에 있는 노드들 — 자동완성 후보 */
-  nodes: PreferenceNode[];
-  /** 수정 대상의 현재 대상 노드 */
-  currentNode: PreferenceNode | undefined;
+  /**
+   * 자동완성 후보 — 화면에 있는 모든 대상.
+   *
+   * 확정 계약에는 nodes[] 배열이 없고 대상이 edge마다 인라인되므로,
+   * 호출부가 edges에서 object를 모아 중복을 제거해 넘긴다.
+   */
+  candidates: PreferenceObject[];
   isPending: boolean;
   onClose: () => void;
   onSubmit: (body: EditEdgeRequest) => void;
@@ -37,21 +40,22 @@ interface EditEdgeDialogProps {
  * 허용한다. 모달이 오히려 "수정 중인 항목을 가리지 않게" 요구를 자동으로
  * 만족한다(중앙 정렬 + 대상 이름을 창 안에 다시 적음).
  *
- * 자동완성 후보는 M-11 응답의 nodes다 — 대상 검색 API가 계약에 없다.
+ * 자동완성 후보는 화면에 있는 대상들이다 — 대상 검색 API가 계약에 없다.
  * 고른 경우 nodeId를, 새로 입력한 경우에만 type+label을 보낸다.
  */
 export function EditEdgeDialog({
   edge,
-  nodes,
-  currentNode,
+  candidates,
   isPending,
   onClose,
   onSubmit,
 }: EditEdgeDialogProps) {
+  const currentObject = edge.object;
+
   const [predicate, setPredicate] = useState<PreferencePredicate>(edge.predicate);
-  const [query, setQuery] = useState(currentNode?.label ?? "");
-  // 자동완성에서 고른 노드. null이면 사용자가 직접 입력한 것으로 본다.
-  const [picked, setPicked] = useState<PreferenceNode | null>(currentNode ?? null);
+  const [query, setQuery] = useState(currentObject.label);
+  // 자동완성에서 고른 대상. null이면 사용자가 직접 입력한 것으로 본다.
+  const [picked, setPicked] = useState<PreferenceObject | null>(currentObject);
 
   const trimmed = query.trim();
 
@@ -61,16 +65,16 @@ export function EditEdgeDialog({
     if (trimmed.length === 0) return [];
     if (picked && picked.label === trimmed) return [];
     const lower = trimmed.toLowerCase();
-    return nodes
+    return candidates
       .filter((n) => n.label.toLowerCase().includes(lower))
       .slice(0, 6);
-  }, [nodes, picked, trimmed]);
+  }, [candidates, picked, trimmed]);
 
   const predicateChanged = predicate !== edge.predicate;
-  // 대상이 바뀌었나 — 고른 노드가 다르거나, 직접 입력한 문자열이 원래와 다르거나
+  // 대상이 바뀌었나 — 고른 대상이 다르거나, 직접 입력한 문자열이 원래와 다르거나
   const objectChanged = picked
-    ? picked.nodeId !== edge.to
-    : trimmed.length > 0 && trimmed !== (currentNode?.label ?? "");
+    ? picked.nodeId !== currentObject.nodeId
+    : trimmed.length > 0 && trimmed !== currentObject.label;
 
   // 둘 중 최소 하나는 바뀌어야 한다. 아무것도 안 바꾸고 [저장]을 누르면
   // 그대로 보내지 말고 창만 닫는다 — 서버는 400을 낸다(노션 3.4).
@@ -106,7 +110,7 @@ export function EditEdgeDialog({
       const object: EditEdgeObject =
         picked && picked.label === trimmed
           ? { nodeId: picked.nodeId }
-          : { type: currentNode?.type ?? "attribute", label: trimmed };
+          : { type: currentObject.type, label: trimmed };
       body.object = object;
     }
 

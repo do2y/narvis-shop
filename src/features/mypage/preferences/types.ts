@@ -1,16 +1,19 @@
-// 개인화 취향 프로필 데이터 계약 — 노션 「개인화 마이페이지 구현」 5장과 1:1.
+// 개인화 취향 프로필 데이터 계약.
 //
-// ⚠️ API 5종은 아직 BE 초안이다(노션 12장). 경로·필드가 바뀔 수 있으므로
-// 계약 표현은 이 파일과 api.ts 두 곳에만 두고, 화면 코드는 여기 타입만 본다.
+// 정본: docs/plans/personalization-contract-2026-08-09.md (노션 M-11~M-16 / I-32~I-37)
+// 2026-08-09 BE·FE 협의 완료 — 구현 근거로 쓸 수 있다.
 //
-// M-14(되돌리기)는 폐기됐다 — 번호가 빈 것이지 누락이 아니다.
-// 그래서 응답에 suppressed·suppressedAt·restorable이 없고, 삭제는 즉시 영구다.
+// ⚠️ 이 파일은 한 번 축소됐다. 8/07 초안에 있던 nodes[]·confidence·source·origin·
+// verified·usagePolicy·truncated 등은 **확정 응답에 없다.** 화면에서 쓰고 싶으면
+// 계약 개정(C-25)이 먼저다 — 없는 필드를 낙관적으로 되살리지 말 것.
+//
+// M-14(되돌리기)는 폐기됐다. 번호가 빈 것이지 누락이 아니다.
 
 /**
  * 취향 대상의 종류.
  *
  * 수정 창에서 사용자가 새 대상을 직접 입력할 때도 이 값을 실어 보낸다
- * (자동완성으로 고른 경우는 nodeId를 쓴다 — EditEdgeRequest 주석 참조).
+ * (자동완성으로 고른 경우는 nodeId를 쓴다 — EditEdgeObject 주석 참조).
  */
 export type PreferenceNodeType =
   | "brand"
@@ -40,9 +43,10 @@ export type PreferencePredicate =
 /**
  * 화면 표시 순서 = 서버 정렬 순서.
  *
- * 서버가 이 순서로 내려주므로 **클라이언트가 재정렬하지 않는다**. 여기 배열은
- * 그룹으로 묶을 때 순회 기준으로만 쓴다(빈 그룹도 자리를 지켜야 해서, edges에
- * 없는 predicate까지 훑어야 한다).
+ * 서버 정렬은 predicate(이 순서) → 최근 확인 시각 내림차순 → edgeId 오름차순으로
+ * 고정이다. **클라이언트가 재정렬하지 않는다.** 여기 배열은 그룹으로 묶을 때
+ * 순회 기준으로만 쓴다(빈 그룹도 자리를 지켜야 해서, edges에 없는 predicate까지
+ * 훑어야 한다).
  */
 export const PREDICATE_ORDER: readonly PreferencePredicate[] = [
   "prefers",
@@ -52,7 +56,7 @@ export const PREDICATE_ORDER: readonly PreferencePredicate[] = [
   "purchased",
 ] as const;
 
-/** 그룹 헤더에 쓰는 한국어 라벨 (노션 10.2) */
+/** 그룹 헤더에 쓰는 한국어 라벨 */
 export const PREDICATE_LABEL: Record<PreferencePredicate, string> = {
   prefers: "선호",
   likes: "좋아함",
@@ -73,102 +77,65 @@ export const EDITABLE_PREDICATES: readonly PreferencePredicate[] = [
   "interestedIn",
 ] as const;
 
-/** AI가 이 취향을 얼마나 확신하는가 */
-export type PreferenceConfidence = "HIGH" | "MEDIUM" | "LOW";
-
 /**
- * 확신도 문구.
+ * 취향의 대상. **별도 nodes[] 배열이 없고 edge 안에 인라인된다.**
  *
- * "신뢰도 85%" 같은 수치형 표현을 쓰지 않는 이유: 3단계 경계값이 서버 설정이라
- * 바뀔 수 있는데, 수치 라벨은 경계가 바뀌면 그대로 거짓이 된다.
+ * 대상당 항목이 사실상 1개라 정규화 이득이 없고, 조인이 없으면 "라벨 없는 항목·
+ * 항목 없는 라벨"이 원리적으로 생기지 않는다. 수정 요청(M-12)의 object와 모양이
+ * 같아 항목을 그대로 요청에 재활용할 수 있다.
  */
-export const CONFIDENCE_LABEL: Record<PreferenceConfidence, string> = {
-  HIGH: "확실해요",
-  MEDIUM: "그런 것 같아요",
-  LOW: "아직 확실하지 않아요",
-};
-
-/** 이 취향을 어디서 알게 되었나 */
-export type PreferenceSource = "conversation" | "purchase" | "user";
-
-/**
- * "왜 이 취향이 있나요"에 답할 수 있는 재료는 source와 lastConfirmedAt 둘뿐이다.
- * 원래 발화를 되돌려 보여주는 것은 금지이고, 서버가 주지도 않는다(노션 3.3).
- */
-export const SOURCE_LABEL: Record<PreferenceSource, string> = {
-  conversation: "대화에서 알게 되었어요",
-  purchase: "구매 내역에서 알게 되었어요",
-  user: "직접 수정하셨어요",
-};
-
-/** 누가 만든 취향인가 — user면 "내가 수정함" 배지 */
-export type PreferenceOrigin = "machine" | "user";
-
-/** 취향의 대상. edges[].to가 이 nodeId를 참조한다. */
-export interface PreferenceNode {
+export interface PreferenceObject {
   /** 내부 식별자 — "category:음향가전 > 블루투스 이어폰" 형태. **화면에 표시 금지** */
   nodeId: string;
   type: PreferenceNodeType;
   /** 화면에 보여줄 이름 — nodeId 대신 항상 이 값을 쓴다 */
   label: string;
-  /** false면 추천에서 빠질 수 있는 대상 → 점선 테두리 */
-  verified: boolean;
 }
 
 /**
  * 취향 한 줄 — "나 → 관계 → 대상".
  *
  * 출발점(from)이 없는 것은 누락이 아니다. 항상 "나"라서 일부러 뺐다.
- * 넣으면 "여러 단계로 이어진 그래프"라는 잘못된 신호가 된다(노션 10.1).
+ * 넣으면 "여러 단계로 이어진 그래프"라는 잘못된 신호가 된다.
  */
 export interface PreferenceEdge {
   /**
    * ⚠️ (관계, 대상)에서 파생되는 값이라 **수정하면 바뀐다.**
    * 수정 응답의 edge.edgeId로 클라이언트 키를 교체하지 않으면 다음
    * 수정·삭제가 전부 404다. 이 계약에서 가장 놓치기 쉬운 지점.
+   *
+   * 랜덤 id를 쓰지 않는 이유는 재파생 때 새 id로 부활해 삭제 표식을
+   * 비켜가기 때문이다.
    */
   edgeId: string;
-  /** PreferenceNode.nodeId 참조 */
-  to: string;
   predicate: PreferencePredicate;
-  source: PreferenceSource;
-  origin: PreferenceOrigin;
-  confidence: PreferenceConfidence;
-  firstSeenAt: string; // ISO 일시
-  lastConfirmedAt: string; // ISO 일시 — "최근 확인 7월 29일"
-  /** false = 구매 기록. ✏️만 비활성이고 🗑은 살아 있다 */
+  object: PreferenceObject;
+  /** false = 구매 파생. ✏️만 비활성이고 🗑은 살아 있다 */
   editable: boolean;
-  /** true면 "최근 취향이 바뀐 것 같아요" 배지 (색은 바꾸지 않음) */
-  challenged: boolean;
   /**
-   * 🔒 **시각적 차이를 두면 안 된다.**
-   * 다르게 보이는 것 자체가 "이 취향은 민감한 정보에서 나왔다"는 공개다.
-   * 일반 항목과 완전히 똑같이 그린다(노션 3.3·7장).
+   * 사용자가 고친 뒤 반대 관측이 임계 이상 쌓였다는 힌트. 상태는 바뀌지 않는다.
    *
-   * 타입에는 남겨두되 화면에서 읽지 않는다 — 계약에 있는 필드라 지우지 않는다.
+   * **표시가 아니라 동작 트리거다** — FE가 "다시 반영할까요?"를 띄울지 판단하는
+   * 값이고, 이게 없으면 AI가 사용자 수정에 이견이 있어도 알릴 방법이 사라진다.
    */
-  derivedFromSensitive: boolean;
+  challenged: boolean;
 }
+
+// 응답에 `lastConfirmedAt`(마지막 관측 시각)이 없다. 추가를 검토했으나
+// **요청하지 않기로 했다**(2026-08-10):
+//   ① 관측 시각은 사용자 언어가 아니라 시스템 언어다 — "최근 확인 7월 29일"을
+//      보면 사용자는 자기 행동을 떠올리려다 못 찾는다
+//   ② **오래된 게 틀린 게 아닌데** 날짜가 낡음의 신호로 읽혀 잘못된 삭제를 유도한다
+// 지울지 말지는 "이게 내 취향이 맞나"로 판단하는 것이고, 그건 label이면 된다.
 
 /**
- * 이 데이터를 어디에 쓸 수 있는가.
+ * 개인화 사용 여부.
  *
- * ⚠️ **filterSafe는 읽고 분기할 값이 아니다.** 항상 false로 오며,
- * "이 데이터를 검색 필터로 바꾸는 것은 계약 위반"을 응답에 박아둔 표지판이다.
- *
- * 프로필을 필터 생성 단계에 주입했다가 회원 추천이 비회원보다 나빠진 실측
- * 회귀가 있다(nDCG@10 −0.288, 31턴 중 29턴에서 가격·브랜드·평점 축 오염).
- * 취향은 추천 **순서**에만 쓰고 후보를 **걸러내는 데** 쓰지 않는다.
+ * 끄면 사용·수집이 동시에 멈추고 **데이터는 보존된다**(지우는 것은 M-15로 별개).
+ * 중지 시각은 저장 모델에만 있고 응답에는 오지 않는다.
  */
-export interface PreferenceUsagePolicy {
-  orderOnly: boolean;
-  filterSafe: boolean;
-}
-
-/** 개인화 사용 여부 — 끄면 수집·사용이 멈추고 데이터는 보존된다 */
 export interface PersonalizationState {
   enabled: boolean;
-  disabledAt: string | null;
 }
 
 /** M-11 조회 응답 — 화면 전체가 이 하나로 그려진다 */
@@ -179,19 +146,26 @@ export interface ProfileGraph {
    * 빈 화면 안내로 처리하되 개인화 스위치와 [전체 초기화]는 그대로 보인다.
    */
   exists: boolean;
-  /** 좌상단 요약 문단. LLM 생성 문자열이라 HTML을 허용하지 않고 렌더한다 */
+  /**
+   * 좌상단 요약 문단. LLM 생성 문자열이라 HTML을 허용하지 않고 렌더한다.
+   *
+   * 배치(sleep-time consolidation) 산출물이라 **항상 최신이 아니다** —
+   * 수정·삭제 직후에는 이전 내용이고, edges는 즉시 반영되므로 두 영역이
+   * 일시적으로 어긋난다. generatedAt이 기준 시각이다.
+   */
   markdown: string | null;
   generatedAt: string | null;
   /** ★ 보관 필수 — If-Match로 되돌려 보낸다. 불투명 문자열이라 파싱·비교 금지 */
   graphVersion: string;
   personalization: PersonalizationState;
-  usagePolicy: PreferenceUsagePolicy;
-  nodes: PreferenceNode[];
+  /**
+   * **전량 실린다 — 서버 화면 상한이 없다.**
+   *
+   * 서버가 자르면 상한 밖 항목을 사용자가 보지도 지우지도 못해(전체 초기화
+   * 말고는 정리 수단이 없어짐) 화면 목적과 정면으로 부딪힌다. 화면 부담은
+   * FE가 일부만 렌더하고 "전체 보기"로 펼치는 방식으로 푼다.
+   */
   edges: PreferenceEdge[];
-  /** 관측용 — **사용자에게 노출 금지**(그 개수 자체가 민감 정보 유출) */
-  unprojectedCount: number;
-  /** true = 서버 상한 200개에서 잘림. 페이지네이션은 계약에 없다 */
-  truncated: boolean;
 }
 
 /**
@@ -207,7 +181,7 @@ export type EditEdgeObject =
 /**
  * M-12 수정 요청.
  *
- * predicate·object 중 최소 하나는 바뀌어야 한다. 아무것도 안 바꾸고 저장을
+ * predicate·object 중 최소 하나는 있어야 한다. 아무것도 안 바꾸고 저장을
  * 누르면 그대로 보내지 말고 창만 닫는다(서버는 400을 낸다).
  */
 export interface EditEdgeRequest {
@@ -220,7 +194,10 @@ export interface EditEdgeResponse {
   userId: number;
   /** ★ 보관값 갱신 */
   graphVersion: string;
-  /** ★ edgeId가 요청에 쓴 값과 다를 수 있다 — 클라이언트 키를 이걸로 교체 */
+  /**
+   * ★ edgeId가 요청에 쓴 값과 다를 수 있다 — 클라이언트 키를 이걸로 교체.
+   * M-11 목록 항목과 **완전히 같은 모양**이라 해당 항목을 통째로 교체하면 된다.
+   */
   edge: PreferenceEdge;
   /**
    * true = 고친 내용이 이미 있던 다른 항목과 합쳐졌다.
@@ -251,11 +228,13 @@ export interface ResetGraphRequest {
   scope: ResetScope;
 }
 
-/** 초기화로 실제 삭제된 것 — 결과 안내에 쓴다 */
+/**
+ * 초기화로 실제 삭제된 것 — **개수만** 온다(라벨·원문은 싣지 않는다).
+ *
+ * 화면 문구는 "취향 12건 · 대화 기록 143건"이면 충분하다.
+ */
 export interface PurgedCounts {
   edges: number;
-  nodes: number;
-  facts: number;
   /** ★ 대화 기록. 사용자가 가장 놓치기 쉬운 항목이라 안내에 반드시 포함 */
   transcriptTurns: number;
 }
@@ -265,7 +244,7 @@ export interface ResetGraphResponse {
   userId: number;
   graphVersion: string;
   purged: PurgedCounts;
-  /** 초기화해도 개인화 ON/OFF 설정은 바뀌지 않는다 */
+  /** 초기화해도 개인화 ON/OFF 설정은 바뀌지 않는다 — 지우기와 끄기는 별개 제어다 */
   personalization: PersonalizationState;
   replayed: boolean;
 }
@@ -288,7 +267,7 @@ export interface SetPersonalizationResponse {
 
 /** 버전 충돌 — 재조회하면 풀린다 */
 export const PROFILE_VERSION_CONFLICT = "PROFILE_VERSION_CONFLICT";
-/** 구매 기록을 수정하려 함 — 몇 번을 해도 안 된다. 재시도 금지 */
+/** 구매 파생 항목을 수정하려 함 — 몇 번을 해도 안 된다. 재시도 금지 */
 export const PROFILE_EDGE_NOT_EDITABLE = "PROFILE_EDGE_NOT_EDITABLE";
 /** 이미 삭제되었거나 변경된 항목 */
 export const PROFILE_EDGE_NOT_FOUND = "PROFILE_EDGE_NOT_FOUND";
@@ -312,7 +291,12 @@ export function isNotEditableConflict(code: string): boolean {
 // 화면 조립 헬퍼
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** 한 그룹에 표시할 최대 항목 수. 초과분은 `+N개 더`로 접는다(노션 3.2) */
+/**
+ * 목록 뷰에서 한 그룹에 표시할 최대 항목 수. 초과분은 `+N개 더`로 접는다.
+ *
+ * 서버 상한(옛 200개)이 폐지되어 edges가 전량 오므로 **화면 상한은 FE 소유**다.
+ * 방사형 그래프는 라벨이 겹치는 한계가 따로 있어 더 작다(graphLayout.ts).
+ */
 export const GROUP_DISPLAY_LIMIT = 12;
 
 /** 관계별로 묶은 그룹 — 빈 그룹도 자리를 지켜야 해서 항상 5개가 나온다 */
@@ -339,16 +323,4 @@ export function groupEdgesByPredicate(
     label: PREDICATE_LABEL[predicate],
     edges: edges.filter((e) => e.predicate === predicate),
   }));
-}
-
-/**
- * nodeId → 노드 조회용 맵.
- *
- * edges[].to가 nodeId 문자열이라 라벨을 찾으려면 매번 nodes를 훑어야 하는데,
- * 항목이 200개까지 올 수 있어 렌더마다 선형 탐색을 반복하면 O(n²)이 된다.
- */
-export function indexNodes(
-  nodes: readonly PreferenceNode[],
-): Map<string, PreferenceNode> {
-  return new Map(nodes.map((n) => [n.nodeId, n]));
 }
