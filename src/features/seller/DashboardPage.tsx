@@ -130,15 +130,50 @@ export default function DashboardPage() {
 
       {data && (
         <>
+          {/* 매출 현황 — 판매자가 가장 먼저 보는 숫자라 맨 위에 둔다.
+              높이는 grid 기본값(stretch)으로 둘을 맞춘다 — items-start 로 두면
+              짧은 카드 아래에 빈 공간이 남아 두 박스가 어긋나 보인다.
+              minmax(0,1fr): 차트 열이 콘텐츠 폭에 밀려 넘치지 않게. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+            {/* 이 가드 하나가 곧 실패 처리다 — 집계 실패로 블록이 null 이면 카드가 빠지고
+                그리드 첫 칸이 사라지며 차트가 자동으로 전폭이 된다. 별도 에러 UI 불필요. */}
+            {data.aiAttribution && (
+              <AiAttributionCard data={data.aiAttribution} />
+            )}
+
+            <AnalysisChart
+              compact
+              analysis={{
+                title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
+                chartType: "line",
+                unit: "KRW",
+                series: [
+                  {
+                    label: "매출",
+                    points: data.salesTrend.points.map((p) => ({
+                      x: shortDate(p.date),
+                      y: p.sales,
+                    })),
+                  },
+                ],
+              }}
+            />
+          </div>
+
           {/* 오늘 할 일 */}
           <section className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold tracking-tight">오늘 할 일</h2>
+                {/* 처리할 일이 있을 때만 배지가 눈에 띈다 — 0건에도 같은 톤이면
+                    "할 일 있음"으로 잘못 읽힌다 */}
                 <span
                   className={cn(
-                    "rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold text-muted-foreground",
+                    "rounded-full px-2.5 py-0.5 text-sm font-semibold",
                     numeric,
+                    data.orderStatus.activeTotal > 0
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground",
                   )}
                 >
                   {data.orderStatus.activeTotal}건
@@ -150,7 +185,14 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {TODO_CARDS.map((c) => (
+              {TODO_CARDS.map((c) => {
+                const count = data.orderStatus.counts[c.status] ?? 0;
+                // 0건이면 눌러도 빈 목록이다 — 같은 무게로 두면 처리할 일이 있는
+                // 카드와 구분이 안 된다. 숫자를 흐리게 내려 "여긴 볼 것 없다"를
+                // 한눈에 읽히게 한다. 카드 자체는 남긴다 — 자리가 고정돼야 다음에 찾기 쉽다.
+                const idle = count === 0;
+
+                return (
                 <Link
                   key={c.status}
                   href={`/seller/orders?status=${c.status}`}
@@ -158,13 +200,17 @@ export default function DashboardPage() {
                     "flex flex-col gap-3 rounded-sm border bg-background p-4 sm:p-5",
                     pressableCard,
                     "hover:[@media(hover:hover)]:shadow-md",
-                    c.primary && "border-foreground",
+                    // 강조는 처리할 일이 실제로 있을 때만 — 0건인데 테두리가 진하면
+                    // 시선을 뺏고도 알려줄 게 없다
+                    c.primary && !idle && "border-foreground",
                   )}
                 >
                   <span
                     className={cn(
                       "text-sm font-semibold",
-                      c.primary ? "text-foreground" : "text-muted-foreground",
+                      c.primary && !idle
+                        ? "text-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     {c.label}
@@ -173,9 +219,10 @@ export default function DashboardPage() {
                     className={cn(
                       "text-2xl font-bold tracking-tight",
                       numeric,
+                      idle && "text-muted-foreground/40",
                     )}
                   >
-                    {data.orderStatus.counts[c.status] ?? 0}건
+                    {count}건
                   </span>
                   {/* 배송 중 카드에만 평균 배송일 — 나머지는 붙일 지표가 없다.
                       표본(배송 완료 건)이 없으면 null 이라 문구를 숨긴다 —
@@ -187,7 +234,8 @@ export default function DashboardPage() {
                       : " "}
                   </span>
                 </Link>
-              ))}
+                );
+              })}
             </div>
 
             {/* 재고 부족 알림 */}
@@ -258,33 +306,6 @@ export default function DashboardPage() {
             </h2>
 
             <MetricCards items={toMetrics(data.today)} />
-
-            {/* items-start: 카드가 차트보다 짧아 늘어나지 않게.
-                minmax(0,1fr): 차트 열이 콘텐츠 폭에 밀려 넘치지 않게. */}
-            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-              {/* 이 가드 하나가 곧 실패 처리다 — 집계 실패로 블록이 null 이면 카드가 빠지고
-                  그리드 첫 칸이 사라지며 차트가 자동으로 전폭이 된다. 별도 에러 UI 불필요. */}
-              {data.aiAttribution && (
-                <AiAttributionCard data={data.aiAttribution} />
-              )}
-
-              <AnalysisChart
-                analysis={{
-                  title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
-                  chartType: "line",
-                  unit: "KRW",
-                  series: [
-                    {
-                      label: "매출",
-                      points: data.salesTrend.points.map((p) => ({
-                        x: shortDate(p.date),
-                        y: p.sales,
-                      })),
-                    },
-                  ],
-                }}
-              />
-            </div>
           </section>
         </>
       )}
@@ -295,6 +316,13 @@ export default function DashboardPage() {
 function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-4">
+      {/* 순서는 실제 화면과 같게 둔다 — 다르면 데이터가 도착하는 순간 블록이 뛴다.
+          매출 현황(AI 카드 + 추이 차트) → 오늘 할 일 → 지표 카드 */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <Skeleton className="h-44 rounded-sm" />
+        <Skeleton className="h-44 rounded-sm" />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex flex-col gap-3 rounded-sm border p-5">
@@ -305,7 +333,6 @@ function DashboardSkeleton() {
         ))}
       </div>
       <Skeleton className="h-40 rounded-sm" />
-      <Skeleton className="h-64 rounded-sm" />
     </div>
   );
 }

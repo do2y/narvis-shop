@@ -20,11 +20,22 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
   const aiPct = total > 0 ? (data.aiSales / total) * 100 : 0;
 
   return (
-    <section className="flex flex-col gap-4 rounded-sm border border-l-2 border-l-brand bg-background p-4 sm:p-6">
-      <h3 className="text-base font-bold tracking-tight">AI 추천 경유 매출</h3>
+    <section className="flex flex-col gap-3 rounded-sm border border-l-2 border-l-brand bg-background p-4 sm:p-5">
+      {/* 값이 주인공이라 제목은 한 단 내린다 — 같은 무게면 시선이 갈린다.
+          (한글이라 uppercase·wide tracking 은 쓰지 않는다 — 자간만 벌어져 읽기 나빠진다) */}
+      <h3 className="text-sm font-medium text-muted-foreground">
+        AI 추천 경유 매출
+      </h3>
 
       <div>
-        <p className={cn("text-3xl font-bold tracking-tight", numeric)}>
+        {/* 큰 숫자일수록 자간이 벌어져 보인다 — 행간을 좁혀 금액 덩어리가
+            하나로 읽히게 한다(작은 본문은 건드리지 않는다) */}
+        <p
+          className={cn(
+            "text-3xl font-bold leading-tight tracking-tight",
+            numeric,
+          )}
+        >
           {formatMetric(data.aiSales, "KRW")}
         </p>
         <p className="text-sm text-muted-foreground">
@@ -36,7 +47,9 @@ export function AiAttributionCard({ data }: { data: SellerAiAttribution }) {
         </p>
       </div>
 
-      <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+      {/* mt-auto: 차트와 높이를 맞추느라 카드가 늘어날 때 남는 공간을 여기서 흡수한다.
+          안 주면 여백이 항목 사이사이로 갈려 들어가 요소가 흩어져 보인다 */}
+      <div className="mt-auto flex h-2 overflow-hidden rounded-full bg-muted">
         <div className="bg-brand" style={{ width: `${aiPct}%` }} />
       </div>
 

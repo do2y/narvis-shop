@@ -60,13 +60,6 @@ interface OrderListProps {
   page: number; // 0-base (API 기준)
   onTabChange: (tab: SellerOrderTab) => void;
   onPageChange: (page: number) => void;
-  /**
-   * 표 헤더를 고정할 위치(sticky top). 스크롤 컨테이너가 무엇인지는 부모만 안다 —
-   * 단독 페이지는 뷰포트가 스크롤하고 그 위에 h-16 헤더가 떠 있어 `top-16`,
-   * 챗 워크스페이스는 자체 overflow-y-auto 안이라 `top-0` 이다.
-   * 여기서 한 값으로 고정하면 둘 중 하나는 헤더 뒤로 숨는다.
-   */
-  stickyHeaderClass?: string;
 }
 
 /**
@@ -79,7 +72,6 @@ export function OrderList({
   page,
   onTabChange,
   onPageChange,
-  stickyHeaderClass,
 }: OrderListProps) {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
@@ -121,19 +113,17 @@ export function OrderList({
           <div className="overflow-x-auto rounded-sm border bg-background">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
-                {/* 헤더 고정 — 목록이 길어도 어느 열을 보는지 잃지 않게.
-                    th 에 걸어야 한다(thead·tr 은 sticky 가 먹지 않는다).
-                    고정 위치는 부모가 준다(스크롤 컨테이너를 부모만 안다) —
-                    안 주면 고정하지 않는다(잘못된 위치에 붙는 것보다 낫다). */}
+                {/* 헤더는 고정하지 않는다.
+                    표가 가로 스크롤을 위해 overflow-x-auto 안에 있는데, overflow 가
+                    auto/hidden/clip 중 무엇이든 그 div 가 sticky 의 스크롤 컨테이너가
+                    된다. 그러면 th 는 뷰포트가 아니라 그 상자 기준으로 top 만큼
+                    내려간 자리에 박혀 첫 행을 덮는다(실측: thead y=211, th y=275).
+                    가로 스크롤을 포기하지 않는 한 이 조합으로는 sticky 를 쓸 수 없고,
+                    한 페이지 10건 남짓이라 고정의 이득도 크지 않다. */}
                 <tr
                   className={cn(
                     "text-xs text-muted-foreground",
-                    "[&>th]:border-b [&>th]:bg-muted/40 [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
-                    stickyHeaderClass &&
-                      cn(
-                        "[&>th]:sticky [&>th]:z-10 [&>th]:backdrop-blur",
-                        stickyHeaderClass,
-                      ),
+                    "[&>th]:border-b [&>th]:bg-muted [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
                   )}
                 >
                   <th className="text-left">주문번호</th>
