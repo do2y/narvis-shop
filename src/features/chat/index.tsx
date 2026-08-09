@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Plus } from "lucide-react";
 import { ChatLayout } from "@/shared/chat/ChatLayout";
+import { NewChatButton } from "@/shared/chat/NewChatButton";
 import { ClaimFailureBanner } from "@/shared/chat/ClaimFailureBanner";
 import {
   dismissClaimFailure,
@@ -117,20 +117,9 @@ export default function ChatPage() {
       onSend={send}
       onRetry={retry}
       isStreaming={isStreaming}
-      /* "새 대화"는 헤더 로고 옆에 — 대화 영역을 차지하지 않게(기존 배치 유지) */
-      header={
-        <AppHeader
-          leftSlot={
-            <button
-              type="button"
-              onClick={startNewChat}
-              className="flex items-center gap-1 border-l pl-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground active:scale-95"
-            >
-              <Plus className="size-4" />새 대화
-            </button>
-          }
-        />
-      }
+      /* "새 대화"는 헤더 로고 옆에 — 대화 영역을 차지하지 않게(기존 배치 유지).
+         판매자 챗(/seller/chat)도 같은 컴포넌트를 같은 자리에 쓴다 */
+      header={<AppHeader leftSlot={<NewChatButton onClick={startNewChat} />} />}
       /* 로그인 승계 실패 안내 — 미해결이면 전송이 막히므로 여기서 진로를 고른다 */
       notice={
         <ClaimFailureBanner
