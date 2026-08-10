@@ -76,6 +76,49 @@ describe("buildSummaryStats", () => {
     expect(stats.recent[0]).toBe("관심0"); // 서버 순서 보존
   });
 
+  it("단서를 (관계, 대상 종류) 조합으로 뽑는다", () => {
+    /*
+      요약 문단을 파싱하지 않는다는 것이 이 테스트의 요점이다.
+      "소니 제품을 선호로 등록하셨어요" 같은 LLM 문장은 문형이 언제든 바뀌지만,
+      같은 사실이 edge 에 (prefers, brand) 로 구조화돼 있다.
+    */
+    const stats = buildSummaryStats([
+      edge("prefers", "소니", "brand"),
+      edge("interestedIn", "출퇴근", "situation"),
+      edge("likes", "무광 블랙", "attribute"),
+    ]);
+
+    expect(stats.facets).toEqual([
+      { label: "선호 브랜드", value: "소니", extra: undefined },
+      { label: "주요 상황", value: "출퇴근", extra: undefined },
+      { label: "좋아하는 느낌", value: "무광 블랙", extra: undefined },
+    ]);
+  });
+
+  it("해당 데이터가 없는 단서 칸은 만들지 않는다", () => {
+    // 억지로 채우거나 추론하지 않는다 — 없는 칸은 화면에서도 통째로 빠진다
+    const stats = buildSummaryStats([
+      edge("prefers", "소니", "brand"),
+      edge("prefers", "무선", "attribute"), // likes 가 아니라 prefers → 단서 아님
+    ]);
+
+    expect(stats.facets).toEqual([
+      { label: "선호 브랜드", value: "소니", extra: undefined },
+    ]);
+  });
+
+  it("단서에 보조값을 하나까지 덧붙인다", () => {
+    const stats = buildSummaryStats([
+      edge("likes", "무광 블랙", "attribute"),
+      edge("likes", "광택", "attribute"),
+      edge("likes", "화이트", "attribute"), // 셋째부터는 쓰지 않는다
+    ]);
+
+    expect(stats.facets).toEqual([
+      { label: "좋아하는 느낌", value: "무광 블랙", extra: "광택" },
+    ]);
+  });
+
   it("가장 많이 나온 대상 종류를 센다", () => {
     const stats = buildSummaryStats([
       edge("prefers", "소니", "brand"),

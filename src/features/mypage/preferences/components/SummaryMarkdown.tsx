@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { parseSummary, type SummaryInline } from "../parseSummary";
 
 /**
@@ -42,14 +43,27 @@ export function SummaryMarkdown({
    * 두 번 나온다.
    */
   hideHeading = false,
+  /**
+   * 핵심 문장(첫 문단)만 그린다.
+   *
+   * 요약 카드에서 쓴다 — 마크다운의 불릿("소니 제품을 선호로 등록하셨어요")은
+   * **이미 edge 에 구조화된 사실을 문장으로 늘여 쓴 것**이라, 카드에서는
+   * `선호 브랜드 소니` 같은 라벨+값(SummaryFacet)으로 따로 보여준다.
+   * 둘을 함께 그리면 같은 내용이 두 번 나온다.
+   */
+  headlineOnly = false,
 }: {
   markdown: string;
   hideHeading?: boolean;
+  headlineOnly?: boolean;
 }) {
   const parsed = parseSummary(markdown);
-  const blocks = hideHeading
+  const filtered = hideHeading
     ? parsed.filter((b) => b.type !== "heading")
     : parsed;
+  // 첫 문단 하나만. 제목은 위에서 이미 걸러졌다.
+  const headline = filtered.find((b) => b.type === "paragraph");
+  const blocks = headlineOnly ? (headline ? [headline] : []) : filtered;
 
   // 문법만 있고 내용이 없는 문자열이 올 수 있다 — 그때는 빈 자리를 남기지 않는다.
   // (markdown: null 인 경우는 호출부가 빈 상태 문구로 대체한다)
@@ -109,11 +123,24 @@ export function SummaryMarkdown({
         }
 
         return (
-          // 핵심 요약 문장 — 이 패널에서 가장 먼저 읽혀야 하는 줄.
-          // 크기는 유지하고 행간만 좁힌다(snug) — 이 줄이 작아지면 위계가 무너진다
+          /*
+            핵심 요약 문장 — 카드에서 가장 먼저, 가장 크게 읽혀야 하는 줄.
+
+            headlineOnly 일 때 키운다. 그때는 이 문장이 카드의 결론이고 아래
+            단서·칩이 근거라, 크기 차이가 곧 읽는 순서가 된다. 문단 여럿을
+            그리는 경우(전체 렌더)에는 한 문장만 튀면 안 되므로 그대로 둔다.
+
+            max-w-[30ch]: 카드가 넓어도 한 줄이 끝없이 늘어지면 다음 줄 첫
+            글자를 찾기 어렵다. 두세 줄로 접히는 폭이 결론으로 읽기 좋다.
+          */
           <p
             key={i}
-            className="text-[15px] leading-snug text-foreground/90"
+            className={cn(
+              "text-foreground/90",
+              headlineOnly
+                ? "max-w-[30ch] text-[17px] font-medium leading-[1.45] tracking-tight sm:text-[19px]"
+                : "text-[15px] leading-snug",
+            )}
           >
             <Inlines inlines={block.inlines} />
           </p>
