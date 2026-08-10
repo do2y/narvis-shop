@@ -1,42 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { fitWithin, toJpegFilename } from "./resizeImage";
+import { fitWithin, withExtension } from "./resizeImage";
 
 /**
  * 업로드 전 리사이즈의 순수 계산부.
  *
  * 두 가지를 고정한다:
  *  1. 파일명 확장자 — S-6 는 확장자와 contentType 이 어긋나면 IMAGE_TYPE_UNSUPPORTED 로
- *     거부한다. 리사이즈 결과는 항상 JPEG 이므로 이름도 .jpg 여야 한다.
- *     photo.heic 를 그대로 보내면 heic + image/jpeg 조합이 되어 업로드가 통째로 막힌다.
+ *     거부한다. 리사이즈 결과는 WebP(폴백 JPEG)이므로 이름도 거기 맞춰야 한다.
+ *     photo.heic 를 그대로 보내면 heic + image/webp 조합이 되어 업로드가 통째로 막힌다.
  *  2. 크기 계산 — 기존 상품 이미지가 긴 변 1000px 이라 거기 맞춘다(실측 2026-08-09).
  */
 
-describe("toJpegFilename", () => {
-  it("HEIC 를 .jpg 로 바꾼다 — 이게 없으면 아이폰 사진이 전부 400", () => {
-    expect(toJpegFilename("photo.heic")).toBe("photo.jpg");
+describe("withExtension", () => {
+  it("HEIC 를 .webp 로 바꾼다 — 이게 없으면 아이폰 사진이 전부 400", () => {
+    expect(withExtension("photo.heic", "webp")).toBe("photo.webp");
   });
 
-  it("png·webp 도 .jpg 로 통일한다", () => {
-    expect(toJpegFilename("IMG_1234.PNG")).toBe("IMG_1234.jpg");
-    expect(toJpegFilename("shot.webp")).toBe("shot.jpg");
+  it("png·jpg 도 출력 포맷으로 통일한다", () => {
+    expect(withExtension("IMG_1234.PNG", "webp")).toBe("IMG_1234.webp");
+    expect(withExtension("shot.jpg", "webp")).toBe("shot.webp");
   });
 
-  it("이미 jpg 여도 그대로 둔다", () => {
-    expect(toJpegFilename("shirt.jpg")).toBe("shirt.jpg");
+  it("JPEG 폴백이면 .jpg 를 붙인다 — 포맷과 이름이 함께 움직인다", () => {
+    expect(withExtension("photo.heic", "jpg")).toBe("photo.jpg");
+    expect(withExtension("shot.webp", "jpg")).toBe("shot.jpg");
+  });
+
+  it("이미 같은 확장자여도 그대로 둔다", () => {
+    expect(withExtension("shirt.webp", "webp")).toBe("shirt.webp");
   });
 
   it("확장자가 없으면 붙인다", () => {
-    expect(toJpegFilename("scan")).toBe("scan.jpg");
+    expect(withExtension("scan", "webp")).toBe("scan.webp");
   });
 
   it("이름에 점이 여러 개면 마지막 것만 교체한다", () => {
-    expect(toJpegFilename("2026.08.09.한라봉.heic")).toBe(
-      "2026.08.09.한라봉.jpg",
+    expect(withExtension("2026.08.09.한라봉.heic", "webp")).toBe(
+      "2026.08.09.한라봉.webp",
     );
   });
 
   it("숨김파일처럼 이름이 비면 기본값을 쓴다 — 빈 확장자만 남기지 않는다", () => {
-    expect(toJpegFilename(".heic")).toBe("image.jpg");
+    expect(withExtension(".heic", "webp")).toBe("image.webp");
   });
 });
 
