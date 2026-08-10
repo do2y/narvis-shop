@@ -333,7 +333,7 @@ export default function PreferencesPage() {
                   <div className="p-4 sm:p-5">
                     <PreferenceTree
                       graph={data}
-                      initialFocus={showAllOf}
+                      requestedFocus={showAllOf}
                       onEdit={setEditing}
                       onDelete={setDeleting}
                     />

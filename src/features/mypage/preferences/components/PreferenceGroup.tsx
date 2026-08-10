@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   GROUP_DISPLAY_LIMIT,
+  GROUP_EXPAND_STEP,
   type PreferenceEdge,
   type PreferenceGroupData,
 } from "../types";
@@ -14,7 +16,14 @@ interface PreferenceGroupProps {
   /** 다른 그룹이 포커스 모드에 들어갔는가 — 그러면 이 그룹은 축소·흐리게 */
   dimmed: boolean;
   focused: boolean;
-  onFocus: () => void;
+  /**
+   * 접기를 눌렀을 때 상위의 포커스 상태를 푼다.
+   *
+   * 그래프의 "전체 보기"로 넘어오면 `focused`가 켜진 채인데, 그 상태에서
+   * 접기만 하면 이펙트가 곧바로 다시 펼친다. 접기가 듣게 하려면 근원인
+   * 포커스를 함께 꺼야 한다.
+   */
+  onClearFocus: () => void;
   onEdit: (edge: PreferenceEdge) => void;
   onDelete: (edge: PreferenceEdge) => void;
 }
@@ -22,28 +31,70 @@ interface PreferenceGroupProps {
 /**
  * 관계 그룹 하나 — 헤더(라벨 + 개수) + 항목들.
  *
- * **접기/펼치기가 없다.** 이 화면의 목적이 "AI가 나에 대해 뭘 아는지 확인하고
- * 고치기"인데 접혀 있으면 확인에 클릭이 한 번 더 든다. 보통 10~30개라
- * 대부분은 상한에 걸리지 않고 전부 보인다.
+ * **기본은 펼쳐진 상태다.** 이 화면의 목적이 "AI가 나에 대해 뭘 아는지 확인하고
+ * 고치기"라, 처음부터 접혀 있으면 확인에 클릭이 한 번 더 든다. 그래서 12개까지는
+ * 바로 보이고, 그 이상만 사용자가 단계적으로 펼친다.
  *
- * 대신 그룹당 표시 상한이 있다 — **서버 상한이 폐지되어 edges가 전량 오므로**
- * 제한이 없으면 한 그룹이 화면을 통째로 삼킨다. 상한은 접기가 아니라
- * 잘라내는 것이고, 넘친 만큼은 `+N개 더`로 그 그룹만 펼친다.
+ * 상한이 필요한 이유는 **서버 상한이 폐지되어 edges가 전량 오기 때문**이다.
+ * 제한이 없으면 82개짜리 그룹 하나가 화면을 통째로 삼켜, 그 아래 관계 4개를
+ * 보려면 긴 목록을 계속 스크롤해야 한다.
  */
 export function PreferenceGroup({
   group,
   dimmed,
   focused,
-  onFocus,
+  onClearFocus,
   onEdit,
   onDelete,
 }: PreferenceGroupProps) {
   const total = group.edges.length;
   const isEmpty = total === 0;
-  const overflow = Math.max(0, total - GROUP_DISPLAY_LIMIT);
 
-  // 포커스 모드에서는 전부, 아니면 12개까지
-  const visible = focused ? group.edges : group.edges.slice(0, GROUP_DISPLAY_LIMIT);
+  /**
+   * 지금 몇 개까지 보여주는가.
+   *
+   * ⚠️ 한때 `focused ? 전량 : 12개`였다. 두 가지가 문제였다:
+   * ① **접을 수 없었다** — 한 번 펼치면 되돌릴 방법이 없어, 실수로 눌렀거나
+   *    다 보고 난 뒤에도 그 길이를 안고 스크롤해야 했다
+   * ② **한 번에 전부 펼쳤다** — 82개짜리 그룹이 통째로 쏟아지고, 그 아래
+   *    관계 4개가 화면 밖으로 밀려나 다른 취향을 보러 가기 어려웠다
+   *
+   * 그래서 **단계적으로 늘린다**. 한 번 누를 때마다 STEP 만큼만 더 보여주고,
+   * 늘어난 상태에서는 접기 버튼이 함께 나온다.
+   */
+  /*
+    포커스(그래프의 "전체 보기"로 넘어온 경우)는 그 관계를 보러 온 것이므로
+    한 단계 더 넉넉히 편다. 다만 전량은 아니다 — 200개가 한 번에 펼쳐지면
+    여기서도 같은 문제가 생긴다.
+
+    ⚠️ 이펙트로 되돌리지 않는다. `useEffect(() => setShown(...), [focused])` 는
+    두 가지가 틀린다:
+    ① 연쇄 렌더 — React 컴파일러 규칙 위반(setState in effect)
+    ② **접기가 듣지 않는다** — 접기를 눌러 shown 을 줄여도 focused 가 그대로면
+       이펙트가 곧바로 다시 펼친다. onClearFocus 로 근원을 끄더라도 한 프레임
+       늦어 화면이 깜빡인다.
+
+    대신 **렌더 중에 키를 비교해 조정한다** — props 변화에 state 를 맞추는
+    React 공식 패턴이다. focused 가 바뀐 그 렌더에서 곧바로 새 값이 된다.
+  */
+  const desired = focused
+    ? Math.min(total, GROUP_EXPAND_STEP * 2)
+    : GROUP_DISPLAY_LIMIT;
+  const [state, setState] = useState({ focused, shown: desired });
+  if (state.focused !== focused) {
+    // 렌더 중 setState — 같은 컴포넌트의 즉시 재렌더라 화면에 잔상이 남지 않는다
+    setState({ focused, shown: desired });
+  }
+  const shown = state.focused === focused ? state.shown : desired;
+  const setShown = (next: number | ((n: number) => number)) =>
+    setState((s) => ({
+      focused,
+      shown: typeof next === "function" ? next(s.shown) : next,
+    }));
+
+  const visible = group.edges.slice(0, shown);
+  const remaining = Math.max(0, total - shown);
+  const isExpanded = shown > GROUP_DISPLAY_LIMIT;
 
   return (
     <section
@@ -119,19 +170,58 @@ export function PreferenceGroup({
             ))}
           </ul>
 
-          {overflow > 0 && !focused ? (
-            <button
-              type="button"
-              onClick={onFocus}
-              className={cn(
-                "h-9 self-start rounded-full px-3 text-[13px] font-medium",
-                "text-muted-foreground transition-colors duration-150 ease-out-strong",
-                "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
-              )}
-            >
-              {overflow}개 더 보기
-            </button>
+          {/*
+            더 보기 / 접기.
+
+            둘을 한 줄에 나란히 둔다 — 펼친 뒤 접으려고 목록 끝까지 내려갔다
+            다시 올라오는 일이 없게, 조작 지점을 한곳에 모은다.
+          */}
+          {remaining > 0 || isExpanded ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {remaining > 0 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShown((n) => Math.min(total, n + GROUP_EXPAND_STEP))
+                  }
+                  className={cn(
+                    "inline-flex h-9 items-center gap-1 rounded-full px-3 text-[13px] font-medium",
+                    "text-muted-foreground transition-colors duration-150 ease-out-strong",
+                    "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
+                  )}
+                >
+                  <ChevronDown className="size-3.5" />
+                  {/* 남은 수를 그대로 적지 않는다 — 이 버튼은 remaining 개가
+                      아니라 STEP 개만 더 보여준다. 실제로 일어날 일을 적는다 */}
+                  {Math.min(remaining, GROUP_EXPAND_STEP)}개 더 보기
+                  <span className="tabular-nums opacity-60">
+                    ({shown}/{total})
+                  </span>
+                </button>
+              ) : null}
+
+              {isExpanded ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShown(GROUP_DISPLAY_LIMIT);
+                    // 그래프에서 이 관계를 확대해 넘어온 상태라면 그것도 푼다 —
+                    // 안 그러면 focused 가 true 로 남아 이펙트가 다시 펼친다
+                    if (focused) onClearFocus();
+                  }}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-1 rounded-full px-3 text-[13px] font-medium",
+                    "text-muted-foreground transition-colors duration-150 ease-out-strong",
+                    "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
+                  )}
+                >
+                  <ChevronUp className="size-3.5" />
+                  접기
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </>
       )}
@@ -140,15 +230,31 @@ export function PreferenceGroup({
 }
 
 /**
- * 포커스 모드 상태 — `+N개 더`로 한 그룹만 확대하고 나머지는 축소·흐리게.
+ * 포커스 모드 상태 — 그래프의 "전체 보기"로 넘어온 그룹을 강조하고
+ * 나머지는 흐리게 둔다.
  *
  * ESC와 바깥 클릭으로 전체 보기에 복귀한다. 훅으로 분리한 이유는 키 핸들러
  * 등록이 트리 쪽 관심사가 아니어서다.
  */
-export function useGroupFocus(initial: string | null = null) {
-  // 그래프의 "N개 모두 보기"가 목록으로 넘어오면서 어느 그룹을 펼지 지정한다.
-  // 초기값으로만 받는다 — 이후 접고 펴는 것은 목록 자신의 상태다.
-  const [focused, setFocused] = useState<string | null>(initial);
+export function useGroupFocus(requested: string | null = null) {
+  /*
+    그래프의 "전체 보기"가 어느 그룹을 펼지 지정한다.
+
+    ⚠️ `useState(requested)` 로 두면 **마운트 때 한 번만** 읽는다. 목록은 그래프와
+    같은 화면에 늘 떠 있어 언마운트되지 않으므로, 그래프에서 버튼을 눌러
+    requested 가 바뀌어도 목록은 꿈쩍하지 않는다(실측: "선호 전체 보기"를 눌러도
+    12/82 그대로였다).
+
+    그래서 렌더 중에 값을 비교해 따라간다. 이후 사용자가 ESC·바깥 클릭으로 끄면
+    그건 목록 자신의 상태로 남는다(같은 요청이 다시 오기 전까지).
+  */
+  const [state, setState] = useState({ requested, focused: requested });
+  if (state.requested !== requested) {
+    setState({ requested, focused: requested });
+  }
+  const focused = state.requested === requested ? state.focused : requested;
+  const setFocused = (next: string | null) =>
+    setState((s) => ({ requested: s.requested, focused: next }));
 
   useEffect(() => {
     if (!focused) return;

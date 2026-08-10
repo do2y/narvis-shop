@@ -11,12 +11,13 @@ import { PreferenceGroup, useGroupFocus } from "./PreferenceGroup";
 interface PreferenceTreeProps {
   graph: ProfileGraph;
   /**
-   * 처음부터 펼쳐 둘 관계.
+   * 펼쳐 둘 관계 — 그래프의 "전체 보기"가 지정한다.
    *
-   * 그래프의 "N개 모두 보기"로 넘어온 경우에 온다 — 목록으로 바뀌기만 하고
-   * 그 그룹이 접혀 있으면 사용자가 방금 누른 것이 무시된 것처럼 보인다.
+   * 초기값이 아니라 **매번 따라가는 값**이다. 목록은 그래프와 같은 화면에 늘
+   * 떠 있어 언마운트되지 않으므로, 초기값으로만 받으면 두 번째 요청부터
+   * 무시된다(useGroupFocus 주석 참조).
    */
-  initialFocus?: string | null;
+  requestedFocus?: string | null;
   onEdit: (edge: PreferenceEdge) => void;
   onDelete: (edge: PreferenceEdge) => void;
 }
@@ -35,7 +36,7 @@ interface PreferenceTreeProps {
  */
 export function PreferenceTree({
   graph,
-  initialFocus = null,
+  requestedFocus = null,
   onEdit,
   onDelete,
 }: PreferenceTreeProps) {
@@ -43,7 +44,7 @@ export function PreferenceTree({
   // groupEdgesByPredicate는 서버 정렬을 보존하고 빈 그룹도 5개를 채워 반환한다.
   const groups = useMemo(() => groupEdgesByPredicate(graph.edges), [graph.edges]);
 
-  const { focused, setFocused } = useGroupFocus(initialFocus);
+  const { focused, setFocused } = useGroupFocus(requestedFocus);
 
   // 데이터가 있는 그룹을 위, 빈 그룹(회피·구매)을 아래로.
   // 그룹 **안**의 항목 순서는 서버 것을 그대로 두고, 그룹의 화면 배치만
@@ -83,7 +84,7 @@ export function PreferenceTree({
               group={group}
               dimmed={focused !== null && focused !== group.predicate}
               focused={focused === group.predicate}
-              onFocus={() => setFocused(group.predicate)}
+              onClearFocus={() => setFocused(null)}
               onEdit={onEdit}
               onDelete={onDelete}
             />
@@ -98,7 +99,7 @@ export function PreferenceTree({
                 group={group}
                 dimmed={focused !== null}
                 focused={false}
-                onFocus={() => {}}
+                onClearFocus={() => {}}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />
