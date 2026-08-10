@@ -79,6 +79,28 @@ function isDiscrete(type: PreferenceNodeType): boolean {
   return type === "product" || type === "brand";
 }
 
+/**
+ * 관계별 색조 — 로고의 파랑·초록·노랑 계열에서 가져온다.
+ *
+ * **색으로만 구분하지 않는다.** 관계는 이미 노드 위치(방사 각도)와 라벨 글자로
+ * 구분되고, 색은 "같은 가지에 속한 것"을 묶어 보이게 하는 보조 신호일 뿐이다.
+ * 색각 이상에서 두 색이 같아 보여도 읽는 데 지장이 없어야 한다.
+ *
+ * 채도를 낮게 잡은 이유: 이 화면은 훑어보는 지도지 대시보드가 아니다. 다섯 색이
+ * 선명하면 어느 것을 먼저 봐야 할지 알 수 없고, 로고 옆에서 다른 서비스처럼 보인다.
+ * 선택된 가지에서만 진해지게 해(`focused`) 강조를 그때 몰아준다.
+ *
+ * `--brand`(딥 틸그린)를 다섯 곳에 다 쓰지 않는 이유는 그러면 가지끼리 구분이
+ * 사라지기 때문이다. 대신 전체가 같은 채도·명도 대역에 있어 한 팔레트로 읽힌다.
+ */
+const BRANCH_TINT: Record<PreferencePredicate, string> = {
+  prefers: "#7BA7E8", // 로고 스카이블루 계열
+  likes: "#7FC79B", // 로고 그린 계열
+  interestedIn: "#E0BC63", // 로고 옐로 계열 — 채도를 낮춰 경고색으로 안 읽히게
+  purchased: "#9AA4C4", // 확정된 사실이라 가장 차분하게
+  avoids: "#B8BEC9", // 비어 있는 관계 — 회색에 가깝게
+};
+
 /** 자물쇠 — lucide `Lock` 과 같은 모양을 SVG로 직접 그린다(색 통제를 위해) */
 function LockGlyph() {
   return (
@@ -139,7 +161,9 @@ export function PreferenceGraph({
         // 포커스 모드에서 빈 곳을 누르면 전체 보기로 복귀
         onClick={() => focused && onFocus(null)}
       >
-        {/* ── 가지: 나 → 관계 ── */}
+        {/* ── 가지: 나 → 관계 ──
+            굵기가 그룹 크기를 말하고(branchWidth), 색조가 어느 가지인지 묶는다.
+            선택된 가지만 진해진다 — 평소엔 지도처럼 차분하게 둔다 */}
         {layout.branches.map((branch) => (
           <line
             key={`edge-${branch.predicate}`}
@@ -149,10 +173,14 @@ export function PreferenceGraph({
             y2={branch.y}
             strokeWidth={branchWidth(branch.total)}
             strokeLinecap="round"
+            stroke={branch.isEmpty ? undefined : BRANCH_TINT[branch.predicate]}
+            strokeOpacity={
+              branch.isEmpty ? undefined : focused === branch.predicate ? 0.95 : 0.5
+            }
             className={cn(
               "transition-opacity duration-200",
               // 빈 가지는 점선 — 색이 아니라 형태로 구분한다
-              branch.isEmpty ? "stroke-border" : "stroke-foreground/25",
+              branch.isEmpty && "stroke-border",
               dimClass(branch, focused),
             )}
             strokeDasharray={branch.isEmpty ? "4 5" : undefined}
@@ -169,8 +197,10 @@ export function PreferenceGraph({
               x2={leaf.x}
               y2={leaf.y}
               strokeWidth={1.25}
+              stroke={BRANCH_TINT[branch.predicate]}
+              strokeOpacity={focused === branch.predicate ? 0.6 : 0.32}
               className={cn(
-                "stroke-foreground/15 transition-opacity duration-200",
+                "transition-opacity duration-200",
                 dimClass(branch, focused),
               )}
             />
@@ -206,14 +236,33 @@ export function PreferenceGraph({
                 dimClass(branch, focused),
               )}
             >
+              {/* 관계 노드 — 테두리 색조로 가지를 잇고, 선택 시 옅은 면을 깐다.
+                  면을 항상 채우지 않는 이유: 다섯 원이 색으로 차 있으면
+                  가운데 "나"보다 주변이 강해져 중심이 사라진다 */}
               <circle
                 cx={branch.x}
                 cy={branch.y}
                 r={r}
+                fill={
+                  focused === branch.predicate
+                    ? `${BRANCH_TINT[branch.predicate]}1f` // 12% — 선택 표시
+                    : undefined
+                }
+                stroke={branch.isEmpty ? undefined : BRANCH_TINT[branch.predicate]}
+                strokeOpacity={
+                  branch.isEmpty
+                    ? undefined
+                    : focused === branch.predicate
+                      ? 1
+                      : 0.65
+                }
                 className={cn(
+                  "transition-[fill] duration-200",
                   branch.isEmpty
                     ? "fill-background stroke-border"
-                    : "fill-background stroke-foreground/35",
+                    : focused === branch.predicate
+                      ? undefined
+                      : "fill-background",
                 )}
                 strokeWidth={branch.isEmpty ? 1.25 : 2}
                 strokeDasharray={branch.isEmpty ? "4 4" : undefined}
@@ -308,11 +357,15 @@ export function PreferenceGraph({
                     width={11}
                     height={11}
                     rx={2.5}
+                    fill={locked ? undefined : BRANCH_TINT[branch.predicate]}
+                    stroke={locked ? BRANCH_TINT[branch.predicate] : undefined}
                     className={cn(
-                      "transition-colors duration-150",
+                      "transition-opacity duration-150",
+                      // 잠긴 항목(구매 파생)은 속을 비운다 — 형태로 구분하므로
+                      // 색이 같아 보여도 수정 가능 여부가 읽힌다
                       locked
-                        ? "fill-background stroke-muted-foreground stroke-2"
-                        : "fill-foreground/70 group-hover/leaf:fill-foreground",
+                        ? "fill-background stroke-2 opacity-70"
+                        : "opacity-80 group-hover/leaf:opacity-100",
                     )}
                   />
                 ) : (
@@ -320,11 +373,13 @@ export function PreferenceGraph({
                     cx={leaf.x}
                     cy={leaf.y}
                     r={6}
+                    fill={locked ? undefined : BRANCH_TINT[branch.predicate]}
+                    stroke={locked ? BRANCH_TINT[branch.predicate] : undefined}
                     className={cn(
-                      "transition-colors duration-150",
+                      "transition-opacity duration-150",
                       locked
-                        ? "fill-background stroke-muted-foreground stroke-2"
-                        : "fill-foreground/70 group-hover/leaf:fill-foreground",
+                        ? "fill-background stroke-2 opacity-70"
+                        : "opacity-80 group-hover/leaf:opacity-100",
                     )}
                   />
                 )}
@@ -394,9 +449,12 @@ export function PreferenceGraph({
               개수 제한이 없다(PreferenceGroup: focused면 group.edges 전량).
             */
             const fitsInGraph = branch.total <= GRAPH_ITEMS_FOCUSED;
+            // 목적이 드러나는 문구를 쓴다 — "더보기"는 무엇이 더 나오는지,
+            // 어디로 가는지 말해주지 않는다. 그래프 안에서 끝나는 경우와
+            // 목록으로 내려가는 경우를 문구로 구분한다.
             const label = fitsInGraph
-              ? `+${branch.overflow}개 더`
-              : `${branch.total}개 모두 보기`;
+              ? `${branch.overflow}개 더 보기`
+              : `${branch.label} 전체 보기`;
             // 글자 수에 맞춰 알약 폭을 잡는다 — 고정폭이면 긴 문구가 넘친다
             const w = label.length * 9 + 26;
 

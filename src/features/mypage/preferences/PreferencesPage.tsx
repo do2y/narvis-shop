@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { ErrorState, PageTitle } from "../components/PageState";
@@ -15,11 +15,7 @@ import { PreferenceGraph } from "./components/PreferenceGraph";
 import { PreferenceTree } from "./components/PreferenceTree";
 import { ResetGraphDialog } from "./components/ResetGraphDialog";
 import { SummaryMarkdown } from "./components/SummaryMarkdown";
-import {
-  useIsNarrow,
-  ViewToggle,
-  type PreferenceView,
-} from "./components/ViewToggle";
+import { useIsNarrow } from "./components/useIsNarrow";
 import type { PreferenceEdge, PreferencePredicate } from "./types";
 import { useDeleteEdge } from "./useDeleteEdge";
 import { useEditEdge } from "./useEditEdge";
@@ -99,31 +95,38 @@ export default function PreferencesPage() {
   const [editing, setEditing] = useState<PreferenceEdge | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
 
-  // 좁은 화면에서는 방사형이 성립하지 않아(라벨 겹침) 목록으로 고정한다.
+  // 좁은 화면에서는 방사형이 성립하지 않아(라벨 겹침) 그래프를 아예 그리지 않는다.
   const isNarrow = useIsNarrow();
-  const [preferredView, setPreferredView] = useState<PreferenceView>("graph");
-  const view: PreferenceView = isNarrow ? "list" : preferredView;
 
-  // 그래프에서 한 관계만 확대하는 포커스 모드. 목록 뷰는 자체 포커스를 쓴다.
+  // 그래프에서 한 관계만 확대하는 포커스 모드. 목록은 자체 포커스를 쓴다.
   const [focused, setFocused] = useState<PreferencePredicate | null>(null);
 
   /**
-   * 그래프의 "N개 모두 보기"로 목록에 넘어올 때 펼쳐 둘 관계.
+   * 그래프의 "전체 취향 보기"로 목록에 내려갈 때 펼쳐 둘 관계.
    *
-   * 방사형은 한 가지에 8개가 한계라(GRAPH_ITEMS_FOCUSED) 그보다 많은 그룹은
-   * 확대해도 전부 못 보여준다. 그래서 그 버튼은 **목록 뷰로 보내고**, 어느
-   * 그룹을 펼지 이 값으로 전달한다 — 목록만 바뀌고 그룹이 접혀 있으면
-   * 방금 누른 동작이 무시된 것처럼 보인다.
-   *
-   * 뷰를 되돌릴 때 비운다. 남겨 두면 나중에 사용자가 직접 목록으로 갔을 때
-   * 영문 모를 그룹이 펼쳐져 있다.
+   * ⚠️ **그래프와 목록은 이제 같은 화면에 세로로 함께 있다.** 예전에는 뷰
+   * 전환(그래프 ⇄ 전체 보기)이었는데, 두 이름의 기준이 달랐고(표현 vs 범위)
+   * 한 화면에 다 들어가는 내용을 굳이 갈라 놓아 탐색이 한 단계 늘었다.
+   * 지금은 그래프가 대표 취향을 보여주고, 버튼이 아래 목록으로 스크롤한다.
    */
   const [showAllOf, setShowAllOf] = useState<PreferencePredicate | null>(null);
+  const listRef = useRef<HTMLElement>(null);
 
   const showAllInList = (predicate: PreferencePredicate) => {
     setFocused(null); // 그래프 확대는 풀고 목록으로 넘긴다
     setShowAllOf(predicate);
-    setPreferredView("list");
+    /*
+      목록 섹션으로 부드럽게 이동한다.
+
+      `scroll-behavior: smooth`(globals.css)가 걸려 있고 모션 감소에서는
+      같은 파일의 미디어 쿼리가 auto 로 덮는다 — 여기서 따로 분기하지 않는다.
+
+      다음 프레임에 부른다: 이 시점엔 아직 그룹이 펼쳐지지 않아 목록 높이가
+      달라진다. 레이아웃이 확정된 뒤 스크롤해야 목표 지점이 어긋나지 않는다.
+    */
+    requestAnimationFrame(() => {
+      listRef.current?.scrollIntoView({ block: "start" });
+    });
   };
 
   // ESC로 포커스 모드 해제 — 바깥 클릭은 SVG가 직접 받는다.
@@ -163,10 +166,19 @@ export default function PreferencesPage() {
       */}
       <header className="flex flex-col gap-4 border-b border-border/70 pb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <div className="min-w-0">
-          <PageTitle>AI가 이해한 내 취향</PageTitle>
+          {/*
+            "AI가 이해한 내 취향 / 대화와 구매 내역에서 파악한 내용이에요"에서 바꿨다.
+            그 문구는 기능 설명이라 화면 이름(취향 나비게이션)의 가벼운 탐색 분위기와
+            어긋났다. 사용자가 자기 취향 지도를 구경하는 쪽으로 옮긴다.
+
+            "길·방향"은 나비게이션에서 자연스럽게 나오는 말이라 쓰되, 말장난까지는
+            가지 않는다("취향 항해" 같은 표현은 한 번 웃기고 두 번째부터 걸린다).
+            존댓말·"~해요"체는 앱 나머지와 같다.
+          */}
+          <PageTitle>내 취향은 지금 어디쯤일까요?</PageTitle>
           <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            대화와 구매 내역에서 파악한 내용이에요. 틀린 게 있으면 바로 고칠 수
-            있어요.
+            대화하고 쇼핑하며 발견한 취향을 모아뒀어요. 다른 길로 샜다면 원하는
+            방향으로 돌려주세요.
           </p>
         </div>
 
@@ -212,71 +224,113 @@ export default function PreferencesPage() {
             {isEmpty ? (
               <EmptyPreferences />
             ) : (
-              <section
-                // 개인화 OFF에서는 채도를 낮춘다 — **숨기지 않는다**.
-                // 편집은 그대로 동작하므로 pointer-events 를 막지 않는다.
-                className={cn(
-                  "overflow-hidden rounded-sm border border-border/70 transition-opacity",
-                  data.personalization.enabled ? undefined : "opacity-70",
+              /*
+                그래프와 목록을 **한 화면에 세로로 함께** 둔다.
+
+                예전에는 `그래프 / 전체 보기` 세그먼트로 갈랐는데 두 문제가 있었다:
+                ① 두 이름의 기준이 달랐다 — "그래프"는 표현 방식이고 "전체 보기"는
+                   범위라, 무엇과 무엇을 고르는 것인지 읽히지 않았다
+                ② 한 화면에 다 들어가는 내용을 갈라 놓아 전체를 보려면 클릭이
+                   한 번 더 들었다(그래프는 어차피 대표만 보여준다)
+
+                지금은 그래프가 "구조 훑기", 목록이 "전부 확인하고 고치기"로
+                역할이 나뉘고, 사이를 `전체 취향 보기` 버튼이 잇는다.
+              */
+              <>
+                {/* 좁은 화면에서는 방사형이 성립하지 않는다(라벨이 겹쳐 아무것도
+                    안 읽힌다). 그릴 수 없는 것을 억지로 넣지 않고 목록만 남긴다 */}
+                {isNarrow ? null : (
+                  <section
+                    aria-labelledby="preference-map-heading"
+                    className={cn(
+                      "overflow-hidden rounded-sm border border-border/70 transition-opacity",
+                      data.personalization.enabled ? undefined : "opacity-70",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/70 bg-muted/20 px-5 py-3">
+                      <div className="min-w-0">
+                        <h3
+                          id="preference-map-heading"
+                          className="text-sm font-semibold tracking-tight"
+                        >
+                          취향 관계도
+                        </h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          자주 보이는 취향만 모았어요. 항목을 누르면 고칠 수 있어요.
+                        </p>
+                      </div>
+
+                      {/* 목적이 드러나는 문구 — "더보기"는 무엇이 더 나오는지
+                          말해주지 않는다. 아래 목록으로 내려간다는 뜻이라
+                          아래쪽 화살표를 함께 둔다 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFocused(null);
+                          setShowAllOf(null);
+                          requestAnimationFrame(() =>
+                            listRef.current?.scrollIntoView({ block: "start" }),
+                          );
+                        }}
+                        className={cn(
+                          "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3.5 text-[13px] font-medium",
+                          "text-muted-foreground transition-colors duration-150 ease-out-strong",
+                          "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
+                        )}
+                      >
+                        전체 취향 보기
+                        <ArrowDown className="size-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <div className="px-1 pb-2 pt-1">
+                        <PreferenceGraph
+                          edges={data.edges}
+                          focused={focused}
+                          onFocus={setFocused}
+                          onShowAll={showAllInList}
+                          // 그래프에서는 아이콘을 놓을 자리가 없어 항목을 누르면
+                          // 바로 수정 창을 연다. 삭제는 목록에서 하도록 두 경로를
+                          // 나눈다 — 파괴적인 동작을 좁은 타겟에 붙이면 오터치가 는다.
+                          onSelect={(edge) => edge.editable && setEditing(edge)}
+                        />
+                      </div>
+
+                      {focused ? (
+                        // 키보드 사용자에게도 빠져나갈 길을 알린다
+                        <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-muted-foreground">
+                          다른 곳을 누르거나 ESC를 눌러 전체 보기로 돌아가요.
+                        </p>
+                      ) : null}
+                    </div>
+                  </section>
                 )}
-              >
-                {/* 툴바 — 패널 제목과 뷰 전환을 한 줄에. 전환 버튼이 빈 공간에
-                    따로 떠 있으면 무엇을 전환하는 것인지 읽히지 않는다 */}
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/70 bg-muted/20 px-5 py-3">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-semibold tracking-tight">
-                      취향 관계도
+
+                {/* 전체 목록 — 그래프의 "전체 취향 보기"가 여기로 스크롤한다.
+                    scroll-mt: sticky 헤더에 제목이 가리지 않게 띄운다 */}
+                <section
+                  ref={listRef}
+                  aria-labelledby="preference-list-heading"
+                  className={cn(
+                    "scroll-mt-20 overflow-hidden rounded-sm border border-border/70 transition-opacity",
+                    data.personalization.enabled ? undefined : "opacity-70",
+                  )}
+                >
+                  <div className="border-b border-border/70 bg-muted/20 px-5 py-3">
+                    <h3
+                      id="preference-list-heading"
+                      className="text-sm font-semibold tracking-tight"
+                    >
+                      전체 취향
                     </h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {view === "graph"
-                        ? "항목을 누르면 고칠 수 있어요."
-                        : "항목마다 고치거나 지울 수 있어요."}
+                      항목을 누르면 고치고, 오른쪽 버튼으로 지울 수 있어요.
                     </p>
                   </div>
 
-                  {/* 좁은 화면은 목록 고정이라 전환 버튼을 숨긴다 — 누를 수 없는
-                      버튼을 보여주면 왜 안 되는지 설명할 길이 없다 */}
-                  {isNarrow ? null : (
-                    <ViewToggle
-                      view={view}
-                      onChange={(next) => {
-                        setPreferredView(next);
-                        // 뷰를 옮기면 그래프의 확대 상태는 의미가 없어진다
-                        setFocused(null);
-                        // 사용자가 직접 옮긴 것이므로 "모두 보기"로 펼쳐 둘
-                        // 그룹도 지운다 — 안 지우면 나중에 목록으로 갔을 때
-                        // 영문 모를 그룹이 펼쳐져 있다
-                        setShowAllOf(null);
-                      }}
-                    />
-                  )}
-                </div>
-
-                {view === "graph" ? (
-                  <div className="relative">
-                    <div className="px-1 pb-2 pt-1">
-                      <PreferenceGraph
-                        edges={data.edges}
-                        focused={focused}
-                        onFocus={setFocused}
-                        onShowAll={showAllInList}
-                        // 그래프에서는 아이콘을 놓을 자리가 없어 항목을 누르면
-                        // 바로 수정 창을 연다. 삭제는 목록 뷰에서 하도록 두
-                        // 경로를 나눈다 — 파괴적인 동작을 좁은 타겟에 붙이면
-                        // 오터치가 늘어난다.
-                        onSelect={(edge) => edge.editable && setEditing(edge)}
-                      />
-                    </div>
-
-                    {focused ? (
-                      // 키보드 사용자에게도 빠져나갈 길을 알린다
-                      <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-muted-foreground">
-                        다른 곳을 누르거나 ESC를 눌러 전체 보기로 돌아가요.
-                      </p>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="p-5">
+                  <div className="p-4 sm:p-5">
                     <PreferenceTree
                       graph={data}
                       initialFocus={showAllOf}
@@ -284,8 +338,8 @@ export default function PreferencesPage() {
                       onDelete={setDeleting}
                     />
                   </div>
-                )}
-              </section>
+                </section>
+              </>
             )}
           </div>
         )}

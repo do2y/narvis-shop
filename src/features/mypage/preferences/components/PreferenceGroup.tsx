@@ -48,7 +48,7 @@ export function PreferenceGroup({
   return (
     <section
       className={cn(
-        "flex flex-col gap-2 transition-all duration-200",
+        "flex flex-col gap-2.5 transition-all duration-200",
         // 다른 그룹이 확대됐을 때 — 숨기지 않고 물러나게만 한다
         dimmed && "opacity-40",
         // 빈 그룹은 아래쪽에 작게·흐리게. 지우지도 강조하지도 않는다
@@ -57,7 +57,7 @@ export function PreferenceGroup({
     >
       {/* 관계명 + 개수. 개수를 알약으로 감싸 그래프의 관계 노드와 같은 정보를
           같은 모양으로 전한다 — 뷰를 옮겨도 읽는 방식이 바뀌지 않게 */}
-      <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+      <h3 className="flex items-center gap-2 px-0.5 text-sm font-semibold tracking-tight">
         {group.label}
         <span
           className={cn(
@@ -78,11 +78,37 @@ export function PreferenceGroup({
           "아직 안 자란 것"으로 읽혀야 사실과 맞는다(노션 10.4).
           지우면 "회피는 등록할 수 없나?" 싶고, 강조하면 오류처럼 보인다.
         */
-        <p className="text-xs text-muted-foreground">아직 없어요</p>
+        <p className="px-0.5 text-xs text-muted-foreground">아직 없어요</p>
       ) : (
         <>
-          {/* 그룹 안 항목 순서는 서버 순서 그대로 — 클라이언트 재정렬 금지 */}
-          <ul className="flex flex-col gap-1.5">
+          {/*
+            그룹을 컨테이너 하나로 묶는다.
+
+            이전에는 항목마다 캡슐 테두리를 둘러서, 세로로 반복되는 테두리가
+            소음이 됐다(짧은 단어 하나에 테두리 하나). 테두리는 여기서 한 번만
+            두르고 항목끼리는 얇은 선으로 나눈다.
+
+            **2열 그리드**: 라벨이 "무선"·"소니"처럼 짧아 한 열로 두면 오른쪽이
+            통째로 빈다. 넓은 화면에서 2열이면 같은 스크롤로 두 배를 훑는다.
+            좁아지면 1열로 접는다 — 2열에서 라벨이 잘리는 것보다 낫다.
+
+            구분선을 grid gap 대신 border 로 그리는 이유: gap 은 열 사이에도
+            선이 필요한데 CSS 로 "행 사이만"을 표현할 수 없다. 각 항목이
+            위쪽 테두리를 갖고 첫 행만 제거하는 방식이 열 수가 바뀌어도 맞는다.
+          */}
+          <ul
+            className={cn(
+              "grid grid-cols-1 overflow-hidden rounded-sm border border-border/70 lg:grid-cols-2",
+              // 항목 사이 구분선 — 위쪽 테두리를 각자 갖고, 첫 행만 지운다.
+              // lg에서는 2열이라 첫 두 개가 첫 행이다.
+              "[&>li]:border-t [&>li]:border-border/60",
+              "[&>li:first-child]:border-t-0",
+              "lg:[&>li:nth-child(2)]:border-t-0",
+              // 세로 구분선 — 왼쪽 열에만 오른쪽 테두리를 준다
+              "lg:[&>li:nth-child(odd)]:border-r lg:[&>li:nth-child(odd)]:border-border/60",
+            )}
+          >
+            {/* 그룹 안 항목 순서는 서버 순서 그대로 — 클라이언트 재정렬 금지 */}
             {visible.map((edge) => (
               <PreferenceItem
                 key={edge.edgeId}
@@ -97,9 +123,14 @@ export function PreferenceGroup({
             <button
               type="button"
               onClick={onFocus}
-              className="h-11 self-start rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className={cn(
+                "h-9 self-start rounded-full px-3 text-[13px] font-medium",
+                "text-muted-foreground transition-colors duration-150 ease-out-strong",
+                "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
+              )}
             >
-              + {overflow}개 더
+              {overflow}개 더 보기
             </button>
           ) : null}
         </>
