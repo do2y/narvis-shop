@@ -33,8 +33,23 @@ function Inlines({ inlines }: { inlines: SummaryInline[] }) {
   );
 }
 
-export function SummaryMarkdown({ markdown }: { markdown: string }) {
-  const blocks = parseSummary(markdown);
+export function SummaryMarkdown({
+  markdown,
+  /**
+   * 마크다운의 제목 블록(`# 취향 요약`)을 그리지 않는다.
+   *
+   * 요약 카드가 바깥에 같은 라벨을 이미 달고 있어, 켜 두면 "취향 요약"이
+   * 두 번 나온다.
+   */
+  hideHeading = false,
+}: {
+  markdown: string;
+  hideHeading?: boolean;
+}) {
+  const parsed = parseSummary(markdown);
+  const blocks = hideHeading
+    ? parsed.filter((b) => b.type !== "heading")
+    : parsed;
 
   // 문법만 있고 내용이 없는 문자열이 올 수 있다 — 그때는 빈 자리를 남기지 않는다.
   // (markdown: null 인 경우는 호출부가 빈 상태 문구로 대체한다)

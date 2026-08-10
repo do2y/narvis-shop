@@ -202,6 +202,25 @@ function orderBranchesForPlacement(
  */
 const Y_SQUASH = 0.72;
 
+/**
+ * 문자열 → 0~1 사이의 **결정적** 수.
+ *
+ * 배치에 변화를 주되 `Math.random()` 을 쓰지 않기 위한 것이다. 무작위면
+ * 렌더할 때마다 그래프가 달라져 "데이터가 바뀌어도 노드가 과도하게 움직이지
+ * 않는다"는 요건을 깬다. 해시는 같은 입력에 항상 같은 값이라 그 문제가 없다.
+ *
+ * FNV-1a 변형 — 암호학적 강도가 필요 없는 자리라 짧고 빠른 것으로 충분하다.
+ */
+function hashUnit(seed: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  // >>> 0 으로 부호를 없앤 뒤 0~1 로 정규화
+  return ((h >>> 0) % 1000) / 1000;
+}
+
 function polar(angleDeg: number, radius: number, origin: Point): Point {
   // -90°에서 시작해 12시 방향이 0이 되게 한다(위쪽이 눈에 먼저 들어온다)
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -326,7 +345,23 @@ export function buildGraphLayout(
       // 항목이 1개면 가지 방향 그대로, 여러 개면 부채꼴로 나눈다
       const offset =
         shown.length === 1 ? 0 : (i / (shown.length - 1) - 0.5) * leafSpan;
-      const point = polar(mid + offset, leafRadius, branchPoint);
+
+      /*
+        반경에 약간의 변화를 준다 — 기계적인 부채꼴을 완화한다.
+
+        모든 항목이 같은 거리에 놓이면 컴퍼스로 그린 호처럼 보여, 사람의
+        취향 지도가 아니라 도식이 된다. 다만 **무작위는 쓰지 않는다** —
+        렌더할 때마다 자리가 바뀌면 같은 데이터인데 다른 그림이 되고,
+        수정 한 번에 화면이 통째로 흔들린다.
+
+        그래서 edgeId 에서 뽑은 **결정적 해시**를 쓴다. 같은 항목은 언제나
+        같은 자리이고, 항목이 바뀔 때만 그 항목의 자리가 바뀐다.
+
+        폭은 ±7% 로 얕게 준다. 더 크면 부채꼴이 흐트러져 어느 가지 소속인지
+        읽기 어려워지고, 라벨 간 세로 간격 보정(아래)도 예측이 어려워진다.
+      */
+      const jitter = 1 + (hashUnit(edge.edgeId) - 0.5) * 0.14;
+      const point = polar(mid + offset, leafRadius * jitter, branchPoint);
       return { ...point, edge, anchor: anchorFor(point, center) };
     });
 

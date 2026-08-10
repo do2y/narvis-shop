@@ -14,8 +14,9 @@ import {
 import { PreferenceGraph } from "./components/PreferenceGraph";
 import { PreferenceTree } from "./components/PreferenceTree";
 import { ResetGraphDialog } from "./components/ResetGraphDialog";
-import { SummaryMarkdown } from "./components/SummaryMarkdown";
+import { SummaryCard } from "./components/SummaryCard";
 import { useIsNarrow } from "./components/useIsNarrow";
+import { buildSummaryStats } from "./summaryStats";
 import type { PreferenceEdge, PreferencePredicate } from "./types";
 import { useDeleteEdge } from "./useDeleteEdge";
 import { useEditEdge } from "./useEditEdge";
@@ -101,33 +102,8 @@ export default function PreferencesPage() {
   // 그래프에서 한 관계만 확대하는 포커스 모드. 목록은 자체 포커스를 쓴다.
   const [focused, setFocused] = useState<PreferencePredicate | null>(null);
 
-  /**
-   * 그래프의 "전체 취향 보기"로 목록에 내려갈 때 펼쳐 둘 관계.
-   *
-   * ⚠️ **그래프와 목록은 이제 같은 화면에 세로로 함께 있다.** 예전에는 뷰
-   * 전환(그래프 ⇄ 전체 보기)이었는데, 두 이름의 기준이 달랐고(표현 vs 범위)
-   * 한 화면에 다 들어가는 내용을 굳이 갈라 놓아 탐색이 한 단계 늘었다.
-   * 지금은 그래프가 대표 취향을 보여주고, 버튼이 아래 목록으로 스크롤한다.
-   */
-  const [showAllOf, setShowAllOf] = useState<PreferencePredicate | null>(null);
+  /** 목록 섹션 — 그래프 상단의 `전체 취향 보기`가 여기로 스크롤한다 */
   const listRef = useRef<HTMLElement>(null);
-
-  const showAllInList = (predicate: PreferencePredicate) => {
-    setFocused(null); // 그래프 확대는 풀고 목록으로 넘긴다
-    setShowAllOf(predicate);
-    /*
-      목록 섹션으로 부드럽게 이동한다.
-
-      `scroll-behavior: smooth`(globals.css)가 걸려 있고 모션 감소에서는
-      같은 파일의 미디어 쿼리가 auto 로 덮는다 — 여기서 따로 분기하지 않는다.
-
-      다음 프레임에 부른다: 이 시점엔 아직 그룹이 펼쳐지지 않아 목록 높이가
-      달라진다. 레이아웃이 확정된 뒤 스크롤해야 목표 지점이 어긋나지 않는다.
-    */
-    requestAnimationFrame(() => {
-      listRef.current?.scrollIntoView({ block: "start" });
-    });
-  };
 
   // ESC로 포커스 모드 해제 — 바깥 클릭은 SVG가 직접 받는다.
   useEffect(() => {
@@ -148,6 +124,9 @@ export default function PreferencesPage() {
   // 대상이 edge 안에 인라인돼 있어 룩업 없이 바로 읽는다.
   const deletingLabel = deleting?.object.label ?? "";
 
+
+  // 요약 카드 수치 — 지금 있는 필드만으로 계산한다(summaryStats 주석)
+  const stats = buildSummaryStats(data?.edges ?? []);
 
   // 수정 창의 자동완성 후보 — 대상 검색 API가 계약에 없어 화면에 있는 대상을 쓴다.
   // 확정 계약에는 nodes[] 배열이 없고 대상이 edge마다 인라인되므로, 같은 대상이
@@ -215,37 +194,21 @@ export default function PreferencesPage() {
             {data.personalization.enabled ? null : <PersonalizationOffBanner />}
 
             {/*
-              요약 패널 — markdown 이 null 이면(신규 회원) 자리를 비운다.
-              빈 상태 안내가 아래에서 같은 말을 하므로 두 번 적지 않는다.
-
-              ⚠️ **접지 않는다.** 한때 `<details>` 로 접었다가 되돌렸다 —
-              이 문단은 자기 취향을 빠르게 훑는 정보라, 읽으려고 클릭을 한 번
-              더 하게 만들면 존재 이유가 사라진다.
-
-              대신 **밀도로 자리를 만든다**(SummaryMarkdown 참조): 근거 목록을
-              2열로 펴고 줄 간격을 좁혀, 펼친 상태에서도 이전 접힘 높이와 크게
-              다르지 않게 했다. 감추는 대신 정돈하는 쪽이다.
+              ① 대표 카드 — 이 페이지의 첫인상.
+              아래 두 섹션과 달리 옅은 브랜드 배경 + 로고색 라인을 줘 무게를
+              한 단계 올린다(SummaryCard 주석). markdown 이 null 이어도
+              수치 요약은 나오므로 카드 자체는 그린다.
             */}
-            {data.markdown ? (
-              <section className="rounded-sm border border-border/70 bg-muted/20 px-5 py-3.5">
-                <SummaryMarkdown markdown={data.markdown} />
-              </section>
-            ) : null}
+            <SummaryCard stats={stats} markdown={data.markdown} />
 
             {isEmpty ? (
               <EmptyPreferences />
             ) : (
               /*
-                그래프와 목록을 **한 화면에 세로로 함께** 둔다.
+                ② 관계도(구조 훑기) → ③ 전체 목록(확인하고 고치기).
 
-                예전에는 `그래프 / 전체 보기` 세그먼트로 갈랐는데 두 문제가 있었다:
-                ① 두 이름의 기준이 달랐다 — "그래프"는 표현 방식이고 "전체 보기"는
-                   범위라, 무엇과 무엇을 고르는 것인지 읽히지 않았다
-                ② 한 화면에 다 들어가는 내용을 갈라 놓아 전체를 보려면 클릭이
-                   한 번 더 들었다(그래프는 어차피 대표만 보여준다)
-
-                지금은 그래프가 "구조 훑기", 목록이 "전부 확인하고 고치기"로
-                역할이 나뉘고, 사이를 `전체 취향 보기` 버튼이 잇는다.
+                둘은 같은 화면에 세로로 있고 역할만 나뉜다. 대표 카드와 달리
+                배경 없이 테두리만 둬, 시각적 무게가 ①보다 낮게 읽히도록 한다.
               */
               <>
                 {/* 좁은 화면에서는 방사형이 성립하지 않는다(라벨이 겹쳐 아무것도
@@ -254,31 +217,31 @@ export default function PreferencesPage() {
                   <section
                     aria-labelledby="preference-map-heading"
                     className={cn(
-                      "overflow-hidden rounded-sm border border-border/70 transition-opacity",
+                      "overflow-hidden rounded-lg border border-border/70 transition-opacity",
                       data.personalization.enabled ? undefined : "opacity-70",
                     )}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/70 bg-muted/20 px-5 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pt-4 sm:px-6">
                       <div className="min-w-0">
-                        <h3
+                        <h2
                           id="preference-map-heading"
-                          className="text-sm font-semibold tracking-tight"
+                          className="text-base font-bold tracking-tight"
                         >
-                          취향 관계도
-                        </h3>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          자주 보이는 취향만 모았어요. 항목을 누르면 고칠 수 있어요.
+                          취향이 이어지는 방식
+                        </h2>
+                        <p className="mt-0.5 text-[13px] text-muted-foreground">
+                          자주 나타난 취향을 모아 연결해봤어요. 하나씩 눌러
+                          살펴보세요.
                         </p>
                       </div>
 
-                      {/* 목적이 드러나는 문구 — "더보기"는 무엇이 더 나오는지
-                          말해주지 않는다. 아래 목록으로 내려간다는 뜻이라
-                          아래쪽 화살표를 함께 둔다 */}
+                      {/* 전체를 보는 경로는 이 버튼 하나로 모았다 —
+                          그래프 안에 관계마다 알약을 띄우면 그것만 5개라
+                          정작 취향 라벨보다 버튼이 먼저 보인다 */}
                       <button
                         type="button"
                         onClick={() => {
                           setFocused(null);
-                          setShowAllOf(null);
                           requestAnimationFrame(() =>
                             listRef.current?.scrollIntoView({ block: "start" }),
                           );
@@ -296,12 +259,13 @@ export default function PreferencesPage() {
                     </div>
 
                     <div className="relative">
-                      <div className="px-1 pb-2 pt-1">
+                      {/* 그래프가 컨테이너를 넉넉히 쓰게 좌우 여백을 줄인다 —
+                          가운데 작게 떠 있으면 핵심 콘텐츠로 안 읽힌다 */}
+                      <div className="px-2 pb-3">
                         <PreferenceGraph
                           edges={data.edges}
                           focused={focused}
                           onFocus={setFocused}
-                          onShowAll={showAllInList}
                           // 그래프에서는 아이콘을 놓을 자리가 없어 항목을 누르면
                           // 바로 수정 창을 연다. 삭제는 목록에서 하도록 두 경로를
                           // 나눈다 — 파괴적인 동작을 좁은 타겟에 붙이면 오터치가 는다.
@@ -311,7 +275,7 @@ export default function PreferencesPage() {
 
                       {focused ? (
                         // 키보드 사용자에게도 빠져나갈 길을 알린다
-                        <p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs text-muted-foreground">
+                        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-xs text-muted-foreground">
                           다른 곳을 누르거나 ESC를 눌러 전체 보기로 돌아가요.
                         </p>
                       ) : null}
@@ -319,32 +283,30 @@ export default function PreferencesPage() {
                   </section>
                 )}
 
-                {/* 전체 목록 — 그래프의 "전체 취향 보기"가 여기로 스크롤한다.
+                {/* 전체 목록 — 위 버튼이 여기로 스크롤한다.
                     scroll-mt: sticky 헤더에 제목이 가리지 않게 띄운다 */}
                 <section
                   ref={listRef}
                   aria-labelledby="preference-list-heading"
                   className={cn(
-                    "scroll-mt-20 overflow-hidden rounded-sm border border-border/70 transition-opacity",
+                    "scroll-mt-20 rounded-lg border border-border/70 px-5 py-5 transition-opacity sm:px-6",
                     data.personalization.enabled ? undefined : "opacity-70",
                   )}
                 >
-                  <div className="border-b border-border/70 bg-muted/20 px-5 py-3">
-                    <h3
-                      id="preference-list-heading"
-                      className="text-sm font-semibold tracking-tight"
-                    >
-                      전체 취향
-                    </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      항목을 누르면 고치고, 오른쪽 버튼으로 지울 수 있어요.
-                    </p>
-                  </div>
+                  <h2
+                    id="preference-list-heading"
+                    className="text-base font-bold tracking-tight"
+                  >
+                    지금까지 발견한 취향
+                  </h2>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    마음에 꼭 맞는지 둘러보고, 다른 부분은 눌러서 고칠 수 있어요.
+                  </p>
 
-                  <div className="p-4 sm:p-5">
+                  <div className="mt-5">
                     <PreferenceTree
                       graph={data}
-                      requestedFocus={showAllOf}
+                      highlighted={focused}
                       onEdit={setEditing}
                       onDelete={setDeleting}
                     />

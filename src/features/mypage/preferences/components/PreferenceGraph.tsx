@@ -10,12 +10,12 @@ import {
 } from "../types";
 import {
   buildGraphLayout,
-  GRAPH_ITEMS_FOCUSED,
   truncateLabel,
   VIEWBOX_H,
   VIEWBOX_W,
   type BranchNode,
 } from "./graphLayout";
+import { PREDICATE_STYLE } from "../predicateStyle";
 import { ScreenReaderList } from "./ScreenReaderList";
 
 interface PreferenceGraphProps {
@@ -23,14 +23,6 @@ interface PreferenceGraphProps {
   /** 포커스 모드로 확대 중인 관계 */
   focused: PreferencePredicate | null;
   onFocus: (predicate: PreferencePredicate | null) => void;
-  /**
-   * 확대해도 다 못 담는 그룹의 "모두 보기" — 목록 뷰로 전환하며 그 관계를 편다.
-   *
-   * 그래프 안에서 해결하지 않고 밖으로 넘기는 이유는 방사형의 물리적 한계다.
-   * 라벨이 가로로 뻗어 한 가지에 GRAPH_ITEMS_FOCUSED개가 최대이므로, 82개짜리
-   * 그룹은 어떻게 배치해도 그래프에 들어가지 않는다.
-   */
-  onShowAll: (predicate: PreferencePredicate) => void;
   onSelect: (edge: PreferenceEdge) => void;
 }
 
@@ -79,28 +71,6 @@ function isDiscrete(type: PreferenceNodeType): boolean {
   return type === "product" || type === "brand";
 }
 
-/**
- * 관계별 색조 — 로고의 파랑·초록·노랑 계열에서 가져온다.
- *
- * **색으로만 구분하지 않는다.** 관계는 이미 노드 위치(방사 각도)와 라벨 글자로
- * 구분되고, 색은 "같은 가지에 속한 것"을 묶어 보이게 하는 보조 신호일 뿐이다.
- * 색각 이상에서 두 색이 같아 보여도 읽는 데 지장이 없어야 한다.
- *
- * 채도를 낮게 잡은 이유: 이 화면은 훑어보는 지도지 대시보드가 아니다. 다섯 색이
- * 선명하면 어느 것을 먼저 봐야 할지 알 수 없고, 로고 옆에서 다른 서비스처럼 보인다.
- * 선택된 가지에서만 진해지게 해(`focused`) 강조를 그때 몰아준다.
- *
- * `--brand`(딥 틸그린)를 다섯 곳에 다 쓰지 않는 이유는 그러면 가지끼리 구분이
- * 사라지기 때문이다. 대신 전체가 같은 채도·명도 대역에 있어 한 팔레트로 읽힌다.
- */
-const BRANCH_TINT: Record<PreferencePredicate, string> = {
-  prefers: "#7BA7E8", // 로고 스카이블루 계열
-  likes: "#7FC79B", // 로고 그린 계열
-  interestedIn: "#E0BC63", // 로고 옐로 계열 — 채도를 낮춰 경고색으로 안 읽히게
-  purchased: "#9AA4C4", // 확정된 사실이라 가장 차분하게
-  avoids: "#B8BEC9", // 비어 있는 관계 — 회색에 가깝게
-};
-
 /** 자물쇠 — lucide `Lock` 과 같은 모양을 SVG로 직접 그린다(색 통제를 위해) */
 function LockGlyph() {
   return (
@@ -136,7 +106,6 @@ export function PreferenceGraph({
   edges,
   focused,
   onFocus,
-  onShowAll,
   onSelect,
 }: PreferenceGraphProps) {
   const layout = useMemo(
@@ -185,7 +154,7 @@ export function PreferenceGraph({
             y2={branch.y}
             strokeWidth={branchWidth(branch.total)}
             strokeLinecap="round"
-            stroke={branch.isEmpty ? undefined : BRANCH_TINT[branch.predicate]}
+            stroke={branch.isEmpty ? undefined : PREDICATE_STYLE[branch.predicate].tint}
             strokeOpacity={
               branch.isEmpty ? undefined : focused === branch.predicate ? 0.95 : 0.5
             }
@@ -209,7 +178,7 @@ export function PreferenceGraph({
               x2={leaf.x}
               y2={leaf.y}
               strokeWidth={1.25}
-              stroke={BRANCH_TINT[branch.predicate]}
+              stroke={PREDICATE_STYLE[branch.predicate].tint}
               strokeOpacity={focused === branch.predicate ? 0.6 : 0.32}
               className={cn(
                 "transition-opacity duration-200",
@@ -219,19 +188,31 @@ export function PreferenceGraph({
           )),
         )}
 
-        {/* ── 중심: 나 ── */}
+        {/* ── 중심: 나 ──
+            검정 원을 브랜드색으로 바꿨다. 순수 검정은 파스텔 가지들 사이에서
+            혼자 무게가 달라 "고립된 덩어리"로 보였다. 브랜드 딥 틸그린은
+            가지들과 같은 계열이라 이어져 보이면서도, 채도·명도가 가장 높아
+            중심이라는 위계는 유지된다.
+
+            바깥에 옅은 헤일로를 한 겹 둬 가지 선이 원에 바로 부딪히지 않게 한다 */}
         <circle
           cx={layout.center.x}
           cy={layout.center.y}
-          r={38}
-          className="fill-primary"
+          r={46}
+          className="fill-brand/10"
+        />
+        <circle
+          cx={layout.center.x}
+          cy={layout.center.y}
+          r={34}
+          className="fill-brand"
         />
         <text
           x={layout.center.x}
           y={layout.center.y}
           textAnchor="middle"
           dominantBaseline="central"
-          className="fill-primary-foreground text-[22px] font-semibold"
+          className="fill-brand-foreground text-[20px] font-semibold"
           style={{ letterSpacing: "-0.01em" }}
         >
           나
@@ -257,10 +238,10 @@ export function PreferenceGraph({
                 r={r}
                 fill={
                   focused === branch.predicate
-                    ? `${BRANCH_TINT[branch.predicate]}1f` // 12% — 선택 표시
+                    ? `${PREDICATE_STYLE[branch.predicate].tint}1f` // 12% — 선택 표시
                     : undefined
                 }
-                stroke={branch.isEmpty ? undefined : BRANCH_TINT[branch.predicate]}
+                stroke={branch.isEmpty ? undefined : PREDICATE_STYLE[branch.predicate].tint}
                 strokeOpacity={
                   branch.isEmpty
                     ? undefined
@@ -369,8 +350,8 @@ export function PreferenceGraph({
                     width={11}
                     height={11}
                     rx={2.5}
-                    fill={locked ? undefined : BRANCH_TINT[branch.predicate]}
-                    stroke={locked ? BRANCH_TINT[branch.predicate] : undefined}
+                    fill={locked ? undefined : PREDICATE_STYLE[branch.predicate].tint}
+                    stroke={locked ? PREDICATE_STYLE[branch.predicate].tint : undefined}
                     className={cn(
                       "transition-opacity duration-150",
                       // 잠긴 항목(구매 파생)은 속을 비운다 — 형태로 구분하므로
@@ -385,8 +366,8 @@ export function PreferenceGraph({
                     cx={leaf.x}
                     cy={leaf.y}
                     r={6}
-                    fill={locked ? undefined : BRANCH_TINT[branch.predicate]}
-                    stroke={locked ? BRANCH_TINT[branch.predicate] : undefined}
+                    fill={locked ? undefined : PREDICATE_STYLE[branch.predicate].tint}
+                    stroke={locked ? PREDICATE_STYLE[branch.predicate].tint : undefined}
                     className={cn(
                       "transition-opacity duration-150",
                       locked
@@ -440,67 +421,14 @@ export function PreferenceGraph({
           }),
         )}
 
-        {/* ── +N: 남은 항목으로 가는 길 ──
-            확대해도 다 못 담는 그룹은 목록으로 보낸다(아래 주석 참조) */}
-        {layout.branches
-          .filter((b) => b.overflow > 0)
-          .map((branch) => {
-            const r = branchRadius(branch.total);
-            const y = branch.y - r - 20;
+        {/*
+          ⚠️ 그래프 안의 "더 보기"·"전체 보기" 버튼을 전부 없앴다.
 
-            /*
-              확대만으로 전부 보여줄 수 있는가.
-
-              ⚠️ 이 분기가 없으면 버튼이 거짓말을 한다. 방사형은 라벨이 가로로
-              뻗어 한 가지에 8개가 한계인데(GRAPH_ITEMS_FOCUSED), 82개짜리
-              그룹에서 "+76개 더"를 누르면 8개만 늘고 "+74개 더"가 그대로 남는다.
-              한 번 더 눌러도 아무 일이 없는 막다른 길이 된다.
-
-              전부 보여줄 수 있을 때만 확대하고, 그렇지 않으면 **실제로 전부
-              읽을 수 있는 곳**인 목록 뷰로 보낸다. 목록은 세로로 늘어나므로
-              개수 제한이 없다(PreferenceGroup: focused면 group.edges 전량).
-            */
-            const fitsInGraph = branch.total <= GRAPH_ITEMS_FOCUSED;
-            // 목적이 드러나는 문구를 쓴다 — "더보기"는 무엇이 더 나오는지,
-            // 어디로 가는지 말해주지 않는다. 그래프 안에서 끝나는 경우와
-            // 목록으로 내려가는 경우를 문구로 구분한다.
-            const label = fitsInGraph
-              ? `${branch.overflow}개 더 보기`
-              : `${branch.label} 전체 보기`;
-            // 글자 수에 맞춰 알약 폭을 잡는다 — 고정폭이면 긴 문구가 넘친다
-            const w = label.length * 9 + 26;
-
-            return (
-              <g
-                key={`more-${branch.predicate}`}
-                className="group/more cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (fitsInGraph) onFocus(branch.predicate);
-                  else onShowAll(branch.predicate);
-                }}
-              >
-                <rect
-                  x={branch.x - w / 2}
-                  y={y - 15}
-                  width={w}
-                  height={30}
-                  rx={15}
-                  className="fill-background stroke-border transition-colors duration-150 group-hover/more:fill-muted group-hover/more:stroke-foreground/40"
-                  strokeWidth={1.25}
-                />
-                <text
-                  x={branch.x}
-                  y={y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  className="fill-foreground/80 text-[15px] font-medium transition-colors duration-150 group-hover/more:fill-foreground"
-                >
-                  {label}
-                </text>
-              </g>
-            );
-          })}
+          관계마다 알약이 하나씩 떠 있으면 그것만 5개라 정작 취향 라벨보다
+          버튼이 먼저 보였다. 그래프는 **대표 취향으로 구조를 훑는 곳**이고,
+          전체를 보는 경로는 패널 상단의 `전체 취향 보기` 하나로 모았다.
+          (관계 노드의 숫자는 그대로 전체 개수를 말한다)
+        */}
       </svg>
     </div>
   );
