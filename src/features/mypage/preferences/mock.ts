@@ -193,15 +193,18 @@ const SITUATION_NAMES = [
 /**
  * 관계별 분포 — 실제 응답에 가깝게 기울여 둔다.
  *
- * `avoids`는 0으로 남긴다. 이 관계를 만드는 경로가 아직 없어 실제로도 항상
- * 빈 배열이고(types.ts), 빈 그룹이 화면에서 자리를 지키는지가 확인 대상이다.
- * `purchased`는 구매 파생이라 전부 editable: false다.
+ * ⚠️ **`avoids`와 `purchased`는 둘 다 0이다.** 계약에 "당분간 항상 빈 배열"로
+ * 명시돼 있다 — 이 관계를 만드는 경로가 아직 없어서다(계약 §관계 5종).
+ *
+ * 한때 purchased 에 23개를 넣었는데, 그건 **서버가 지금 보낼 수 없는 응답**이라
+ * 목이 거짓 상태를 재현하고 있었다. 그 수치를 보고 화면을 맞추면 실제 배포에서
+ * 빈 그룹만 남는다. 두 관계가 비어 있을 때 자리를 어떻게 지키는지가 오히려
+ * 확인해야 할 상태다.
  */
 const MANY_DISTRIBUTION = [
-  { predicate: "prefers", count: 82 },
-  { predicate: "likes", count: 54 },
-  { predicate: "interestedIn", count: 41 },
-  { predicate: "purchased", count: 23 },
+  { predicate: "prefers", count: 88 },
+  { predicate: "likes", count: 62 },
+  { predicate: "interestedIn", count: 50 },
 ] as const satisfies readonly {
   predicate: PreferenceEdge["predicate"];
   count: number;
@@ -244,8 +247,15 @@ function manyGraph(): ProfileGraph {
     for (let n = 0; n < count; n += 1, i += 1) {
       many.push(
         edge(`e_bulk${String(i).padStart(4, "0")}`, distinctObject(i), predicate, {
-          // 구매 파생은 수정할 수 없다 — 자물쇠 표시가 그려지는지 확인한다
-          editable: predicate !== "purchased",
+          /*
+            일부만 수정 불가로 둔다 — 자물쇠 + ✏️ 비활성이 그려지는지 확인한다
+            (계약 확인 목록 12번).
+
+            `predicate === "purchased"` 로 판정하지 않는다: 그 관계는 당분간
+            항상 비어 있고, `editable` 은 그것과 **별개의 플래그**다
+            (계약 §M-13: editable:false 여도 삭제는 허용).
+          */
+          editable: n % 13 !== 0,
           // 몇 건만 challenged로 둬서 "!" 표식이 묻히지 않는지 본다
           challenged: n > 0 && n % 17 === 0,
         }),
