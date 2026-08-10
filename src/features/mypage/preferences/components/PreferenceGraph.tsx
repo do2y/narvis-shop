@@ -156,7 +156,19 @@ export function PreferenceGraph({
       */}
       <svg
         viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-        className="h-auto max-h-[68vh] w-full select-none"
+        /*
+          높이를 뷰포트 기준으로 잡는다.
+
+          ⚠️ 예전에는 `h-auto max-h-[68vh]` 였는데, h-auto 는 폭이 높이를 정하므로
+          (뷰박스 3:2) 1150px 폭에서 767px 가 됐다. max-h 는 이미 정해진 높이를
+          줄이지 못해 무력했고, 위쪽 헤더·요약 패널까지 더해져 1366×768 노트북에서
+          그래프가 **55% 만 보였다**(실측). 첫 화면에서 잘린 그림을 보게 된다.
+
+          그래서 높이를 먼저 정하고(`h-[52vh]`) 폭은 preserveAspectRatio 가
+          맞추게 둔다. 어떤 화면에서도 그래프 한 장이 접히지 않고 들어간다.
+          하한(min-h)은 세로가 아주 짧은 창에서 그래프가 뭉개지지 않게 잡는다.
+        */
+        className="h-[52vh] max-h-[560px] min-h-[380px] w-full select-none"
         aria-hidden="true"
         // 포커스 모드에서 빈 곳을 누르면 전체 보기로 복귀
         onClick={() => focused && onFocus(null)}

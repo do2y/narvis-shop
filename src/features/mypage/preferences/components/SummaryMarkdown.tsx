@@ -33,8 +33,30 @@ function Inlines({ inlines }: { inlines: SummaryInline[] }) {
   );
 }
 
-export function SummaryMarkdown({ markdown }: { markdown: string }) {
-  const blocks = parseSummary(markdown);
+/**
+ * 요약 문단의 첫 본문 한 줄 — 접힌 패널의 미리보기에 쓴다.
+ *
+ * 제목(`# 취향 요약`)은 건너뛴다. 그건 패널 라벨이라 미리보기에 넣으면
+ * "취향 요약 · 취향 요약"이 된다.
+ */
+export function summaryFirstLine(markdown: string): string {
+  const first = parseSummary(markdown).find((b) => b.type === "paragraph");
+  if (!first || first.type !== "paragraph") return "";
+  return first.inlines.map((i) => i.text).join("");
+}
+
+export function SummaryMarkdown({
+  markdown,
+  /** 마크다운의 제목 블록을 그리지 않는다 — 바깥에 같은 라벨이 있을 때 */
+  hideHeading = false,
+}: {
+  markdown: string;
+  hideHeading?: boolean;
+}) {
+  const parsed = parseSummary(markdown);
+  const blocks = hideHeading
+    ? parsed.filter((b) => b.type !== "heading")
+    : parsed;
 
   // 문법만 있고 내용이 없는 문자열이 올 수 있다 — 그때는 빈 자리를 남기지 않는다.
   // (markdown: null 인 경우는 호출부가 빈 상태 문구로 대체한다)
