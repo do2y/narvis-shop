@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, Sparkles } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { ErrorState, PageTitle } from "../components/PageState";
 import { DeleteEdgeDialog } from "./components/DeleteEdgeDialog";
 import { EditEdgeDialog } from "./components/EditEdgeDialog";
+import { EmptySummaryCard } from "./components/EmptySummaryCard";
 import {
   PersonalizationControls,
   PersonalizationOffBanner,
@@ -57,28 +58,21 @@ function PreferencesSkeleton() {
 }
 
 /**
- * 빈 상태 — `exists: false`(신규 회원) 또는 `edges: []`.
+ * 빈 상태에서 관계도·목록 자리를 대신하는 한 줄.
  *
- * ⚠️ 오류가 아니다. HTTP 200이고 신규 회원의 정상 상태다.
+ * 두 섹션을 통째로 숨기므로, 그게 **없는 기능이 아니라 아직 이른 것**임을
+ * 알려준다. 카드도 테두리도 두지 않는 이유: 여기에 상자를 하나 더 두면
+ * 대표 카드와 경쟁해 "빈 카드가 둘"이라는 원래 문제로 돌아간다.
+ * CTA 도 반복하지 않는다 — 바로 위 카드에 이미 있다.
  *
- * 공용 EmptyState를 쓰지 않는 이유: 그쪽은 Link 액션 버튼이 필수인데,
- * 여기서는 **개인화 스위치와 [전체 초기화]가 빈 상태에서도 보여야 한다**
- * (노션 2장). 그 컨트롤은 이 컴포넌트 바깥에서 그려지므로 여기서는
- * 안내 문구만 담당한다.
+ * break-keep: 한국어 기본 줄바꿈은 글자 단위라 어절 한가운데가 잘린다.
  */
-function EmptyPreferences() {
+function EmptySectionsNote() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-sm bg-muted/30 px-6 py-20 text-center">
-      <span className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Sparkles className="size-7" strokeWidth={1.5} />
-      </span>
-      <p className="mt-1 text-base font-semibold tracking-tight">
-        아직 파악한 취향이 없어요
-      </p>
-      <p className="max-w-xs text-sm text-muted-foreground">
-        채팅으로 쇼핑을 시작하면 여기에 쌓여요.
-      </p>
-    </div>
+    <p className="px-1 text-[13px] leading-relaxed break-keep text-muted-foreground">
+      취향이 쌓이면 여기에 관계도와 전체 목록이 생겨요. 하나씩 눌러 고치거나
+      지울 수도 있어요.
+    </p>
   );
 }
 
@@ -124,7 +118,6 @@ export default function PreferencesPage() {
   // 대상이 edge 안에 인라인돼 있어 룩업 없이 바로 읽는다.
   const deletingLabel = deleting?.object.label ?? "";
 
-
   // 요약 카드 수치 — 지금 있는 필드만으로 계산한다(summaryStats 주석)
   const stats = buildSummaryStats(data?.edges ?? []);
 
@@ -155,7 +148,7 @@ export default function PreferencesPage() {
             가지 않는다("취향 항해" 같은 표현은 한 번 웃기고 두 번째부터 걸린다).
             존댓말·"~해요"체는 앱 나머지와 같다.
           */}
-          <PageTitle>내 취향은 지금 어디쯤일까요?</PageTitle>
+          <PageTitle>내 취향 나비게이션</PageTitle>
           <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
             대화하고 쇼핑하며 발견한 취향을 모아뒀어요. 다른 길로 샜다면 원하는
             방향으로 돌려주세요.
@@ -198,19 +191,38 @@ export default function PreferencesPage() {
               아래 두 섹션과 달리 옅은 브랜드 배경 + 로고색 라인을 줘 무게를
               한 단계 올린다(SummaryCard 주석). markdown 이 null 이어도
               수치 요약은 나오므로 카드 자체는 그린다.
+
+              빈 상태(`exists: false` 또는 `edges: []` — 오류가 아니라 신규
+              회원의 정상 상태다)에서는 **카드를 통째로 갈아끼운다.**
+              SummaryCard 는 내용이 전부 조건부라 데이터가 없으면 "0개" 한 줄만
+              남은 반쯤 빈 카드가 되고, 그 아래 빈 상태 안내가 같은 사실을 한 번
+              더 말하게 된다. 두 블록을 EmptySummaryCard 하나로 합친다.
+
+              ⚠️ 빈 상태에서 **아래 관계도·목록 섹션은 그리지 않는다.** 셋 다
+              비면 같은 말("아직 없어요")이 세 번 나오고, 빈 그래프 캔버스와
+              빈 그룹 5개가 화면을 세 배로 늘린다. 대표 empty state 하나만
+              강하게 두고, 두 섹션이 사라진 것처럼 보이지 않도록 카드 아래에
+              한 줄 안내만 남긴다(EmptySectionsNote).
+
+              ⚠️ 로딩·오류와 섞지 않는다 — 위쪽 분기에서 스켈레톤·ErrorState 로
+              이미 갈렸고, 여기 도달했다는 것은 요청이 정상 종료됐다는 뜻이다.
             */}
-            <SummaryCard stats={stats} markdown={data.markdown} />
-
             {isEmpty ? (
-              <EmptyPreferences />
-            ) : (
-              /*
-                ② 관계도(구조 훑기) → ③ 전체 목록(확인하고 고치기).
-
-                둘은 같은 화면에 세로로 있고 역할만 나뉜다. 대표 카드와 달리
-                배경 없이 테두리만 둬, 시각적 무게가 ①보다 낮게 읽히도록 한다.
-              */
               <>
+                <EmptySummaryCard />
+                <EmptySectionsNote />
+              </>
+            ) : (
+              <>
+                <SummaryCard stats={stats} markdown={data.markdown} />
+
+                {/*
+                  ② 관계도(구조 훑기) → ③ 전체 목록(확인하고 고치기).
+
+                  둘은 같은 화면에 세로로 있고 역할만 나뉜다. 대표 카드와 달리
+                  배경 없이 테두리만 둬, 시각적 무게가 ①보다 낮게 읽히도록 한다.
+                */}
+
                 {/* 좁은 화면에서는 방사형이 성립하지 않는다(라벨이 겹쳐 아무것도
                     안 읽힌다). 그릴 수 없는 것을 억지로 넣지 않고 목록만 남긴다 */}
                 {isNarrow ? null : (
@@ -300,7 +312,8 @@ export default function PreferencesPage() {
                     지금까지 발견한 취향
                   </h2>
                   <p className="mt-0.5 text-[13px] text-muted-foreground">
-                    마음에 꼭 맞는지 둘러보고, 다른 부분은 눌러서 고칠 수 있어요.
+                    마음에 꼭 맞는지 둘러보고, 다른 부분은 눌러서 고칠 수
+                    있어요.
                   </p>
 
                   <div className="mt-5">
