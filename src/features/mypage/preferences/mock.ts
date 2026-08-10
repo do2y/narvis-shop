@@ -42,7 +42,7 @@ export type MockScenario =
   | "error"; // M-11 자체가 500
 
 /** ⚠️ 개발 중 여기만 바꾼다 */
-export const MOCK_SCENARIO: MockScenario = "normal";
+export const MOCK_SCENARIO: MockScenario = "many";
 
 /** 목 응답 지연(ms) — 스켈레톤이 실제로 보이는지 확인하려면 0보다 커야 한다 */
 const MOCK_LATENCY = 400;
@@ -158,19 +158,110 @@ function baseGraph(): ProfileGraph {
 }
 
 /**
+ * 대량 시나리오용 대상 생성 — **서로 다른 대상 200개**를 만든다.
+ *
+ * ⚠️ 한때 11개짜리 풀을 `i % 11`로 돌려 200개를 채웠다. 그건 **서버가 보낼 수
+ * 없는 응답**이다: edgeId가 (관계, 대상)에서 파생되므로(types.ts) 같은 쌍은
+ * 하나로 합쳐진다. 같은 라벨이 18번 반복되는 화면을 보고 레이아웃을 의심하게
+ * 만들었는데, 실제로는 있을 수 없는 입력을 넣은 것이었다.
+ *
+ * 그래서 조합으로 고유 라벨을 만든다. 대상 종류(type)도 섞는다 — 그래프가
+ * 개별 대상(제품·브랜드)은 사각형, 범주는 원으로 그리므로 한 종류만 있으면
+ * 그 구분이 화면에서 검증되지 않는다.
+ */
+const BRAND_NAMES = [
+  "소니", "젠하이저", "보스", "애플", "삼성", "야마하", "AKG", "베이어다이나믹",
+  "슈어", "오디오테크니카", "JBL", "마샬", "뱅앤올룹슨", "포칼", "슈퍼럭스",
+] as const;
+
+const CATEGORY_NAMES = [
+  "블루투스 이어폰", "오버이어 헤드폰", "게이밍 헤드셋", "유선 이어폰",
+  "스피커", "사운드바", "턴테이블", "DAC", "마이크", "이어폰 케이스",
+] as const;
+
+const ATTRIBUTE_NAMES = [
+  "노이즈캔슬링", "무선", "방수", "경량", "저음 강조", "고해상도 음질",
+  "멀티페어링", "저지연", "탈착식 케이블", "접이식", "오픈형", "커널형",
+  "무광 블랙", "광택", "화이트", "장시간 재생", "빠른 충전", "통화 품질",
+] as const;
+
+const SITUATION_NAMES = [
+  "출퇴근", "재택근무", "운동", "취침", "장거리 비행", "카페 작업",
+  "온라인 회의", "게임", "산책",
+] as const;
+
+/**
+ * 관계별 분포 — 실제 응답에 가깝게 기울여 둔다.
+ *
+ * ⚠️ **`avoids`와 `purchased`는 둘 다 0이다.** 계약에 "당분간 항상 빈 배열"로
+ * 명시돼 있다 — 이 관계를 만드는 경로가 아직 없어서다(계약 §관계 5종).
+ *
+ * 한때 purchased 에 23개를 넣었는데, 그건 **서버가 지금 보낼 수 없는 응답**이라
+ * 목이 거짓 상태를 재현하고 있었다. 그 수치를 보고 화면을 맞추면 실제 배포에서
+ * 빈 그룹만 남는다. 두 관계가 비어 있을 때 자리를 어떻게 지키는지가 오히려
+ * 확인해야 할 상태다.
+ */
+const MANY_DISTRIBUTION = [
+  { predicate: "prefers", count: 88 },
+  { predicate: "likes", count: 62 },
+  { predicate: "interestedIn", count: 50 },
+] as const satisfies readonly {
+  predicate: PreferenceEdge["predicate"];
+  count: number;
+}[];
+
+/**
+ * n번째 고유 대상. 종류를 돌아가며 뽑고, 이름 풀을 한 바퀴 넘기면 수식어를
+ * 붙여 계속 다른 라벨을 만든다("소니" → "소니 프로" → "소니 미니"…).
+ *
+ * 수식어를 쓰는 이유: 풀을 200개까지 손으로 적으면 유지가 안 되고, 번호를
+ * 붙이면("소니 12") 실제 데이터처럼 보이지 않아 라벨 길이·말줄임 검증이 무의미해진다.
+ */
+const VARIANTS = ["", " 프로", " 미니", " 플러스", " 라이트", " 맥스"] as const;
+
+function distinctObject(i: number): PreferenceObject {
+  const kinds = [
+    { type: "brand" as const, names: BRAND_NAMES },
+    { type: "category" as const, names: CATEGORY_NAMES },
+    { type: "attribute" as const, names: ATTRIBUTE_NAMES },
+    { type: "situation" as const, names: SITUATION_NAMES },
+  ];
+  const kind = kinds[i % kinds.length];
+  const within = Math.floor(i / kinds.length);
+  const base = kind.names[within % kind.names.length];
+  const variant = VARIANTS[Math.floor(within / kind.names.length) % VARIANTS.length];
+  const label = `${base}${variant}`;
+  return { nodeId: `${kind.type}:${label}`, type: kind.type, label };
+}
+
+/**
  * 대량 시나리오 — 서버 상한이 폐지되어 edges가 전량 온다.
  *
  * 방사형의 관계당 표시 상한과 `+N개 더`, [전체 보기] 전환이 실제로 동작하는지,
  * 라벨이 겹쳐 화면이 뭉개지지 않는지 확인한다.
  */
 function manyGraph(): ProfileGraph {
-  const many: PreferenceEdge[] = Array.from({ length: 200 }, (_, i) =>
-    edge(
-      `e_bulk${String(i).padStart(4, "0")}`,
-      OBJECT_POOL[i % OBJECT_POOL.length],
-      "prefers",
-    ),
-  );
+  const many: PreferenceEdge[] = [];
+  let i = 0;
+  for (const { predicate, count } of MANY_DISTRIBUTION) {
+    for (let n = 0; n < count; n += 1, i += 1) {
+      many.push(
+        edge(`e_bulk${String(i).padStart(4, "0")}`, distinctObject(i), predicate, {
+          /*
+            일부만 수정 불가로 둔다 — 자물쇠 + ✏️ 비활성이 그려지는지 확인한다
+            (계약 확인 목록 12번).
+
+            `predicate === "purchased"` 로 판정하지 않는다: 그 관계는 당분간
+            항상 비어 있고, `editable` 은 그것과 **별개의 플래그**다
+            (계약 §M-13: editable:false 여도 삭제는 허용).
+          */
+          editable: n % 13 !== 0,
+          // 몇 건만 challenged로 둬서 "!" 표식이 묻히지 않는지 본다
+          challenged: n > 0 && n % 17 === 0,
+        }),
+      );
+    }
+  }
   return { ...baseGraph(), edges: many };
 }
 

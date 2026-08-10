@@ -1,39 +1,80 @@
 "use client";
 
 import { Lock, Pencil, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PREDICATE_STYLE } from "../predicateStyle";
 import type { PreferenceEdge } from "../types";
 
 interface PreferenceItemProps {
   edge: PreferenceEdge;
+  /** 지금 선택된 항목인가 — 선택하면 그 자리에서 수정·삭제가 열린다 */
+  selected: boolean;
+  onSelect: (edge: PreferenceEdge | null) => void;
   onEdit: (edge: PreferenceEdge) => void;
   onDelete: (edge: PreferenceEdge) => void;
 }
 
 /**
- * 취향 항목 하나 — 라벨 + 상태 배지 + ✏️🗑.
+ * 취향 하나 — **칩(토큰)**.
  *
- * 표시 규칙:
- * - `nodeId`를 그대로 보여주지 않는다. 내부 식별자라 `object.label`을 쓴다
- * - `editable: false`(구매 파생)는 ✏️만 비활성, 🗑은 **살아 있다**
+ * ## 왜 행이 아니라 칩인가
+ * 데이터가 "무선"·"소니" 같은 **짧은 단어 하나**뿐이다. 가로로 긴 행에 그걸
+ * 하나씩 놓으면 오른쪽이 통째로 비고, 구분선이 수십 줄 반복되면서 화면이
+ * 데이터 테이블처럼 읽힌다 — 개인의 취향을 둘러보는 곳이 아니라 관리자
+ * 설정 화면이 된다.
  *
- * 확신도·출처·"내가 수정함" 배지는 **확정 응답에 필드가 없어 그리지 않는다.**
- * 되살리려면 계약 개정(C-25)이 먼저다 — 없는 값을 추측해 표시하지 않는다.
+ * 칩은 글자 길이만큼만 차지하고 자연스럽게 wrap 되므로, 같은 면적에 훨씬
+ * 많이 들어가면서 "모아 둔 컬렉션"처럼 보인다.
+ *
+ * ## 액션을 상시 노출하지 않는 이유
+ * 칩마다 ✏️🗑 두 개가 붙으면 글자보다 아이콘이 많아져 무엇이 내용인지
+ * 알 수 없다. **선택했을 때만** 그 칩 안에서 액션이 열린다.
+ *
+ * 선택은 hover 가 아니라 **클릭/탭**이라 터치·키보드에서 똑같이 동작한다
+ * (hover 로 열면 터치 기기에서 영영 못 연다). hover 는 색이 살짝 짙어지는
+ * 정도로만 쓴다 — 누를 수 있다는 신호일 뿐이다.
  */
-export function PreferenceItem({ edge, onEdit, onDelete }: PreferenceItemProps) {
+export function PreferenceItem({
+  edge,
+  selected,
+  onSelect,
+  onEdit,
+  onDelete,
+}: PreferenceItemProps) {
   const label = edge.object.label;
+  const style = PREDICATE_STYLE[edge.predicate];
 
   return (
-    <li className="group flex items-center gap-2 rounded-full border border-border bg-background py-1.5 pl-3 pr-1.5 transition-colors">
+    <li className="min-w-0">
       <span
-        className="size-2 shrink-0 rounded-full bg-muted-foreground/50"
-        aria-hidden="true"
-      />
-
-      <span className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate text-sm tracking-tight">{label}</span>
+        className={cn(
+          "inline-flex max-w-full items-center gap-1.5 rounded-full border py-1 pl-3 text-[13px]",
+          "transition-[background-color,border-color,box-shadow] duration-150 ease-out-strong",
+          "motion-reduce:transition-none",
+          style.chipClass,
+          // 선택 상태는 링으로 알린다 — 색만 바꾸면 옆 칩과 구분이 약하다
+          selected && "shadow-[0_0_0_2px_var(--brand)]",
+          // 액션이 열리면 오른쪽 여백을 줄여 버튼이 테두리에 닿지 않게
+          selected ? "pr-1" : "pr-3",
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => onSelect(selected ? null : edge)}
+          aria-pressed={selected}
+          aria-label={
+            selected ? `${label} 선택 해제` : `${label} 선택 — 고치거나 지울 수 있어요`
+          }
+          className={cn(
+            "min-w-0 truncate text-left",
+            "focus-visible:outline-none focus-visible:underline",
+          )}
+        >
+          {label}
+        </button>
 
         {edge.editable ? null : (
-          // 구매 파생 — 수정만 막힌다. 자물쇠는 그 이유를 형태로 알린다
+          // 구매 파생 — 수정만 막힌다. 자물쇠가 그 이유를 형태로 알린다
           <Lock
             className="size-3 shrink-0 text-muted-foreground"
             aria-hidden="true"
@@ -41,46 +82,55 @@ export function PreferenceItem({ edge, onEdit, onDelete }: PreferenceItemProps) 
         )}
 
         {edge.challenged ? (
-          // "최근 취향이 바뀐 것 같아요" — 색은 바꾸지 않는다.
-          // 오류가 아니라 확인 요청이므로 경고색을 쓰면 과하다.
+          // "최근 취향이 바뀐 것 같아요" — 오류가 아니라 확인 요청이라
+          // 경고색을 쓰지 않는다. 형태(테두리 배지)로만 알린다.
           <span
-            className="shrink-0 rounded-full border border-border px-1.5 text-[10px] font-medium text-muted-foreground"
+            className="shrink-0 rounded-full border border-border/70 px-1 text-[10px] font-medium leading-4 text-muted-foreground"
             title="최근 취향이 바뀐 것 같아요. 고쳐볼까요?"
           >
             !
           </span>
         ) : null}
-      </span>
 
-      {/*
-        ✏️ 왼쪽 / 🗑 오른쪽 — 위험한 쪽이 바깥이다.
-        터치 타겟 44×44px(size-11), 아이콘 사이 간격은 gap-1 + 각 버튼의
-        내부 여백으로 16px 이상을 확보한다.
-      */}
-      <span className="ml-auto flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={() => onEdit(edge)}
-          disabled={!edge.editable}
-          aria-label={`${label} 수정`}
-          title={
-            edge.editable
-              ? "수정"
-              : "구매 기록에서 만들어진 항목은 수정할 수 없어요."
-          }
-          className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-        >
-          <Pencil className="size-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(edge)}
-          aria-label={`${label} 삭제`}
-          title="삭제"
-          className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Trash2 className="size-4" />
-        </button>
+        {/* 선택했을 때만 열리는 액션. DOM 에서 아예 빼서 탭 순서도 함께 정리된다 */}
+        {selected ? (
+          <span className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => onEdit(edge)}
+              disabled={!edge.editable}
+              aria-label={`${label} 수정`}
+              title={
+                edge.editable
+                  ? "수정"
+                  : "구매 기록에서 만들어진 항목은 수정할 수 없어요."
+              }
+              className={cn(
+                "flex size-7 items-center justify-center rounded-full text-muted-foreground",
+                "transition-colors duration-150 ease-out-strong",
+                "hover:[@media(hover:hover)]:bg-background hover:[@media(hover:hover)]:text-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
+                "disabled:pointer-events-none disabled:opacity-30",
+              )}
+            >
+              <Pencil className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(edge)}
+              aria-label={`${label} 삭제`}
+              title="삭제"
+              className={cn(
+                "flex size-7 items-center justify-center rounded-full text-muted-foreground",
+                "transition-colors duration-150 ease-out-strong",
+                "hover:[@media(hover:hover)]:bg-destructive/10 hover:[@media(hover:hover)]:text-destructive",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40",
+              )}
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </span>
+        ) : null}
       </span>
     </li>
   );

@@ -26,7 +26,30 @@ import {
  */
 export const GRAPH_ITEMS_PER_BRANCH = 6;
 
-/** 포커스 모드(한 관계만 확대)에서의 상한 — 화면 전체를 한 가지가 쓴다 */
+/**
+ * 포커스 모드(한 관계만 확대)에서의 상한.
+ *
+ * **각도가 아니라 세로 픽셀이 진짜 제약이다.** 한때 이 값이 24인데 라벨 18쌍이
+ * 겹쳤는데, 원인은 개수가 아니라 부채꼴 각도만으로 간격을 잡은 것이었다
+ * (항목당 9°가 되어 라벨이 포개졌다). buildGraphLayout이 계산 후 세로 간격을
+ * 픽셀로 보정하게 고친 뒤로는 24개도 겹치지 않는다.
+ *
+ * 그래서 상한을 정하는 기준은 겹침이 아니라 **뷰박스를 넘는가**다. 실측:
+ *
+ * | 개수 | 겹침 | 화면 밖 | 세로 사용 |
+ * |------|------|---------|-----------|
+ * | 24   | 0쌍  | 0개     | 483px     |
+ * | 28   | 0쌍  | 0개     | 567px     |
+ * | 32   | 0쌍  | 1개     | 651px     |
+ * | 40   | 0쌍  | 5개     | 819px     |
+ *
+ * 28이 마지막 안전값이지만 24를 쓴다 — 여유 4개가 있어야 라벨이 지금보다
+ * 길어지거나 뷰박스가 바뀌어도 곧바로 깨지지 않는다.
+ *
+ * 이 수를 넘는 그룹은 잘리는 게 아니라 목록 뷰가 받는다(PreferenceGraph의
+ * "N개 모두 보기"). 방사형은 라벨이 가로로 뻗어 82개를 담을 수 없고,
+ * 세로로 늘어나는 목록에는 개수 제한이 없다.
+ */
 export const GRAPH_ITEMS_FOCUSED = 24;
 
 /**
@@ -37,7 +60,19 @@ export const GRAPH_ITEMS_FOCUSED = 24;
  * 라벨이 뻗을 가로 여백이 생겨 같은 반지름에서도 잘리지 않는다.
  */
 export const VIEWBOX_W = 1200;
-export const VIEWBOX_H = 800;
+/*
+  ⚠️ 800 → 680 으로 낮췄다(3:2 → 약 1.76:1).
+
+  패널이 가로로 넓고 세로는 뷰포트에 맞춰 잘리므로(약 1150×460, 2.5:1),
+  뷰박스가 3:2 면 `preserveAspectRatio` 가 세로에 맞춰 축소해 **가로 814px 만
+  쓰고 좌우가 letterbox 로 남았다**(실측: 컨테이너 대비 64%). 뷰박스를 실제
+  패널 비율 쪽으로 당기면 같은 높이에서 가로를 더 쓴다.
+
+  완전히 2.5:1 로 맞추지는 않는다 — 그러면 세로가 너무 눌려 위아래 가지의
+  라벨이 서로 가까워진다. 라벨 간 세로 간격 보정(MIN_LABEL_GAP)이 그만큼
+  더 많이 밀어내야 하고, 밀어낼수록 부채꼴이 흐트러진다.
+*/
+export const VIEWBOX_H = 680;
 const CENTER_X = VIEWBOX_W / 2;
 const CENTER_Y = VIEWBOX_H / 2;
 
@@ -49,11 +84,20 @@ const CENTER_Y = VIEWBOX_H / 2;
  * 남으므로 그만큼 멀리 밀어 화면을 채운다.
  */
 function branchRadiusFor(filledCount: number, focusedMode: boolean): number {
+  /*
+    ⚠️ 값을 키웠다(214 → 286 등). 이전 값에서는 그림이 뷰박스의 **64%** 만
+    써서, 큰 패널 한가운데 작게 떠 있는 것처럼 보였다(실측). 방사형은
+    반지름이 곧 그림 크기라 여백을 줄이려면 여기를 늘려야 한다.
+
+    상한은 라벨이다 — 항목 라벨이 가지에서 다시 뻗어 나가므로, 반지름을
+    너무 키우면 바깥 라벨이 뷰박스를 넘는다. 아래 값은 leafRadius 와 합쳐
+    가장자리에 라벨 폭(약 150px)이 남도록 잡았다.
+  */
   // 포커스 모드에서는 부채꼴이 커지므로 가지를 중심 쪽으로 당겨 자리를 내준다
-  if (focusedMode) return 190;
-  if (filledCount <= 1) return 300;
-  if (filledCount === 2) return 262;
-  return 214;
+  if (focusedMode) return 210;
+  if (filledCount <= 1) return 330;
+  if (filledCount === 2) return 300;
+  return 286;
 }
 
 /**
@@ -64,8 +108,8 @@ function branchRadiusFor(filledCount: number, focusedMode: boolean): number {
 function leafRadiusFor(filledCount: number, focusedMode: boolean): number {
   // 포커스 모드는 한 가지에 24개까지 펼쳐 부채꼴이 훨씬 커진다.
   // 같은 반지름을 쓰면 위아래가 뷰박스를 넘는다.
-  if (focusedMode) return 120;
-  return filledCount <= 2 ? 168 : 138;
+  if (focusedMode) return 130;
+  return filledCount <= 2 ? 190 : 165;
 }
 
 /**
@@ -178,6 +222,25 @@ function orderBranchesForPlacement(
  * **더 크고 덜 겹치게** 그릴 수 있다.
  */
 const Y_SQUASH = 0.72;
+
+/**
+ * 문자열 → 0~1 사이의 **결정적** 수.
+ *
+ * 배치에 변화를 주되 `Math.random()` 을 쓰지 않기 위한 것이다. 무작위면
+ * 렌더할 때마다 그래프가 달라져 "데이터가 바뀌어도 노드가 과도하게 움직이지
+ * 않는다"는 요건을 깬다. 해시는 같은 입력에 항상 같은 값이라 그 문제가 없다.
+ *
+ * FNV-1a 변형 — 암호학적 강도가 필요 없는 자리라 짧고 빠른 것으로 충분하다.
+ */
+function hashUnit(seed: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  // >>> 0 으로 부호를 없앤 뒤 0~1 로 정규화
+  return ((h >>> 0) % 1000) / 1000;
+}
 
 function polar(angleDeg: number, radius: number, origin: Point): Point {
   // -90°에서 시작해 12시 방향이 0이 되게 한다(위쪽이 눈에 먼저 들어온다)
@@ -292,18 +355,105 @@ export function buildGraphLayout(
     // 세로를 눌러 배치하므로(Y_SQUASH) 같은 각도라도 세로 간격이 그만큼
     // 줄어든다. 그 몫까지 감안해 각도를 잡아야 실제 화면에서 안 겹친다.
     const PER_LEAF_ANGLE = 26; // 라벨 한 줄이 겹치지 않는 최소 간격
-    const needed = Math.max(0, shown.length - 1) * PER_LEAF_ANGLE;
     // 가지가 적으면 옆 가지를 침범할 걱정이 없으니 더 넓게 펼쳐 화면을 쓴다
     const cap = filled.length <= 2 ? 210 : 170;
-    const leafSpan = Math.min(Math.max(span * 0.75, needed), cap);
+    const leafSpan = Math.min(
+      Math.max(span * 0.75, Math.max(0, shown.length - 1) * PER_LEAF_ANGLE),
+      cap,
+    );
 
     const leaves: LeafNode[] = shown.map((edge, i) => {
       // 항목이 1개면 가지 방향 그대로, 여러 개면 부채꼴로 나눈다
       const offset =
         shown.length === 1 ? 0 : (i / (shown.length - 1) - 0.5) * leafSpan;
-      const point = polar(mid + offset, leafRadius, branchPoint);
+
+      /*
+        반경에 약간의 변화를 준다 — 기계적인 부채꼴을 완화한다.
+
+        모든 항목이 같은 거리에 놓이면 컴퍼스로 그린 호처럼 보여, 사람의
+        취향 지도가 아니라 도식이 된다. 다만 **무작위는 쓰지 않는다** —
+        렌더할 때마다 자리가 바뀌면 같은 데이터인데 다른 그림이 되고,
+        수정 한 번에 화면이 통째로 흔들린다.
+
+        그래서 edgeId 에서 뽑은 **결정적 해시**를 쓴다. 같은 항목은 언제나
+        같은 자리이고, 항목이 바뀔 때만 그 항목의 자리가 바뀐다.
+
+        폭은 ±7% 로 얕게 준다. 더 크면 부채꼴이 흐트러져 어느 가지 소속인지
+        읽기 어려워지고, 라벨 간 세로 간격 보정(아래)도 예측이 어려워진다.
+      */
+      const jitter = 1 + (hashUnit(edge.edgeId) - 0.5) * 0.14;
+      const point = polar(mid + offset, leafRadius * jitter, branchPoint);
       return { ...point, edge, anchor: anchorFor(point, center) };
     });
+
+    /*
+      세로 간격을 픽셀로 보정한다.
+
+      **각도만으로는 간격을 보장할 수 없다.** 같은 26°라도 부채꼴의 어디에
+      놓이느냐에 따라 실제 세로 거리가 달라지고(양 끝으로 갈수록 sin 변화가
+      작아진다), Y_SQUASH가 세로를 한 번 더 누른다. 그래서 각도를 아무리
+      키워도 라벨이 붙는 구간이 남는다 — 실측에서 6개(기본 상한)에서도 겹쳤다.
+
+      라벨은 가로로 뻗는 한 줄이라 **세로로만 벌어지면 안 겹친다.** 각도 계산
+      결과를 받아 y를 훑으며 최소 간격을 못 채운 항목을 아래로 민다.
+      x는 건드리지 않는다 — 가지에서 뻗어 나온 방향이 흐트러지면 어느 가지에
+      속한 항목인지 읽히지 않는다.
+    */
+    const MIN_LABEL_GAP = 21; // 라벨 한 줄 높이(17px) + 최소 여백
+    const sorted = [...leaves].sort((a, b) => a.y - b.y);
+    const before = { top: sorted[0]?.y ?? 0, bottom: sorted[sorted.length - 1]?.y ?? 0 };
+
+    for (let i = 1; i < sorted.length; i += 1) {
+      const gap = sorted[i].y - sorted[i - 1].y;
+      if (gap < MIN_LABEL_GAP) sorted[i].y = sorted[i - 1].y + MIN_LABEL_GAP;
+    }
+
+    /*
+      밀어낸 만큼 아래로 치우치므로 되돌린다.
+
+      **원래 범위의 중심으로 맞춘다** — 가지 중심(branchPoint.y)으로 당기면
+      부채꼴이 원래 그 위나 아래에 놓였을 때 통째로 끌려와 그래프가 세로로
+      쪼그라든다(실측: 화면 세로 사용률 0.47까지 떨어져 "충분히 채운다"
+      테스트가 걸렸다). 벌린 결과를 제자리에 두는 것이 목적이지
+      가지 옆으로 모으는 게 아니다.
+    */
+    if (sorted.length > 1) {
+      const shift =
+        (sorted[0].y + sorted[sorted.length - 1].y) / 2 -
+        (before.top + before.bottom) / 2;
+      for (const leaf of sorted) leaf.y -= shift;
+
+      /*
+        뷰박스 안으로 되돌린다.
+
+        중심을 맞추는 것만으로는 부족하다 — 가지가 하나뿐이면 그 가지가
+        부채꼴 상한(210°)을 통째로 쓰고, 거기에 세로 보정까지 더해져 위아래로
+        넘친다(실측: 200개 1가지에서 y가 -10까지 올라갔다).
+
+        먼저 통째로 밀어 넣고, 그래도 넘치면 간격을 균등하게 줄인다.
+        간격을 줄이는 쪽이 항목을 빼는 것보다 낫다 — MIN_LABEL_GAP은 여유를
+        둔 값이라 조금 좁아져도 라벨이 곧바로 닿지는 않는다.
+      */
+      // 96px: 라벨이 뻗을 자리까지 감안한 가장자리 여백.
+      // 그래프 테스트가 요구하는 값(90)보다 살짝 크게 잡아 경계에 딱 붙지 않게 한다.
+      const MARGIN = 96;
+      let top = sorted[0].y;
+      let bottom = sorted[sorted.length - 1].y;
+
+      const push = Math.max(0, MARGIN - top) - Math.max(0, bottom - (VIEWBOX_H - MARGIN));
+      if (push !== 0) {
+        for (const leaf of sorted) leaf.y += push;
+        top += push;
+        bottom += push;
+      }
+
+      const available = VIEWBOX_H - MARGIN * 2;
+      if (bottom - top > available) {
+        const scale = available / (bottom - top);
+        const mid = (top + bottom) / 2;
+        for (const leaf of sorted) leaf.y = mid + (leaf.y - mid) * scale;
+      }
+    }
 
     branches.push({
       ...branchPoint,

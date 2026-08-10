@@ -4,96 +4,87 @@ import { useMemo } from "react";
 import {
   groupEdgesByPredicate,
   type PreferenceEdge,
+  type PreferencePredicate,
   type ProfileGraph,
 } from "../types";
-import { PreferenceGroup, useGroupFocus } from "./PreferenceGroup";
+import { PreferenceGroup, useSelectedEdge } from "./PreferenceGroup";
 
 interface PreferenceTreeProps {
   graph: ProfileGraph;
+  /**
+   * 그래프에서 관계 노드를 고르면 그 그룹만 선명해진다 — 관계도와 목록의
+   * 선택 상태를 잇는 값이다. null 이면 전부 같은 농도.
+   */
+  highlighted?: PreferencePredicate | null;
   onEdit: (edge: PreferenceEdge) => void;
   onDelete: (edge: PreferenceEdge) => void;
 }
 
 /**
- * 목록 뷰 — 관계 5종으로 묶은 카드 목록.
+ * 전체 취향 목록 — 관계 5종을 색으로 구분한 칩 묶음.
  *
- * 기본 화면은 방사형 그래프(PreferenceGraph)이고 이 컴포넌트는 **3역을 겸한다**:
- * ① [전체 보기] — 그래프는 항목이 많아지면 라벨이 겹쳐 못 쓴다
- * ② 모바일(768px 미만) — 좁은 화면에서 방사형은 성립하지 않는다
- * ③ 접근성 — ul·li·button으로 그 자체가 읽혀 sr-only 목록이 따로 필요 없다
+ * 그래프가 "대표 취향으로 구조 훑기"라면 여기는 **전부 확인하고 고치기**다.
+ * 둘은 같은 화면에 세로로 함께 있고 역할만 나뉜다.
  *
- * 관계별 색을 쓰지 않는다. 5색이 필요한 것은 **방사형에서 각도만으로 가지가
- * 구분되지 않기 때문**인데, 목록은 그룹 헤더가 글자로 있어 그 문제가 없다.
- * 색을 쓰면 CLAUDE.md의 토큰 규칙(정의된 색 외 금지)도 어기게 된다.
+ * ul·li·button 으로 그 자체가 읽히므로 sr-only 목록을 따로 두지 않는다
+ * (그건 SVG 그래프 전용이다 — ScreenReaderList).
  */
-export function PreferenceTree({ graph, onEdit, onDelete }: PreferenceTreeProps) {
+export function PreferenceTree({
+  graph,
+  highlighted = null,
+  onEdit,
+  onDelete,
+}: PreferenceTreeProps) {
   // edges가 전량 오므로(서버 상한 폐지) 렌더마다 다시 묶지 않는다.
   // groupEdgesByPredicate는 서버 정렬을 보존하고 빈 그룹도 5개를 채워 반환한다.
   const groups = useMemo(() => groupEdgesByPredicate(graph.edges), [graph.edges]);
 
-  const { focused, setFocused } = useGroupFocus();
+  const { selected, setSelected } = useSelectedEdge();
 
   // 데이터가 있는 그룹을 위, 빈 그룹(회피·구매)을 아래로.
   // 그룹 **안**의 항목 순서는 서버 것을 그대로 두고, 그룹의 화면 배치만
-  // FE가 정한다(노션 10.2). 5개가 균등하게 늘어서면 두 자리가 텅 빈 채 남아
-  // 화면이 어색해지는데, 비대칭을 아래로 몰면 "내 취향이 이쪽에 몰려 있다"는
-  // 정보로 읽힌다.
+  // FE가 정한다(노션 10.2).
   const filled = groups.filter((g) => g.edges.length > 0);
   const empty = groups.filter((g) => g.edges.length === 0);
 
   return (
-    <div>
-      {/*
-        여기서는 ScreenReaderList를 쓰지 않는다 — 아래 목록이 ul·li·button으로
-        그 자체가 읽히므로, 같이 켜면 같은 목록을 두 번 듣게 된다.
-        그 컴포넌트는 방사형 그래프 뷰(PreferenceGraph) 전용이다.
-      */}
+    // 바깥 클릭으로 선택 해제 — 칩 안에서 누른 것은 아래에서 전파를 막는다
+    <div
+      onClick={() => selected && setSelected(null)}
+      // 카테고리 사이 여백(gap-7)이 그룹 안 칩 간격(gap-1.5)보다 훨씬 크다 —
+      // 그 차이가 곧 정보 계층이다
+      className="flex flex-col gap-7"
+    >
+      {filled.map((group) => (
+        <div key={group.predicate} onClick={(e) => e.stopPropagation()}>
+          <PreferenceGroup
+            group={group}
+            dimmed={highlighted !== null && highlighted !== group.predicate}
+            selectedEdgeId={selected?.edgeId ?? null}
+            onSelect={setSelected}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        </div>
+      ))}
 
-      {/*
-        포커스 모드 바깥 클릭으로 복귀. 키보드 사용자는 ESC로 빠져나간다
-        (useGroupFocus가 처리) — 그래서 이 div는 클릭만 받는다.
-
-        aria-hidden 을 걸지 않는다: 포커스 모드는 시각적 강조일 뿐 다른 그룹을
-        비활성화하는 게 아니고, 안에 포커스 가능한 버튼이 있어 숨기면
-        "읽히지 않는데 탭으로는 닿는" 상태가 된다.
-      */}
-      <div
-        onClick={() => focused && setFocused(null)}
-        className="flex flex-col gap-6"
-      >
-        {filled.map((group) => (
-          <div
-            key={group.predicate}
-            // 그룹 내부 클릭이 바깥 클릭으로 새어 나가 포커스가 풀리지 않게 막는다
-            onClick={(e) => e.stopPropagation()}
-          >
-            <PreferenceGroup
-              group={group}
-              dimmed={focused !== null && focused !== group.predicate}
-              focused={focused === group.predicate}
-              onFocus={() => setFocused(group.predicate)}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          </div>
-        ))}
-
-        {empty.length > 0 ? (
-          <div className="flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-5">
-            {empty.map((group) => (
+      {/* 빈 관계 — 아래에 모아 한 줄씩. 지우지도 강조하지도 않는다 */}
+      {empty.length > 0 ? (
+        <div className="flex flex-col gap-4 border-t border-border/70 pt-6">
+          {empty.map((group) => (
+            <div key={group.predicate} onClick={(e) => e.stopPropagation()}>
               <PreferenceGroup
-                key={group.predicate}
                 group={group}
-                dimmed={focused !== null}
-                focused={false}
-                onFocus={() => {}}
+                dimmed={highlighted !== null}
+                selectedEdgeId={selected?.edgeId ?? null}
+                onSelect={setSelected}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />
-            ))}
-          </div>
-        ) : null}
-      </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

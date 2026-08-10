@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { parseSummary, type SummaryInline } from "../parseSummary";
 
 /**
@@ -33,15 +34,45 @@ function Inlines({ inlines }: { inlines: SummaryInline[] }) {
   );
 }
 
-export function SummaryMarkdown({ markdown }: { markdown: string }) {
-  const blocks = parseSummary(markdown);
+export function SummaryMarkdown({
+  markdown,
+  /**
+   * 마크다운의 제목 블록(`# 취향 요약`)을 그리지 않는다.
+   *
+   * 요약 카드가 바깥에 같은 라벨을 이미 달고 있어, 켜 두면 "취향 요약"이
+   * 두 번 나온다.
+   */
+  hideHeading = false,
+  /**
+   * 핵심 문장(첫 문단)만 그린다.
+   *
+   * 요약 카드에서 쓴다 — 마크다운의 불릿("소니 제품을 선호로 등록하셨어요")은
+   * **이미 edge 에 구조화된 사실을 문장으로 늘여 쓴 것**이라, 카드에서는
+   * `선호 브랜드 소니` 같은 라벨+값(SummaryFacet)으로 따로 보여준다.
+   * 둘을 함께 그리면 같은 내용이 두 번 나온다.
+   */
+  headlineOnly = false,
+}: {
+  markdown: string;
+  hideHeading?: boolean;
+  headlineOnly?: boolean;
+}) {
+  const parsed = parseSummary(markdown);
+  const filtered = hideHeading
+    ? parsed.filter((b) => b.type !== "heading")
+    : parsed;
+  // 첫 문단 하나만. 제목은 위에서 이미 걸러졌다.
+  const headline = filtered.find((b) => b.type === "paragraph");
+  const blocks = headlineOnly ? (headline ? [headline] : []) : filtered;
 
   // 문법만 있고 내용이 없는 문자열이 올 수 있다 — 그때는 빈 자리를 남기지 않는다.
   // (markdown: null 인 경우는 호출부가 빈 상태 문구로 대체한다)
   if (blocks.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-3 text-muted-foreground">
+    // gap-3 → gap-2: 블록이 3개(제목·핵심문장·근거목록)뿐이라 사이가 넓으면
+    // 짧은 내용이 세로로 늘어져 그래프를 밀어낸다
+    <div className="flex flex-col gap-2 text-muted-foreground">
       {blocks.map((block, i) => {
         if (block.type === "heading") {
           const Tag = HEADING_TAG[block.level];
@@ -50,7 +81,7 @@ export function SummaryMarkdown({ markdown }: { markdown: string }) {
               key={i}
               // 요약 제목은 패널 라벨 역할이라 작고 조용하게 — 본문(핵심 문장)이
               // 가장 크게 읽혀야 위계가 맞는다
-              className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+              className="text-[11px] font-semibold uppercase leading-none tracking-[0.08em] text-muted-foreground"
             >
               <Inlines inlines={block.inlines} />
             </Tag>
@@ -59,13 +90,28 @@ export function SummaryMarkdown({ markdown }: { markdown: string }) {
 
         if (block.type === "list") {
           return (
-            // 근거 항목 — 본문보다 한 단계 작고, 줄 길이를 제한해 빠르게 읽힌다
-            <ul key={i} className="flex flex-col gap-1.5 text-sm">
+            /*
+              근거 항목 — **2열로 편다.**
+
+              항목 하나가 "소니 제품을 선호로 등록하셨어요" 정도라 한 열로 쌓으면
+              오른쪽이 통째로 비고 패널만 세로로 길어진다. 넓은 화면에서 2열이면
+              같은 내용이 절반 높이에 들어가, 접지 않고도 그래프가 접힘선 위에
+              남는다(요약을 감추지 않기 위한 대가를 여기서 치른다).
+
+              좁은 화면에서는 1열로 돌아간다 — 2열에서 문장이 꺾이는 것보다 낫다.
+              `leading-snug`: 짧은 문장이라 relaxed 만큼의 행간이 필요 없다.
+              긴 이름이 줄바꿈돼도 불릿은 `mt-[0.45em]` 로 첫 줄에 붙어 정렬이
+              흐트러지지 않는다.
+            */
+            <ul
+              key={i}
+              className="grid grid-cols-1 gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2"
+            >
               {block.items.map((item, j) => (
-                <li key={j} className="flex gap-2.5 leading-relaxed">
+                <li key={j} className="flex gap-2 leading-snug">
                   <span
                     aria-hidden="true"
-                    className="mt-[0.5em] size-1 shrink-0 rounded-full bg-muted-foreground/50"
+                    className="mt-[0.45em] size-1 shrink-0 rounded-full bg-muted-foreground/50"
                   />
                   <span className="min-w-0">
                     <Inlines inlines={item} />
@@ -77,10 +123,24 @@ export function SummaryMarkdown({ markdown }: { markdown: string }) {
         }
 
         return (
-          // 핵심 요약 문장 — 이 패널에서 가장 먼저 읽혀야 하는 줄
+          /*
+            핵심 요약 문장 — 카드에서 가장 먼저, 가장 크게 읽혀야 하는 줄.
+
+            headlineOnly 일 때 키운다. 그때는 이 문장이 카드의 결론이고 아래
+            단서·칩이 근거라, 크기 차이가 곧 읽는 순서가 된다. 문단 여럿을
+            그리는 경우(전체 렌더)에는 한 문장만 튀면 안 되므로 그대로 둔다.
+
+            max-w-[30ch]: 카드가 넓어도 한 줄이 끝없이 늘어지면 다음 줄 첫
+            글자를 찾기 어렵다. 두세 줄로 접히는 폭이 결론으로 읽기 좋다.
+          */
           <p
             key={i}
-            className="text-[15px] leading-relaxed text-foreground/90 sm:text-base"
+            className={cn(
+              "text-foreground/90",
+              headlineOnly
+                ? "max-w-[30ch] text-[17px] font-medium leading-[1.45] tracking-tight sm:text-[19px]"
+                : "text-[15px] leading-snug",
+            )}
           >
             <Inlines inlines={block.inlines} />
           </p>

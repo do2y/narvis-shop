@@ -94,16 +94,24 @@ describe("buildGraphLayout", () => {
   });
 
   it("포커스 모드에서는 그 관계만 상한이 커진다", () => {
-    const edges = [...many("prefers", 24), ...many("likes", 10)];
+    // 상한 값을 테스트에 적지 않는다 — 상수를 바꿀 때마다 여기가 깨진다.
+    // (실제로 GRAPH_ITEMS_FOCUSED를 24→8로 내렸을 때 이 테스트가 걸렸다)
+    const edges = [
+      ...many("prefers", GRAPH_ITEMS_FOCUSED + 4),
+      ...many("likes", GRAPH_ITEMS_PER_BRANCH + 4),
+    ];
     const { branches } = buildGraphLayout(edges, "prefers");
 
     const prefers = branches.find((b) => b.predicate === "prefers")!;
     const likes = branches.find((b) => b.predicate === "likes")!;
 
+    // 포커스된 가지는 더 많이 보여준다
     expect(prefers.leaves).toHaveLength(GRAPH_ITEMS_FOCUSED);
-    expect(prefers.overflow).toBe(0);
+    expect(prefers.overflow).toBe(4);
+    expect(GRAPH_ITEMS_FOCUSED).toBeGreaterThan(GRAPH_ITEMS_PER_BRANCH);
     // 다른 가지는 그대로 — 포커스는 한 그룹만 확대한다
     expect(likes.leaves).toHaveLength(GRAPH_ITEMS_PER_BRANCH);
+    expect(likes.overflow).toBe(4);
   });
 
   it("항목이 1개면 가지와 같은 방향으로 뻗는다", () => {
@@ -249,6 +257,71 @@ describe("truncateLabel", () => {
       expect(Number.isFinite(branch.y)).toBe(true);
       expect(branch.leaves).toHaveLength(0);
       expect(branch.overflow).toBe(0);
+    }
+  });
+
+  it("포커스 모드에서 라벨 사각형이 겹치지 않는다", () => {
+    /*
+      ⚠️ 회귀 방지 — 실제로 겪은 버그다.
+
+      포커스 상한이 24인데 부채꼴 각도만으로 간격을 잡아서, 항목당 9°가 되어
+      라벨 18쌍이 서로 포개졌다. buildGraphLayout이 세로 간격을 픽셀로 보정하게
+      고쳐 해결했다(개수를 줄여서가 아니다 — 24개 그대로 겹침 0이 된다).
+
+      **노드 거리가 아니라 라벨 사각형으로 검증한다.** 이 구분이 이 테스트의
+      핵심이다 — 처음엔 노드 중심 간 거리로 쟀는데, 노드는 점이라 25px만
+      떨어져도 통과하지만 라벨은 가로 150px짜리 글자라 그대로 겹쳤다.
+      화면에서 겹치는 것은 점이 아니라 글자다.
+
+      라벨이 **뷰박스 안에 있는지**도 함께 본다. 겹침은 픽셀 보정이 막아주지만,
+      그 보정이 항목을 세로로 밀어내므로 개수가 늘면 화면 밖으로 나간다
+      (실측: 32개부터 이탈 시작). 지금 상한 24는 그 앞이다.
+
+      폭 추정은 PreferenceGraph.labelWidth와 같은 규칙을 쓴다(한글은 폰트
+      크기와 거의 같고 영숫자는 그 절반쯤). SVG에는 렌더 전에 텍스트 폭을
+      알 방법이 없어 양쪽 다 추정치를 쓴다.
+    */
+    const FONT = 17;
+    const labelWidth = (label: string) =>
+      [...label].reduce(
+        (sum, ch) => sum + (/[ᄀ-ᇿ㄰-㆏가-힯一-鿿]/.test(ch) ? FONT : FONT * 0.55),
+        0,
+      );
+
+    const { branches } = buildGraphLayout(
+      [...many("prefers", 82), ...many("likes", 54)],
+      "prefers",
+    );
+
+    for (const branch of branches) {
+      // 라벨은 노드에서 anchor 방향으로 뻗는다(그래프의 gap = ±15)
+      const boxes = branch.leaves.map((leaf) => {
+        const width = labelWidth(truncateLabel(leaf.edge.object.label));
+        const left = leaf.anchor === "start" ? leaf.x + 15 : leaf.x - 15 - width;
+        return { left, right: left + width, top: leaf.y - 9, bottom: leaf.y + 9 };
+      });
+
+      for (let i = 0; i < boxes.length; i += 1) {
+        for (let j = i + 1; j < boxes.length; j += 1) {
+          const a = boxes[i];
+          const b = boxes[j];
+          const overlaps =
+            a.left < b.right &&
+            b.left < a.right &&
+            a.top < b.bottom &&
+            b.top < a.bottom;
+          expect(overlaps).toBe(false);
+        }
+      }
+
+      // 세로 보정이 항목을 밀어내므로 상한을 올리면 화면 밖으로 나간다.
+      // 겹침만 보면 이 이탈을 놓친다 — 겹치지 않으면서 화면 밖일 수 있다.
+      for (const box of boxes) {
+        expect(box.top).toBeGreaterThan(0);
+        expect(box.bottom).toBeLessThan(VIEWBOX_H);
+        expect(box.left).toBeGreaterThan(0);
+        expect(box.right).toBeLessThan(VIEWBOX_W);
+      }
     }
   });
 
