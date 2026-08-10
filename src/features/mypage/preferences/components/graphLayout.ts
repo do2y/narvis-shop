@@ -60,7 +60,19 @@ export const GRAPH_ITEMS_FOCUSED = 24;
  * 라벨이 뻗을 가로 여백이 생겨 같은 반지름에서도 잘리지 않는다.
  */
 export const VIEWBOX_W = 1200;
-export const VIEWBOX_H = 800;
+/*
+  ⚠️ 800 → 680 으로 낮췄다(3:2 → 약 1.76:1).
+
+  패널이 가로로 넓고 세로는 뷰포트에 맞춰 잘리므로(약 1150×460, 2.5:1),
+  뷰박스가 3:2 면 `preserveAspectRatio` 가 세로에 맞춰 축소해 **가로 814px 만
+  쓰고 좌우가 letterbox 로 남았다**(실측: 컨테이너 대비 64%). 뷰박스를 실제
+  패널 비율 쪽으로 당기면 같은 높이에서 가로를 더 쓴다.
+
+  완전히 2.5:1 로 맞추지는 않는다 — 그러면 세로가 너무 눌려 위아래 가지의
+  라벨이 서로 가까워진다. 라벨 간 세로 간격 보정(MIN_LABEL_GAP)이 그만큼
+  더 많이 밀어내야 하고, 밀어낼수록 부채꼴이 흐트러진다.
+*/
+export const VIEWBOX_H = 680;
 const CENTER_X = VIEWBOX_W / 2;
 const CENTER_Y = VIEWBOX_H / 2;
 
@@ -72,11 +84,20 @@ const CENTER_Y = VIEWBOX_H / 2;
  * 남으므로 그만큼 멀리 밀어 화면을 채운다.
  */
 function branchRadiusFor(filledCount: number, focusedMode: boolean): number {
+  /*
+    ⚠️ 값을 키웠다(214 → 286 등). 이전 값에서는 그림이 뷰박스의 **64%** 만
+    써서, 큰 패널 한가운데 작게 떠 있는 것처럼 보였다(실측). 방사형은
+    반지름이 곧 그림 크기라 여백을 줄이려면 여기를 늘려야 한다.
+
+    상한은 라벨이다 — 항목 라벨이 가지에서 다시 뻗어 나가므로, 반지름을
+    너무 키우면 바깥 라벨이 뷰박스를 넘는다. 아래 값은 leafRadius 와 합쳐
+    가장자리에 라벨 폭(약 150px)이 남도록 잡았다.
+  */
   // 포커스 모드에서는 부채꼴이 커지므로 가지를 중심 쪽으로 당겨 자리를 내준다
-  if (focusedMode) return 190;
-  if (filledCount <= 1) return 300;
-  if (filledCount === 2) return 262;
-  return 214;
+  if (focusedMode) return 210;
+  if (filledCount <= 1) return 330;
+  if (filledCount === 2) return 300;
+  return 286;
 }
 
 /**
@@ -87,8 +108,8 @@ function branchRadiusFor(filledCount: number, focusedMode: boolean): number {
 function leafRadiusFor(filledCount: number, focusedMode: boolean): number {
   // 포커스 모드는 한 가지에 24개까지 펼쳐 부채꼴이 훨씬 커진다.
   // 같은 반지름을 쓰면 위아래가 뷰박스를 넘는다.
-  if (focusedMode) return 120;
-  return filledCount <= 2 ? 168 : 138;
+  if (focusedMode) return 130;
+  return filledCount <= 2 ? 190 : 165;
 }
 
 /**
