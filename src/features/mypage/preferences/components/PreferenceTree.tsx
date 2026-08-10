@@ -10,6 +10,13 @@ import { PreferenceGroup, useGroupFocus } from "./PreferenceGroup";
 
 interface PreferenceTreeProps {
   graph: ProfileGraph;
+  /**
+   * 처음부터 펼쳐 둘 관계.
+   *
+   * 그래프의 "N개 모두 보기"로 넘어온 경우에 온다 — 목록으로 바뀌기만 하고
+   * 그 그룹이 접혀 있으면 사용자가 방금 누른 것이 무시된 것처럼 보인다.
+   */
+  initialFocus?: string | null;
   onEdit: (edge: PreferenceEdge) => void;
   onDelete: (edge: PreferenceEdge) => void;
 }
@@ -26,12 +33,17 @@ interface PreferenceTreeProps {
  * 구분되지 않기 때문**인데, 목록은 그룹 헤더가 글자로 있어 그 문제가 없다.
  * 색을 쓰면 CLAUDE.md의 토큰 규칙(정의된 색 외 금지)도 어기게 된다.
  */
-export function PreferenceTree({ graph, onEdit, onDelete }: PreferenceTreeProps) {
+export function PreferenceTree({
+  graph,
+  initialFocus = null,
+  onEdit,
+  onDelete,
+}: PreferenceTreeProps) {
   // edges가 전량 오므로(서버 상한 폐지) 렌더마다 다시 묶지 않는다.
   // groupEdgesByPredicate는 서버 정렬을 보존하고 빈 그룹도 5개를 채워 반환한다.
   const groups = useMemo(() => groupEdgesByPredicate(graph.edges), [graph.edges]);
 
-  const { focused, setFocused } = useGroupFocus();
+  const { focused, setFocused } = useGroupFocus(initialFocus);
 
   // 데이터가 있는 그룹을 위, 빈 그룹(회피·구매)을 아래로.
   // 그룹 **안**의 항목 순서는 서버 것을 그대로 두고, 그룹의 화면 배치만

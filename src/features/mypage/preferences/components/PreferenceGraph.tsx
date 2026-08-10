@@ -9,6 +9,7 @@ import {
 } from "../types";
 import {
   buildGraphLayout,
+  GRAPH_ITEMS_FOCUSED,
   truncateLabel,
   VIEWBOX_H,
   VIEWBOX_W,
@@ -21,6 +22,14 @@ interface PreferenceGraphProps {
   /** 포커스 모드로 확대 중인 관계 */
   focused: PreferencePredicate | null;
   onFocus: (predicate: PreferencePredicate | null) => void;
+  /**
+   * 확대해도 다 못 담는 그룹의 "모두 보기" — 목록 뷰로 전환하며 그 관계를 편다.
+   *
+   * 그래프 안에서 해결하지 않고 밖으로 넘기는 이유는 방사형의 물리적 한계다.
+   * 라벨이 가로로 뻗어 한 가지에 8개가 최대라(GRAPH_ITEMS_FOCUSED) 82개짜리
+   * 그룹은 어떻게 배치해도 그래프에 들어가지 않는다.
+   */
+  onShowAll: (predicate: PreferencePredicate) => void;
   onSelect: (edge: PreferenceEdge) => void;
 }
 
@@ -59,6 +68,7 @@ export function PreferenceGraph({
   edges,
   focused,
   onFocus,
+  onShowAll,
   onSelect,
 }: PreferenceGraphProps) {
   const layout = useMemo(
@@ -281,20 +291,41 @@ export function PreferenceGraph({
           }),
         )}
 
-        {/* ── +N: 그 관계만 확대. 버튼처럼 보이게 알약 배경을 깐다 ── */}
+        {/* ── +N: 남은 항목으로 가는 길 ──
+            확대해도 다 못 담는 그룹은 목록으로 보낸다(아래 주석 참조) */}
         {layout.branches
           .filter((b) => b.overflow > 0)
           .map((branch) => {
             const r = branchRadius(branch.total);
             const y = branch.y - r - 20;
-            const w = 88;
+
+            /*
+              확대만으로 전부 보여줄 수 있는가.
+
+              ⚠️ 이 분기가 없으면 버튼이 거짓말을 한다. 방사형은 라벨이 가로로
+              뻗어 한 가지에 8개가 한계인데(GRAPH_ITEMS_FOCUSED), 82개짜리
+              그룹에서 "+76개 더"를 누르면 8개만 늘고 "+74개 더"가 그대로 남는다.
+              한 번 더 눌러도 아무 일이 없는 막다른 길이 된다.
+
+              전부 보여줄 수 있을 때만 확대하고, 그렇지 않으면 **실제로 전부
+              읽을 수 있는 곳**인 목록 뷰로 보낸다. 목록은 세로로 늘어나므로
+              개수 제한이 없다(PreferenceGroup: focused면 group.edges 전량).
+            */
+            const fitsInGraph = branch.total <= GRAPH_ITEMS_FOCUSED;
+            const label = fitsInGraph
+              ? `+${branch.overflow}개 더`
+              : `${branch.total}개 모두 보기`;
+            // 글자 수에 맞춰 알약 폭을 잡는다 — 고정폭이면 긴 문구가 넘친다
+            const w = label.length * 9 + 26;
+
             return (
               <g
                 key={`more-${branch.predicate}`}
                 className="group/more cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onFocus(branch.predicate);
+                  if (fitsInGraph) onFocus(branch.predicate);
+                  else onShowAll(branch.predicate);
                 }}
               >
                 <rect
@@ -313,7 +344,7 @@ export function PreferenceGraph({
                   dominantBaseline="central"
                   className="fill-foreground/80 text-[15px] font-medium transition-colors duration-150 group-hover/more:fill-foreground"
                 >
-                  +{branch.overflow}개 더
+                  {label}
                 </text>
               </g>
             );

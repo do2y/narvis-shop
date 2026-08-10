@@ -114,8 +114,10 @@ export function PreferenceGroup({
  * ESC와 바깥 클릭으로 전체 보기에 복귀한다. 훅으로 분리한 이유는 키 핸들러
  * 등록이 트리 쪽 관심사가 아니어서다.
  */
-export function useGroupFocus() {
-  const [focused, setFocused] = useState<string | null>(null);
+export function useGroupFocus(initial: string | null = null) {
+  // 그래프의 "N개 모두 보기"가 목록으로 넘어오면서 어느 그룹을 펼지 지정한다.
+  // 초기값으로만 받는다 — 이후 접고 펴는 것은 목록 자신의 상태다.
+  const [focused, setFocused] = useState<string | null>(initial);
 
   useEffect(() => {
     if (!focused) return;

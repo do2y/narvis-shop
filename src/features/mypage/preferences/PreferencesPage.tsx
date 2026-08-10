@@ -107,6 +107,25 @@ export default function PreferencesPage() {
   // 그래프에서 한 관계만 확대하는 포커스 모드. 목록 뷰는 자체 포커스를 쓴다.
   const [focused, setFocused] = useState<PreferencePredicate | null>(null);
 
+  /**
+   * 그래프의 "N개 모두 보기"로 목록에 넘어올 때 펼쳐 둘 관계.
+   *
+   * 방사형은 한 가지에 8개가 한계라(GRAPH_ITEMS_FOCUSED) 그보다 많은 그룹은
+   * 확대해도 전부 못 보여준다. 그래서 그 버튼은 **목록 뷰로 보내고**, 어느
+   * 그룹을 펼지 이 값으로 전달한다 — 목록만 바뀌고 그룹이 접혀 있으면
+   * 방금 누른 동작이 무시된 것처럼 보인다.
+   *
+   * 뷰를 되돌릴 때 비운다. 남겨 두면 나중에 사용자가 직접 목록으로 갔을 때
+   * 영문 모를 그룹이 펼쳐져 있다.
+   */
+  const [showAllOf, setShowAllOf] = useState<PreferencePredicate | null>(null);
+
+  const showAllInList = (predicate: PreferencePredicate) => {
+    setFocused(null); // 그래프 확대는 풀고 목록으로 넘긴다
+    setShowAllOf(predicate);
+    setPreferredView("list");
+  };
+
   // ESC로 포커스 모드 해제 — 바깥 클릭은 SVG가 직접 받는다.
   useEffect(() => {
     if (!focused) return;
@@ -224,6 +243,10 @@ export default function PreferencesPage() {
                         setPreferredView(next);
                         // 뷰를 옮기면 그래프의 확대 상태는 의미가 없어진다
                         setFocused(null);
+                        // 사용자가 직접 옮긴 것이므로 "모두 보기"로 펼쳐 둘
+                        // 그룹도 지운다 — 안 지우면 나중에 목록으로 갔을 때
+                        // 영문 모를 그룹이 펼쳐져 있다
+                        setShowAllOf(null);
                       }}
                     />
                   )}
@@ -236,6 +259,7 @@ export default function PreferencesPage() {
                         edges={data.edges}
                         focused={focused}
                         onFocus={setFocused}
+                        onShowAll={showAllInList}
                         // 그래프에서는 아이콘을 놓을 자리가 없어 항목을 누르면
                         // 바로 수정 창을 연다. 삭제는 목록 뷰에서 하도록 두
                         // 경로를 나눈다 — 파괴적인 동작을 좁은 타겟에 붙이면
@@ -255,6 +279,7 @@ export default function PreferencesPage() {
                   <div className="p-5">
                     <PreferenceTree
                       graph={data}
+                      initialFocus={showAllOf}
                       onEdit={setEditing}
                       onDelete={setDeleting}
                     />
