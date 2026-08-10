@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ChevronDown, Sparkles } from "lucide-react";
+import { ArrowDown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { ErrorState, PageTitle } from "../components/PageState";
@@ -14,10 +14,7 @@ import {
 import { PreferenceGraph } from "./components/PreferenceGraph";
 import { PreferenceTree } from "./components/PreferenceTree";
 import { ResetGraphDialog } from "./components/ResetGraphDialog";
-import {
-  SummaryMarkdown,
-  summaryFirstLine,
-} from "./components/SummaryMarkdown";
+import { SummaryMarkdown } from "./components/SummaryMarkdown";
 import { useIsNarrow } from "./components/useIsNarrow";
 import type { PreferenceEdge, PreferencePredicate } from "./types";
 import { useDeleteEdge } from "./useDeleteEdge";
@@ -151,11 +148,6 @@ export default function PreferencesPage() {
   // 대상이 edge 안에 인라인돼 있어 룩업 없이 바로 읽는다.
   const deletingLabel = deleting?.object.label ?? "";
 
-  // 접힌 요약 패널의 한 줄 미리보기.
-  // useMemo 를 쓰지 않는다 — 짧은 문자열 하나를 파싱하는 값싼 계산이고,
-  // `[data?.markdown]` 의존성이 컴파일러가 추론한 `data` 와 어긋나 최적화가
-  // 통째로 꺼진다(Compilation Skipped). 컴파일러가 알아서 메모한다.
-  const summaryPreview = data?.markdown ? summaryFirstLine(data.markdown) : "";
 
   // 수정 창의 자동완성 후보 — 대상 검색 API가 계약에 없어 화면에 있는 대상을 쓴다.
   // 확정 계약에는 nodes[] 배열이 없고 대상이 edge마다 인라인되므로, 같은 대상이
@@ -226,41 +218,18 @@ export default function PreferencesPage() {
               요약 패널 — markdown 이 null 이면(신규 회원) 자리를 비운다.
               빈 상태 안내가 아래에서 같은 말을 하므로 두 번 적지 않는다.
 
-              **접을 수 있게 둔다.** 이 문단이 펼쳐져 있으면 그래프 패널이
-              415px 아래에서 시작해, 1366×768 노트북에서 그래프가 55% 만
-              보였다(실측). 첫 화면에 잘린 그림이 보이는 셈이라 무슨 화면인지
-              읽히지 않는다.
+              ⚠️ **접지 않는다.** 한때 `<details>` 로 접었다가 되돌렸다 —
+              이 문단은 자기 취향을 빠르게 훑는 정보라, 읽으려고 클릭을 한 번
+              더 하게 만들면 존재 이유가 사라진다.
 
-              기본을 접힘으로 두는 이유: 요약은 "AI 가 나를 이렇게 봤다"는
-              한 문단이고, 같은 내용을 그래프가 구조로 더 잘 보여준다.
-              궁금하면 펴서 읽으면 된다.
+              대신 **밀도로 자리를 만든다**(SummaryMarkdown 참조): 근거 목록을
+              2열로 펴고 줄 간격을 좁혀, 펼친 상태에서도 이전 접힘 높이와 크게
+              다르지 않게 했다. 감추는 대신 정돈하는 쪽이다.
             */}
             {data.markdown ? (
-              <details className="group/summary rounded-sm border border-border/70 bg-muted/20">
-                <summary
-                  className={cn(
-                    "flex h-11 cursor-pointer list-none items-center gap-2 px-5 text-sm font-semibold tracking-tight",
-                    "transition-colors duration-150 ease-out-strong",
-                    "hover:[@media(hover:hover)]:text-brand",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
-                    // Safari 는 list-none 만으로 삼각형이 안 사라진다
-                    "[&::-webkit-details-marker]:hidden",
-                  )}
-                >
-                  취향 요약
-                  <ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ease-out-strong group-open/summary:rotate-180" />
-                  {/* 접힌 동안 한 줄 미리보기 — 라벨만 있으면 펴볼 이유가 없다.
-                      펼치면 같은 문장이 아래에 나오므로 이 줄은 감춘다 */}
-                  <span className="min-w-0 truncate text-xs font-normal text-muted-foreground group-open/summary:hidden">
-                    {summaryPreview}
-                  </span>
-                </summary>
-                <div className="border-t border-border/70 px-5 py-4">
-                  {/* 마크다운의 `# 취향 요약` 제목은 위 summary 와 겹치므로
-                      파서 결과에서 제목 블록을 빼고 본문만 그린다 */}
-                  <SummaryMarkdown markdown={data.markdown} hideHeading />
-                </div>
-              </details>
+              <section className="rounded-sm border border-border/70 bg-muted/20 px-5 py-3.5">
+                <SummaryMarkdown markdown={data.markdown} />
+              </section>
             ) : null}
 
             {isEmpty ? (

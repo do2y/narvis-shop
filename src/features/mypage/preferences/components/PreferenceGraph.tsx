@@ -168,7 +168,7 @@ export function PreferenceGraph({
           맞추게 둔다. 어떤 화면에서도 그래프 한 장이 접히지 않고 들어간다.
           하한(min-h)은 세로가 아주 짧은 창에서 그래프가 뭉개지지 않게 잡는다.
         */
-        className="h-[52vh] max-h-[560px] min-h-[380px] w-full select-none"
+        className="h-[46vh] max-h-[540px] min-h-[320px] w-full select-none"
         aria-hidden="true"
         // 포커스 모드에서 빈 곳을 누르면 전체 보기로 복귀
         onClick={() => focused && onFocus(null)}
