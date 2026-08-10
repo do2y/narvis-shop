@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ApiError } from "@/shared/api/client";
 import { deleteEdge } from "./api";
 import { useGraphCacheWriter } from "./useProfileGraph";
-import { isVersionConflict, PROFILE_EDGE_NOT_FOUND } from "./types";
+import { isServerFault, isVersionConflict, PROFILE_EDGE_NOT_FOUND } from "./types";
 
 /**
  * 취향 항목 삭제 (M-13) — **되돌릴 수 없다.**
@@ -91,6 +91,14 @@ export function useDeleteEdge() {
 
     onError: (error) => {
       setConflictRetried(false);
+
+      // 5xx는 서버가 스스로 터진 것이라 문구가 시스템 언어다 — 화면 말투로 덮는다.
+      // 삭제는 되돌릴 수 없는 동작이라 "안 지워졌다"가 분명히 읽혀야 한다.
+      if (error instanceof ApiError && isServerFault(error.status)) {
+        toast.error("지금은 삭제할 수 없어요. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
       toast.error(
         error instanceof ApiError
           ? error.displayMessage

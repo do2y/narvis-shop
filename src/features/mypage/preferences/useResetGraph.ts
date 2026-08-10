@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ApiError } from "@/shared/api/client";
 import { resetGraph } from "./api";
 import { useGraphCacheWriter } from "./useProfileGraph";
-import { isVersionConflict } from "./types";
+import { isServerFault, isVersionConflict } from "./types";
 
 /**
  * 개인화 전체 초기화 (M-15) — **되돌릴 수 없다. 대화 기록까지 지워진다.**
@@ -46,6 +46,21 @@ export function useResetGraph() {
         // 새로 판단한다 — 자동 재시도는 금지다.
         void cache.refetch();
         toast.error("그 사이 취향이 업데이트됐어요. 최신 내용으로 새로고침했어요.");
+        return;
+      }
+
+      /*
+        5xx — 서버 문구를 그대로 흘리지 않는다.
+
+        초기화만 문구가 한 겹 더 조심스럽다. 다른 동작과 달리 실패했을 때
+        "지워졌나 안 지워졌나"가 사용자에게 남는 질문이라, 여기서 단정하면
+        서버가 절반쯤 지운 경우에 거짓말이 된다. 화면을 직접 확인하도록
+        안내하는 편이 정확하다.
+      */
+      if (error instanceof ApiError && isServerFault(error.status)) {
+        toast.error(
+          "지금은 초기화할 수 없어요. 잠시 후 목록을 다시 확인해주세요.",
+        );
         return;
       }
 

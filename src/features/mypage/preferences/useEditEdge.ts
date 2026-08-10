@@ -7,6 +7,7 @@ import { editEdge } from "./api";
 import { useGraphCacheWriter } from "./useProfileGraph";
 import {
   isNotEditableConflict,
+  isServerFault,
   isVersionConflict,
   type EditEdgeRequest,
 } from "./types";
@@ -86,6 +87,14 @@ export function useEditEdge() {
         if (error.status === 404) {
           void cache.refetch();
           toast.error("이미 삭제되었거나 변경된 항목이에요. 목록을 새로 불러왔어요.");
+          return;
+        }
+
+        // 5xx — 서버 문구를 그대로 흘리지 않는다. 재조회도 하지 않는다:
+        // 사용자가 보낸 값에는 문제가 없어 화면을 되돌릴 이유가 없고,
+        // 서버가 앓는 중에 요청을 하나 더 얹을 뿐이다.
+        if (isServerFault(error.status)) {
+          toast.error("지금은 수정할 수 없어요. 잠시 후 다시 시도해주세요.");
           return;
         }
 
