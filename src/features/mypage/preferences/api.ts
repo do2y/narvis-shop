@@ -29,7 +29,7 @@ import type {
  * ⚠️ API 5종이 BE 초안 단계라(노션 12장) 목으로 개발한다.
  * 백엔드가 붙으면 이 상수만 false로 바꾼다 — 아래 호출부는 그대로 쓴다.
  */
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 const BASE = "/api/profile/graph";
 

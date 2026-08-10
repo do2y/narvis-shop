@@ -14,6 +14,7 @@ import {
   VIEWBOX_H,
   VIEWBOX_W,
   type BranchNode,
+  type Point,
 } from "./graphLayout";
 import { PREDICATE_STYLE } from "../predicateStyle";
 import { ScreenReaderList } from "./ScreenReaderList";
@@ -69,6 +70,148 @@ function labelWidth(label: string): number {
  */
 function isDiscrete(type: PreferenceNodeType): boolean {
   return type === "product" || type === "brand";
+}
+
+/**
+ * 중심 `나` 노드 — 여러 취향 색이 모여 하나가 된다.
+ *
+ * ## 왜 단색이 아닌가
+ * 브랜드 딥 틸그린 단색이었는데, 초록이 특정 카테고리(좋아함)를 뜻하는 것처럼
+ * 보이고 주변 엣지 색과 연결도 없었다. 이 그래프의 메시지는 **"서로 다른
+ * 취향이 모여 내가 된다"** 라, 중심이 한 색이면 그 뜻이 전달되지 않는다.
+ *
+ * ## 원뿔형(conic) 그라데이션을 각도 조각으로 만든다
+ * SVG 에는 conic-gradient 가 없다(linear·radial 뿐). 그래서 **부채꼴 조각**을
+ * 각 가지 방향에 하나씩 놓고, 조각마다 중심에서 바깥으로 흐리게 사라지는
+ * radial 그라데이션을 입혀 경계를 지운다. 조각이 서로 겹치며 섞이므로
+ * 무지개처럼 분절되지 않는다.
+ *
+ * **각 색은 그 카테고리의 엣지가 붙는 방향에 놓인다** — 선호(269°) 쪽은
+ * 파랑, 관심(99°) 쪽은 노랑. 그래서 엣지 색이 노드 경계에서 끊기지 않고
+ * 중심으로 이어져 보인다.
+ *
+ * 색은 로고 에셋에서 직접 뽑았다(public/logo-mark.png 픽셀 샘플):
+ * `#98bbee` 블루 · `#cfd2f1` 페리윙클 · `#b4d8bf` 그린 · `#feeca2` 옐로.
+ * 관계별 색(PREDICATE_STYLE.tint)이 이미 같은 계열이라 그대로 쓴다.
+ *
+ * 회전·발광 애니메이션은 넣지 않는다. 좌표가 가지 각도에서 나오므로
+ * 같은 데이터면 언제나 같은 그림이다.
+ */
+function CenterNode({
+  center,
+  branches,
+}: {
+  center: Point;
+  branches: BranchNode[];
+}) {
+  const R = 34;
+
+  /*
+    조각을 그릴 가지 — **데이터가 있는 것만** 쓴다.
+
+    빈 관계(회피·구매)까지 넣으면 회색이 섞여 전체가 탁해진다. 그 관계는
+    점선 엣지로 이미 "아직 없음"을 말하고 있고, 중심은 지금 가진 취향이
+    모인 결과를 보여주는 자리다.
+
+    하나도 없으면(신규 회원) 섞을 색이 없다 — 억지로 여러 색을 만들지 않고
+    브랜드색 단색으로 떨어진다(아래 바탕 원).
+  */
+  const filled = branches.filter((b) => !b.isEmpty);
+  const hasColors = filled.length > 0;
+
+  return (
+    <g>
+      <defs>
+        {filled.map((b) => (
+          /*
+            조각 하나의 페이드 — 중심에서 진하고 가장자리로 갈수록 투명.
+            겹치는 구간에서 두 색이 자연스럽게 섞이게 하는 장치다.
+          */
+          <radialGradient
+            key={`grad-${b.predicate}`}
+            id={`center-${b.predicate}`}
+            cx="50%"
+            cy="50%"
+            r="50%"
+          >
+            <stop
+              offset="0%"
+              stopColor={PREDICATE_STYLE[b.predicate].tint}
+              stopOpacity={0.95}
+            />
+            <stop
+              offset="55%"
+              stopColor={PREDICATE_STYLE[b.predicate].tint}
+              stopOpacity={0.75}
+            />
+            <stop
+              offset="100%"
+              stopColor={PREDICATE_STYLE[b.predicate].tint}
+              stopOpacity={0}
+            />
+          </radialGradient>
+        ))}
+
+        {/* 원 밖으로 삐져나온 조각을 잘라낸다 */}
+        <clipPath id="center-clip">
+          <circle cx={center.x} cy={center.y} r={R} />
+        </clipPath>
+      </defs>
+
+      {/* ① 바탕 — 조각이 얇아지는 가장자리에서 비쳐 보일 면.
+             이게 없으면 겹치지 않는 틈으로 뒤 배경이 비친다.
+             취향이 하나도 없으면 이 원이 그대로 보이므로 브랜드색을 쓴다 */}
+      <circle
+        cx={center.x}
+        cy={center.y}
+        r={R}
+        className={hasColors ? "fill-background" : "fill-brand/20"}
+      />
+
+      {/* ② 색 조각 — 각 가지 방향에 하나씩.
+             blur 로 경계를 한 번 더 뭉갠다(로고처럼 부드럽게 이어지도록) */}
+      <g clipPath="url(#center-clip)" style={{ filter: "blur(6px)" }}>
+        {filled.map((b) => {
+          // 이 가지가 중심에서 뻗어 나가는 방향
+          const angle = Math.atan2(b.y - center.y, b.x - center.x);
+          // 그 방향으로 원 반지름의 절반쯤 치우친 곳에 조각의 중심을 둔다 —
+          // 색이 그 방향에 몰리면서 반대쪽으로 자연히 옅어진다
+          const cx = center.x + Math.cos(angle) * R * 0.52;
+          const cy = center.y + Math.sin(angle) * R * 0.52;
+          return (
+            <circle
+              key={`seg-${b.predicate}`}
+              cx={cx}
+              cy={cy}
+              r={R * 0.95}
+              fill={`url(#center-${b.predicate})`}
+            />
+          );
+        })}
+      </g>
+
+      {/* ③ 글자 대비 확보용 어두운 면.
+             파스텔 조각 위에 흰 글자를 바로 얹으면 대비가 3:1 도 안 나온다.
+             안쪽만 덮어 바깥 링은 색이 살아 있게 한다 */}
+      <circle
+        cx={center.x}
+        cy={center.y}
+        r={R * 0.66}
+        className="fill-foreground/85"
+      />
+
+      <text
+        x={center.x}
+        y={center.y}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-background text-[19px] font-bold"
+        style={{ letterSpacing: "-0.01em" }}
+      >
+        나
+      </text>
+    </g>
+  );
 }
 
 /** 자물쇠 — lucide `Lock` 과 같은 모양을 SVG로 직접 그린다(색 통제를 위해) */
@@ -195,28 +338,7 @@ export function PreferenceGraph({
             중심이라는 위계는 유지된다.
 
             바깥에 옅은 헤일로를 한 겹 둬 가지 선이 원에 바로 부딪히지 않게 한다 */}
-        <circle
-          cx={layout.center.x}
-          cy={layout.center.y}
-          r={46}
-          className="fill-brand/10"
-        />
-        <circle
-          cx={layout.center.x}
-          cy={layout.center.y}
-          r={34}
-          className="fill-brand"
-        />
-        <text
-          x={layout.center.x}
-          y={layout.center.y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="fill-brand-foreground text-[20px] font-semibold"
-          style={{ letterSpacing: "-0.01em" }}
-        >
-          나
-        </text>
+        <CenterNode center={layout.center} branches={layout.branches} />
 
         {/* ── 관계 노드 ── */}
         {layout.branches.map((branch) => {
