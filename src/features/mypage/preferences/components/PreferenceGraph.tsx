@@ -104,7 +104,13 @@ function CenterNode({
   center: Point;
   branches: BranchNode[];
 }) {
-  const R = 34;
+  /*
+    반지름 34 → 46.
+
+    중심이 주변 관계 노드(최대 30)보다 확실히 커야 "여기가 출발점"으로 읽힌다.
+    이전 값은 관계 노드와 차이가 크지 않아 다섯 개 중 하나처럼 보였다.
+  */
+  const R = 46;
 
   /*
     조각을 그릴 가지 — **데이터가 있는 것만** 쓴다.
@@ -190,14 +196,18 @@ function CenterNode({
         })}
       </g>
 
-      {/* ③ 글자 대비 확보용 어두운 면.
-             파스텔 조각 위에 흰 글자를 바로 얹으면 대비가 3:1 도 안 나온다.
-             안쪽만 덮어 바깥 링은 색이 살아 있게 한다 */}
+      {/* ③ 글자 자리 — 파스텔 조각 위에 흰 글자를 바로 얹으면 대비가 3:1 도
+             안 나오므로 진한 면을 한 겹 깐다. 안쪽만 덮어 바깥 링은 색이 살아 있다.
+
+             ⚠️ 검정(foreground)이었는데 브랜드 딥 틸그린으로 바꿨다. 순수 검정은
+             파스텔 링 안에서 혼자 무채색이라 겉돌았다 — 서비스 팔레트에 없는
+             색이기도 하다. 틸그린은 링의 파랑·초록과 같은 계열이라 이어져
+             보이면서, 명도가 훨씬 낮아 흰 글자 대비는 그대로 확보된다. */}
       <circle
         cx={center.x}
         cy={center.y}
         r={R * 0.66}
-        className="fill-foreground/85"
+        className="fill-brand"
       />
 
       <text
@@ -205,7 +215,7 @@ function CenterNode({
         y={center.y}
         textAnchor="middle"
         dominantBaseline="central"
-        className="fill-background text-[19px] font-bold"
+        className="fill-background text-[24px] font-bold"
         style={{ letterSpacing: "-0.01em" }}
       >
         나
