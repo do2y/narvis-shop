@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ApiError } from "@/shared/api/client";
 import { setPersonalization } from "./api";
 import { useGraphCacheWriter } from "./useProfileGraph";
+import { isServerFault } from "./types";
 
 /**
  * 개인화 ON/OFF (M-16).
@@ -40,6 +41,13 @@ export function usePersonalization() {
     },
 
     onError: (error) => {
+      // 5xx — 서버 문구를 그대로 흘리지 않는다. 스위치는 서버 값으로만
+      // 그리므로(낙관적 갱신 없음) 실패하면 화면이 알아서 이전 상태로 남는다.
+      if (error instanceof ApiError && isServerFault(error.status)) {
+        toast.error("지금은 설정을 바꿀 수 없어요. 잠시 후 다시 시도해주세요.");
+        return;
+      }
+
       toast.error(
         error instanceof ApiError
           ? error.displayMessage
