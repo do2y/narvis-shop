@@ -93,7 +93,8 @@ function errorCodeOf(e: unknown): string | undefined {
  * @throws ProductImageUploadError
  */
 export async function uploadProductImage(file: File): Promise<string> {
-  // ① 리사이즈 — 여기서 HEIC 가 JPEG 로 바뀌고 파일명 확장자도 맞춰진다
+  // ① 리사이즈 — 여기서 HEIC 가 WebP(미지원 브라우저는 JPEG)로 바뀌고
+  //    파일명 확장자도 실제 출력 포맷에 맞춰진다
   let resized;
   try {
     resized = await resizeImageForUpload(file);

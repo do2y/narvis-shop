@@ -167,7 +167,7 @@ export function ChatInput({
             <input
               ref={fileRef}
               type="file"
-              // 전송 형식(JPEG)보다 넓게 받는다 — 업로드 전 canvas 가 JPEG 로 바꾸므로
+              // 전송 형식(WebP)보다 넓게 받는다 — 업로드 전 canvas 가 변환하므로
               // HEIC(아이폰 기본 촬영 포맷)도 고를 수 있어야 한다. accept 를 좁히면
               // 사진 앱에서 아예 선택이 안 돼 "왜 내 사진이 회색이지"가 된다.
               accept="image/*"
