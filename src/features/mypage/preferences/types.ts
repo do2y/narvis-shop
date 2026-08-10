@@ -56,7 +56,7 @@ export const PREDICATE_ORDER: readonly PreferencePredicate[] = [
   "purchased",
 ] as const;
 
-/** 그룹 헤더에 쓰는 한국어 라벨 */
+/** 그룹 헤더에 쓰는 한국어 라벨 — 목록·그래프의 관계 이름 */
 export const PREDICATE_LABEL: Record<PreferencePredicate, string> = {
   prefers: "선호",
   likes: "좋아함",
@@ -66,9 +66,31 @@ export const PREDICATE_LABEL: Record<PreferencePredicate, string> = {
 };
 
 /**
+ * 관계별 한 줄 설명 — 수정 창에서 선택지 아래에 붙인다.
+ *
+ * 라벨(PREDICATE_LABEL)은 계약 어휘 그대로 쓰되, 이름만으로는 구분이 안 되는
+ * 것들이 있어 뜻을 함께 보여준다. 특히 `prefers`(비교 선호)와 `likes`(단순
+ * 긍정)는 둘 다 "좋아함"으로 읽혀 설명이 없으면 고를 수가 없다.
+ *
+ * ⚠️ 라벨 자체를 "특히 좋아요" 같은 감상 표현으로 바꾸지 않는다 —
+ * 계약 어휘를 임의로 갈면 그래프·목록의 그룹 헤더와 말이 갈리고,
+ * "다른 것 대신 이것"이라는 prefers 의 뜻도 사라진다.
+ */
+export const PREDICATE_HINT: Record<PreferencePredicate, string> = {
+  prefers: "다른 것 대신 이것",
+  likes: "비교 없이 그냥 좋음",
+  avoids: "피하고 싶음",
+  interestedIn: "요즘 눈여겨보는 중",
+  purchased: "구매한 사실",
+};
+
+/**
  * 수정 창에서 고를 수 있는 관계 — purchased 제외.
  *
  * "구매"를 선택지에 넣으면 서버가 400을 낸다. 목록에서 빼는 것으로 방어한다.
+ *
+ * 순서는 계약 순서(PREDICATE_ORDER)를 따른다 — 그래프·목록의 그룹 순서와
+ * 같아야 "선호에 있던 걸 관심으로 옮겼다"가 자연스럽게 읽힌다.
  */
 export const EDITABLE_PREDICATES: readonly PreferencePredicate[] = [
   "prefers",

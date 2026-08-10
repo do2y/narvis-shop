@@ -20,6 +20,7 @@ import {
 import { useScreenContext } from "./useScreenContext";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { fetchPopularAsCards } from "./api";
+import { shouldSeedPopular } from "./popularSeed";
 import { ConditionChips } from "./components/ConditionChips";
 import { ProductPanel } from "./components/ProductPanel";
 import { SuggestionChips } from "./components/SuggestionChips";
@@ -37,8 +38,7 @@ export default function ChatPage() {
   // startNewChat 이 저장소까지 비우므로 복원분과 섞이지 않는다).
   useChatPersistence();
 
-  const { messages, results, setResults, conditions, suggestions } =
-    useChatStore();
+  const { results, setResults, conditions, suggestions } = useChatStore();
   const hasResults = results.length > 0;
 
   // 전송 시점의 우측 패널을 실어 "이거 담아줘" 같은 지시어를 AI 가 풀 수 있게 한다.
@@ -68,16 +68,33 @@ export default function ChatPage() {
   const { data: popularCards } = useQuery({
     queryKey: ["chat", "popular"],
     queryFn: () => fetchPopularAsCards(),
-    staleTime: 30 * 60 * 1000,
+    // 홈과 같은 P-4 데이터 — 값이 다르면 두 화면의 인기상품이 어긋나 보인다 (CLAUDE.md 5분)
+    staleTime: 5 * 60 * 1000,
   });
 
   const popularTitle = "지금 인기 상품";
 
-  // 대화 시작 전(메시지 없음)에는 인기상품을 표시.
-  // hasResults에 의존해야 "새 대화"로 패널이 비워졌을 때도 다시 시딩된다
-  // (messages.length는 새 대화 전후 모두 0이라 deps가 변하지 않음).
+  // 패널이 비면 인기상품으로 채운다 — 대화 시작 전이든, "안녕" 같은 일반 질문이라
+  // 상품 결과가 없는 턴이 끝난 뒤든 우측을 빈 채로 두지 않는다.
+  //
+  // messages.length === 0 조건을 두지 않는 이유: 그 조건이 있으면 대화가 한 번
+  // 시작된 뒤에는 영영 다시 시딩되지 않아, 추천 없는 턴마다 우측이 비어 버린다.
+  //
+  // 스트리밍 중에는 시딩하지 않는다 — 그 사이 인기상품을 꽂으면 (1) 결과 대기
+  // 스켈레톤이 사라지고 (2) 곧 도착할 추천이 이걸 덮어 화면이 두 번 튄다.
+  // 대신 isStreaming 이 의존성에 있어 스트림이 끝나는 순간 이펙트가 다시 돌고,
+  // 그때까지도 결과가 없으면(= 추천 없는 턴) 인기상품이 채워진다.
+  // 홈에서 ?q= 로 바로 들어온 경우가 이 경로다 — 마운트 직후 전송이 시작돼
+  // 인기상품 응답이 스트리밍 중에 도착하므로, 종료 시점에 한 번 더 봐야 한다.
   useEffect(() => {
-    if (messages.length === 0 && !hasResults && popularCards?.length) {
+    if (
+      popularCards &&
+      shouldSeedPopular({
+        hasResults,
+        isStreaming,
+        popularCount: popularCards.length,
+      })
+    ) {
       setResults([
         {
           kind: "products",
@@ -85,7 +102,7 @@ export default function ChatPage() {
         },
       ]);
     }
-  }, [messages.length, hasResults, popularCards, popularTitle, setResults]);
+  }, [hasResults, isStreaming, popularCards, popularTitle, setResults]);
 
   // 홈에서 넘어온 첫 메시지(?q=)는 "새 질문" → 기존 대화 초기화 후 시작.
   // 마운트 시 1회만 실행한다(ref 가드) — StrictMode의 이펙트 2회 실행과

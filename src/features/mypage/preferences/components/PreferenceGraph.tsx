@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   groupEdgesByPredicate,
   type PreferenceEdge,
+  type PreferenceNodeType,
   type PreferencePredicate,
 } from "../types";
 import {
@@ -48,6 +49,51 @@ function branchRadius(total: number): number {
 function branchWidth(total: number): number {
   if (total === 0) return 1;
   return Math.min(5, 1.75 + Math.sqrt(total) * 0.42);
+}
+
+/**
+ * 라벨의 대략적인 픽셀 폭.
+ *
+ * SVG에는 텍스트 폭을 미리 알 방법이 없어(측정하려면 렌더 후 getBBox) 문자
+ * 종류로 추정한다. 자물쇠를 라벨 끝에 붙이는 데만 쓰므로 오차가 몇 px 있어도
+ * 무방하다 — 한글·전각은 폰트 크기와 거의 같고 영숫자는 그 절반쯤이다.
+ */
+function labelWidth(label: string): number {
+  const FONT = 17;
+  let w = 0;
+  for (const ch of label) {
+    w += /[ᄀ-ᇿ㄰-㆏가-힯一-鿿]/.test(ch)
+      ? FONT
+      : FONT * 0.55;
+  }
+  return w;
+}
+
+/**
+ * 개별 대상인가(제품·브랜드), 범주인가(속성·가격대·평점대·카테고리·상황).
+ *
+ * "WH-1000XM5"와 "무선"은 성격이 다른데 같은 점으로 그리면 구분되지 않는다.
+ * 개별 대상은 사각형으로 둬 형태만으로 읽히게 한다.
+ */
+function isDiscrete(type: PreferenceNodeType): boolean {
+  return type === "product" || type === "brand";
+}
+
+/** 자물쇠 — lucide `Lock` 과 같은 모양을 SVG로 직접 그린다(색 통제를 위해) */
+function LockGlyph() {
+  return (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      transform="scale(0.46)"
+    >
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </g>
+  );
 }
 
 /**
@@ -249,17 +295,39 @@ export function PreferenceGraph({
                   r={13}
                   className="fill-foreground/10 opacity-0 transition-opacity duration-150 group-hover/leaf:opacity-100"
                 />
-                <circle
-                  cx={leaf.x}
-                  cy={leaf.y}
-                  r={6}
-                  className={cn(
-                    "transition-colors duration-150",
-                    locked
-                      ? "fill-background stroke-muted-foreground stroke-2"
-                      : "fill-foreground/70 group-hover/leaf:fill-foreground",
-                  )}
-                />
+                {/*
+                  대상 종류를 형태로 구분한다 — 같은 회색 점이면 "무선"(속성)과
+                  "WH-1000XM5"(제품)가 같은 성격으로 읽힌다. 제품·브랜드는
+                  개별 대상이라 사각형, 속성·가격대 등 범주는 원으로 둔다.
+                  색을 쓰지 않으므로 색각 이상에서도 구분된다.
+                */}
+                {isDiscrete(leaf.edge.object.type) ? (
+                  <rect
+                    x={leaf.x - 5.5}
+                    y={leaf.y - 5.5}
+                    width={11}
+                    height={11}
+                    rx={2.5}
+                    className={cn(
+                      "transition-colors duration-150",
+                      locked
+                        ? "fill-background stroke-muted-foreground stroke-2"
+                        : "fill-foreground/70 group-hover/leaf:fill-foreground",
+                    )}
+                  />
+                ) : (
+                  <circle
+                    cx={leaf.x}
+                    cy={leaf.y}
+                    r={6}
+                    className={cn(
+                      "transition-colors duration-150",
+                      locked
+                        ? "fill-background stroke-muted-foreground stroke-2"
+                        : "fill-foreground/70 group-hover/leaf:fill-foreground",
+                    )}
+                  />
+                )}
                 <text
                   x={leaf.x + gap}
                   y={leaf.y}
@@ -271,13 +339,6 @@ export function PreferenceGraph({
                   )}
                 >
                   {label}
-                  {/* 구매 파생은 수정만 막힌다 — 자물쇠로 이유를 형태로 알린다 */}
-                  {locked ? (
-                    <tspan className="fill-muted-foreground text-[14px]">
-                      {" "}
-                      🔒
-                    </tspan>
-                  ) : null}
                   {/* "최근 취향이 바뀐 것 같아요" — 색은 바꾸지 않는다 */}
                   {leaf.edge.challenged ? (
                     <tspan className="fill-muted-foreground font-semibold">
@@ -286,6 +347,27 @@ export function PreferenceGraph({
                     </tspan>
                   ) : null}
                 </text>
+
+                {/*
+                  구매 파생은 수정만 막힌다 — 자물쇠로 이유를 형태로 알린다.
+
+                  이모지(🔒)를 쓰지 않는 이유: 이모지는 폰트 색을 따르지 않아
+                  회색조 화면에서 혼자 컬러로 튄다. 조용해야 할 부가 정보가
+                  가장 강한 시각 요소가 되면 안 된다. 목록 뷰도 같은 lucide
+                  아이콘을 쓰므로 두 뷰의 표현이 갈리지 않는다.
+                */}
+                {locked ? (
+                  <g
+                    transform={`translate(${
+                      leaf.anchor === "start"
+                        ? leaf.x + gap + labelWidth(label) + 5
+                        : leaf.x + gap - labelWidth(label) - 16
+                    }, ${leaf.y - 5.5})`}
+                    className="text-muted-foreground"
+                  >
+                    <LockGlyph />
+                  </g>
+                ) : null}
               </g>
             );
           }),

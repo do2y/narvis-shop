@@ -55,7 +55,8 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
 ## React Query 규칙
 - Query Key 배열 컨벤션(소문자 세그먼트): `['cart']` `['orders', {status}]` `['categories']` `['addresses']` `['products', 'recent']`
 - 상품 키는 2벌: `['products', id]`(카드 시딩) / `['products', id, 'detail']`(상세) — 응답 구조가 달라 분리
-- staleTime: 정적 데이터(카테고리·브랜드) 30분 / 상품 상세 5분 / 장바구니·주문 0
+- staleTime: 정적 데이터(카테고리·브랜드) 30분 / 인기상품·홈 추천 5분 / 상품 상세 5분 / 장바구니·주문 0
+  (인기상품·홈 추천 5분 근거: BE Redis 캐시와의 합산 낡음 상한 — 인기상품 합 8분, 개인화 합 15분)
 - 장바구니 변경 성공 시 `invalidateQueries(['cart'])` — **챗봇 CART_ADDED 수신 시에도 동일**
 - **캐시 승계**: 카드 → 상세 진입은 `useGoToProduct()`(shared/hooks) 경유
 - 목록/상세/브랜드는 스피너 단독 금지 → 스켈레톤 기본
