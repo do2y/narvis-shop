@@ -27,7 +27,7 @@ interface PreferenceGraphProps {
    * 확대해도 다 못 담는 그룹의 "모두 보기" — 목록 뷰로 전환하며 그 관계를 편다.
    *
    * 그래프 안에서 해결하지 않고 밖으로 넘기는 이유는 방사형의 물리적 한계다.
-   * 라벨이 가로로 뻗어 한 가지에 8개가 최대라(GRAPH_ITEMS_FOCUSED) 82개짜리
+   * 라벨이 가로로 뻗어 한 가지에 GRAPH_ITEMS_FOCUSED개가 최대이므로, 82개짜리
    * 그룹은 어떻게 배치해도 그래프에 들어가지 않는다.
    */
   onShowAll: (predicate: PreferencePredicate) => void;
