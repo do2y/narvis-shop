@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { MessageMarkdown } from "./MessageMarkdown";
 import type { ChatMessage } from "./store";
 
 interface MessageListProps {
@@ -98,7 +99,10 @@ export function MessageList({
               <div className="flex min-w-0 max-w-[80%] flex-col items-start gap-1.5">
                 <span
                   className={cn(
-                    "whitespace-pre-wrap text-sm leading-relaxed",
+                    // whitespace-pre-wrap 은 여기가 아니라 MessageMarkdown 의 문단에
+                    // 있다 — 목록 블록에까지 걸리면 마커와 내용 사이 개행이 살아나
+                    // 항목이 두 줄로 꺾인다. 진행 문구는 아래에서 따로 붙인다.
+                    "text-sm leading-relaxed",
                     // 진행 문구는 답변이 아니라 상태다 — 말풍선을 씌우면 AI 가 뱉은
                     // 발화처럼 읽히고, 답변이 도착하는 순간 같은 버블이 내용만 갈리며
                     // 튄다. 버블 없이 같은 자리에 얹어 "아직 말이 시작되지 않았음"을
@@ -114,9 +118,10 @@ export function MessageList({
                   aria-live={showStatusOnly ? "polite" : undefined}
                 >
                   {showTyping ? (
-                    // 진행 텍스트(progress)가 있으면 로딩 문구로, 없으면 점 애니메이션
+                    // 진행 텍스트(progress)가 있으면 로딩 문구로, 없으면 점 애니메이션.
+                    // progress 는 답변이 아니라 상태 문구라 마크다운을 태우지 않는다.
                     progress ? (
-                      <span className="flex items-center gap-3">
+                      <span className="flex items-center gap-3 whitespace-pre-wrap">
                         <TypingIndicator />
                         {progress}
                       </span>
@@ -124,7 +129,7 @@ export function MessageList({
                       <TypingIndicator />
                     )
                   ) : (
-                    msg.text
+                    <MessageMarkdown text={msg.text} />
                   )}
                 </span>
 
