@@ -4,6 +4,7 @@ import { ServerFetchError } from "@/shared/api/server";
 import { getProductDetail } from "@/features/product/serverApi";
 import ProductPage from "@/features/product";
 import { formatPrice } from "@/shared/utils/formatPrice";
+import { sharedOpenGraph, sharedTwitter } from "../../shared-metadata";
 
 type Props = { params: Promise<{ productId: string }> };
 
@@ -43,17 +44,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     openGraph: {
+      ...sharedOpenGraph,
       title,
       description,
-      type: "website",
-      images: product.imageUrl ? [{ url: product.imageUrl }] : undefined,
+      url: `/products/${id}`,
+      images: product.imageUrl
+        ? [{ url: product.imageUrl, alt: product.name }]
+        : sharedOpenGraph.images,
     },
     twitter: {
-      card: "summary_large_image",
+      ...sharedTwitter,
       title,
       description,
-      images: product.imageUrl ? [product.imageUrl] : undefined,
+      images: product.imageUrl ? [product.imageUrl] : sharedTwitter.images,
     },
+    alternates: { canonical: `/products/${id}` },
   };
 }
 
