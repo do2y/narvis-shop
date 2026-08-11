@@ -19,7 +19,7 @@ export function ClaimStatusBadge({ status }: { status: ClaimStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold",
+        "inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 text-center text-xs leading-none font-semibold",
         className,
       )}
     >
@@ -30,7 +30,7 @@ export function ClaimStatusBadge({ status }: { status: ClaimStatus }) {
 
 export function ClaimTypeBadge({ type }: { type: ClaimType }) {
   return (
-    <span className="inline-flex h-7 items-center rounded-full border px-3 text-xs font-medium text-muted-foreground">
+    <span className="inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-3 text-center text-xs leading-none font-medium text-muted-foreground">
       {TYPE_LABEL[type]}
     </span>
   );

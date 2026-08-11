@@ -28,7 +28,7 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold",
+        "inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 text-center text-xs leading-none font-semibold",
         className,
       )}
     >

@@ -13,6 +13,7 @@ import {
   PersonalizationOffBanner,
 } from "./components/PersonalizationControls";
 import { PreferenceGraph } from "./components/PreferenceGraph";
+import { CompactPreferenceGraph } from "./components/CompactPreferenceGraph";
 import { PreferenceTree } from "./components/PreferenceTree";
 import { ResetGraphDialog } from "./components/ResetGraphDialog";
 import { SummaryCard } from "./components/SummaryCard";
@@ -90,7 +91,7 @@ export default function PreferencesPage() {
   const [editing, setEditing] = useState<PreferenceEdge | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
 
-  // 좁은 화면에서는 방사형이 성립하지 않아(라벨 겹침) 그래프를 아예 그리지 않는다.
+  // 좁은 화면에서는 방사형 대신 모바일용 축약 그래프를 쓴다.
   const isNarrow = useIsNarrow();
 
   // 그래프에서 한 관계만 확대하는 포커스 모드. 목록은 자체 포커스를 쓴다.
@@ -223,77 +224,87 @@ export default function PreferencesPage() {
                   배경 없이 테두리만 둬, 시각적 무게가 ①보다 낮게 읽히도록 한다.
                 */}
 
-                {/* 좁은 화면에서는 방사형이 성립하지 않는다(라벨이 겹쳐 아무것도
-                    안 읽힌다). 그릴 수 없는 것을 억지로 넣지 않고 목록만 남긴다 */}
-                {isNarrow ? null : (
-                  <section
-                    aria-labelledby="preference-map-heading"
-                    className={cn(
-                      "overflow-hidden rounded-lg border border-border/70 transition-opacity",
-                      data.personalization.enabled ? undefined : "opacity-70",
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pt-4 sm:px-6">
-                      <div className="min-w-0">
-                        <h2
-                          id="preference-map-heading"
-                          className="text-base font-bold tracking-tight"
-                        >
-                          취향이 이어지는 방식
-                        </h2>
-                        <p className="mt-0.5 text-[13px] text-muted-foreground">
-                          자주 나타난 취향을 모아 연결해봤어요. 하나씩 눌러
-                          살펴보세요.
-                        </p>
-                      </div>
-
-                      {/* 전체를 보는 경로는 이 버튼 하나로 모았다 —
-                          그래프 안에 관계마다 알약을 띄우면 그것만 5개라
-                          정작 취향 라벨보다 버튼이 먼저 보인다 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFocused(null);
-                          requestAnimationFrame(() =>
-                            listRef.current?.scrollIntoView({ block: "start" }),
-                          );
-                        }}
-                        className={cn(
-                          "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3.5 text-[13px] font-medium",
-                          "text-muted-foreground transition-colors duration-150 ease-out-strong",
-                          "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
-                        )}
+                <section
+                  aria-labelledby="preference-map-heading"
+                  className={cn(
+                    "overflow-hidden rounded-lg border border-border/70 transition-opacity",
+                    data.personalization.enabled ? undefined : "opacity-70",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-4 sm:px-6">
+                    <div className="min-w-0">
+                      <h2
+                        id="preference-map-heading"
+                        className="text-base font-bold tracking-tight"
                       >
-                        전체 취향 보기
-                        <ArrowDown className="size-3.5" />
-                      </button>
+                        취향이 이어지는 방식
+                      </h2>
+                      <p className="mt-0.5 text-[13px] text-muted-foreground">
+                        {isNarrow
+                          ? "모바일에선 대표 가지만 먼저 보여드려요. 눌러서 넓게 볼 수 있어요."
+                          : "자주 나타난 취향을 모아 연결해봤어요. 하나씩 눌러 살펴보세요."}
+                      </p>
                     </div>
 
-                    <div className="relative">
-                      {/* 그래프가 컨테이너를 넉넉히 쓰게 좌우 여백을 줄인다 —
-                          가운데 작게 떠 있으면 핵심 콘텐츠로 안 읽힌다 */}
-                      <div className="px-2 pb-3">
-                        <PreferenceGraph
+                    {/* 전체를 보는 경로는 이 버튼 하나로 모았다 —
+                        그래프 안에 관계마다 알약을 띄우면 그것만 5개라
+                        정작 취향 라벨보다 버튼이 먼저 보인다 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFocused(null);
+                        requestAnimationFrame(() =>
+                          listRef.current?.scrollIntoView({ block: "start" }),
+                        );
+                      }}
+                      className={cn(
+                        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3.5 text-[13px] font-medium",
+                        "text-muted-foreground transition-colors duration-150 ease-out-strong",
+                        "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45",
+                      )}
+                    >
+                      전체 취향 보기
+                      <ArrowDown className="size-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    {isNarrow ? (
+                      <div className="px-4 pb-4 pt-2">
+                        <CompactPreferenceGraph
                           edges={data.edges}
                           focused={focused}
                           onFocus={setFocused}
-                          // 그래프에서는 아이콘을 놓을 자리가 없어 항목을 누르면
-                          // 바로 수정 창을 연다. 삭제는 목록에서 하도록 두 경로를
-                          // 나눈다 — 파괴적인 동작을 좁은 타겟에 붙이면 오터치가 는다.
                           onSelect={(edge) => edge.editable && setEditing(edge)}
                         />
                       </div>
+                    ) : (
+                      <>
+                        {/* 그래프가 컨테이너를 넉넉히 쓰게 좌우 여백을 줄인다 —
+                            가운데 작게 떠 있으면 핵심 콘텐츠로 안 읽힌다 */}
+                        <div className="px-2 pb-3">
+                          <PreferenceGraph
+                            edges={data.edges}
+                            focused={focused}
+                            onFocus={setFocused}
+                            // 그래프에서는 아이콘을 놓을 자리가 없어 항목을 누르면
+                            // 바로 수정 창을 연다. 삭제는 목록에서 하도록 두 경로를
+                            // 나눈다 — 파괴적인 동작을 좁은 타겟에 붙이면 오터치가 는다.
+                            onSelect={(edge) => edge.editable && setEditing(edge)}
+                          />
+                        </div>
 
-                      {focused ? (
-                        // 키보드 사용자에게도 빠져나갈 길을 알린다
-                        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-xs text-muted-foreground">
-                          다른 곳을 누르거나 ESC를 눌러 전체 보기로 돌아가요.
-                        </p>
-                      ) : null}
-                    </div>
-                  </section>
-                )}
+                        {focused ? (
+                          // 키보드 사용자에게도 빠져나갈 길을 알린다
+                          <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-xs text-muted-foreground">
+                            다른 곳을 누르거나 ESC를 눌러 전체 보기로 돌아가요.
+                          </p>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </section>
 
                 {/* 전체 목록 — 위 버튼이 여기로 스크롤한다.
                     scroll-mt: sticky 헤더에 제목이 가리지 않게 띄운다 */}
