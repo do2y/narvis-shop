@@ -69,6 +69,7 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
             className="flex shrink-0 items-center gap-2.5"
           >
             {/* 구매자 헤더와 같은 심볼 — 두 화면이 같은 로고로 읽혀야 한다 */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size local logo mark shared with buyer header */}
             <img
               src="/logo-mark.png"
               alt=""

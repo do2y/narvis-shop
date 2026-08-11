@@ -57,6 +57,7 @@ export function ProductImage({
   }
 
   return (
+    /* eslint-disable-next-line @next/next/no-img-element -- runtime product URLs need native img fallback handling and may not match next/image remote config */
     <img
       src={src}
       alt={alt}

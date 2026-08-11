@@ -76,7 +76,7 @@ export function Hero() {
       const sectionHeight = Math.max(section.offsetHeight, 1);
       const inputActive = isFocusedRef.current;
       const rawProgress = Math.min(
-        Math.max(window.scrollY / Math.max(sectionHeight * 0.72, 1), 0),
+        Math.max(window.scrollY / Math.max(sectionHeight * 0.46, 1), 0),
         1,
       );
       const progress = prefersReducedMotion || inputActive ? 0 : rawProgress;
@@ -118,7 +118,7 @@ export function Hero() {
     <section ref={sectionRef} className="relative snap-start overflow-hidden px-5 sm:px-6">
       <div
         ref={sceneRef}
-        className="relative mx-auto w-full min-w-0 max-w-[24rem] text-center [--hero-scroll-progress:0] [--hero-scroll-shift:clamp(40px,8vh,88px)] [opacity:calc(1-var(--hero-scroll-progress)*0.15)] [transform:translate3d(0,calc(var(--hero-scroll-progress)*var(--hero-scroll-shift)*-1),0)] motion-reduce:[opacity:1] motion-reduce:[transform:none] sm:max-w-3xl"
+        className="relative mx-auto w-full min-w-0 max-w-[24rem] text-center [--hero-scroll-progress:0] [--hero-scroll-shift:clamp(72px,12vh,152px)] [opacity:calc(1-var(--hero-scroll-progress)*0.17)] [transform:translate3d(0,calc(var(--hero-scroll-progress)*var(--hero-scroll-shift)*-1),0)] motion-reduce:[opacity:1] motion-reduce:[transform:none] sm:max-w-3xl"
       >
         {/* 배경 격자 — 가장자리는 radial mask 로 지워 가운데만 남긴다.
             안 지우면 선이 섹션 경계에서 잘려 "잘린 표" 처럼 보인다 */}

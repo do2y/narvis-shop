@@ -148,6 +148,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
           >
             {/* 워드마크 옆 심볼. alt=""·aria-hidden — 바로 옆 "Narvis" 와 Link 의
                 aria-label 이 이미 이름을 말하므로 중복해 읽히지 않게 한다. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size local logo mark; keeping parity with shared header variants */}
             <img
               src="/logo-mark.png"
               alt=""

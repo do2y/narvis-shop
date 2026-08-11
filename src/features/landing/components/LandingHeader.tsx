@@ -111,6 +111,7 @@ export function LandingHeader({
           {/* next/image를 쓰지 않는다 — 28px 고정 크기의 정적 PNG라 최적화할 여지가
               없고, AppHeader·SellerHeader도 같은 방식이다(표기가 갈리면 안 된다).
               width·height를 명시해 로드 전에도 자리를 잡아 CLS를 막는다. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size local logo mark used consistently across headers */}
           <img
             src="/logo-mark.png"
             alt=""

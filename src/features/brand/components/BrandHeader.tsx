@@ -16,6 +16,7 @@ export function BrandHeader({
       <div className="flex items-center gap-4 sm:gap-5">
         <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-sm border bg-background sm:size-20">
           {brand.logoUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element -- brand logos come from runtime URLs and should render without next/image config coupling */
             <img
               src={brand.logoUrl}
               alt={`${brand.name} 로고`}
