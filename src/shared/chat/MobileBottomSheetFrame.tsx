@@ -8,6 +8,7 @@ interface MobileBottomSheetFrameProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   collapsedPeek?: number;
+  expandedTopInset?: number;
   children: React.ReactNode;
   className?: string;
 }
@@ -25,6 +26,7 @@ interface DragState {
 const DRAG_SNAP_DISTANCE = 44;
 const DRAG_SNAP_VELOCITY = 0.12;
 const DEFAULT_COLLAPSED_PEEK = 48;
+const DEFAULT_EXPANDED_TOP_INSET = 220;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -34,6 +36,7 @@ export function MobileBottomSheetFrame({
   expanded,
   onExpandedChange,
   collapsedPeek = DEFAULT_COLLAPSED_PEEK,
+  expandedTopInset = DEFAULT_EXPANDED_TOP_INSET,
   children,
   className,
 }: MobileBottomSheetFrameProps) {
@@ -148,7 +151,14 @@ export function MobileBottomSheetFrame({
   };
 
   return (
-    <div className="absolute inset-0 z-20 flex items-end pointer-events-none lg:static lg:order-first lg:z-auto lg:min-h-0 lg:w-[420px] lg:shrink-0 lg:items-stretch">
+    <div
+      style={
+        {
+          "--sheet-top-inset": `${expandedTopInset}px`,
+        } as CSSProperties
+      }
+      className="absolute inset-x-0 bottom-0 top-[var(--sheet-top-inset)] z-20 flex items-end pointer-events-none lg:static lg:order-first lg:z-auto lg:min-h-0 lg:w-[420px] lg:shrink-0 lg:items-stretch"
+    >
       <div
         id={panelId}
         ref={sheetRef}
