@@ -26,7 +26,7 @@ export function MyPageNav() {
   return (
     <nav aria-label="마이페이지 메뉴">
       {/* 모바일은 가벼운 스크롤 탭 바, 데스크탑은 기존 세로 목록을 유지한다. */}
-      <div className="-mx-4 overflow-x-auto border-b border-border/60 px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:overflow-visible lg:border-b-0 lg:px-0">
+      <div className="overflow-x-auto border-b border-border/60 px-4 scroll-px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-0 lg:overflow-visible lg:border-b-0">
         <ul className="flex w-max min-w-full items-center gap-5 lg:flex-col lg:gap-0.5">
           {MENU.map((item) => {
             const isActive =
@@ -37,9 +37,9 @@ export function MyPageNav() {
                   href={item.to}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "group relative inline-flex h-11 items-center whitespace-nowrap px-1 text-[15px] font-medium tracking-tight text-muted-foreground transition-[color] duration-150 ease-out-strong",
+                    "group relative inline-flex h-11 items-center whitespace-nowrap px-0.5 text-[15px] font-medium tracking-tight text-muted-foreground transition-[color] duration-150 ease-out-strong",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    "after:absolute after:bottom-[-1px] after:left-1 after:right-1 after:h-0.5 after:rounded-full after:bg-brand after:opacity-0 after:transition-opacity after:duration-150",
+                    "after:absolute after:bottom-[-1px] after:left-0.5 after:right-0.5 after:h-0.5 after:rounded-full after:bg-brand after:opacity-0 after:transition-opacity after:duration-150",
                     "lg:flex lg:w-full lg:justify-between lg:rounded-sm lg:px-3.5 lg:text-sm lg:after:hidden",
                     isActive
                       ? "font-semibold text-wordmark after:opacity-100 lg:bg-muted lg:font-medium lg:text-foreground"
