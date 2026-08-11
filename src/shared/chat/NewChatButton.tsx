@@ -42,19 +42,21 @@ export function NewChatButton({ onClick, className }: NewChatButtonProps) {
       <button
         type="button"
         onClick={onClick}
+        aria-label="새 대화"
+        title="새 대화"
         className={cn(
-          "flex h-11 shrink-0 items-center gap-1 whitespace-nowrap text-[13px] font-medium text-muted-foreground sm:text-sm",
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[13px] font-medium whitespace-nowrap text-muted-foreground min-[390px]:h-11 min-[430px]:w-auto min-[430px]:justify-start min-[430px]:gap-1 min-[430px]:px-0 sm:gap-1.5 sm:rounded-none sm:text-sm",
           // 색만 전환한다 — transition-all 은 layout·shadow 까지 잡아 불필요한 리페인트를 만든다
-          "transition-colors duration-150 ease-out-strong",
+          "transition-[transform,color,background-color] duration-150 ease-out-strong",
           // 터치에서 탭이 hover 로 잡혀 손을 뗀 뒤에도 색이 남는 것을 막는다
-          "hover:[@media(hover:hover)]:text-foreground",
+          "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground sm:hover:[@media(hover:hover)]:bg-transparent",
           // press 피드백은 "눌렀다"만 전하면 되므로 짧고 약하게
           "active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
           className,
         )}
       >
-        <Plus className="size-3.5 sm:size-4" />
-        새 대화
+        <Plus className="size-4 shrink-0" />
+        <span className="hidden min-[430px]:inline">새 대화</span>
       </button>
     </div>
   );
