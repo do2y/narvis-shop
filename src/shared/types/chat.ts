@@ -32,7 +32,7 @@ export interface ChatScreenContext {
    * 추천 카드(CH-5)는 listId 로 서버가 알고 있어 싣지 않는다(되돌려주면 위조 경로가 된다).
    * 상한 20건, 초과분은 화면 순서대로 자른다.
    */
-  products?: { productId: string; name: string }[];
+  products?: { productId: string; name: string }[]; // Visible buyer-side product candidates unknown to the server.
   /**
    * 전송 시점 그리드 열 수 — 반응형이라 서버가 알 수 없다. 목록형은 1.
    * "3번째 줄 2번째" 같은 좌표 지시를 index = (row-1) × columns + (col-1) 로 푼다.
