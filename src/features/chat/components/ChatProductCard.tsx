@@ -129,11 +129,11 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           aria-pressed={optimisticWished}
           // 요청 중에도 흐려지지 않는다 — 낙관적 하트가 켜진 채로 반투명해지면
           // "눌렀는데 뭔가 안 됐다"로 읽힌다. 연타는 disabled 로 이미 막힌다.
-          className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90"
+          className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90 sm:right-3 sm:top-3 sm:size-9"
         >
           <Heart
             className={cn(
-              "size-5 transition-all duration-200",
+              "size-4 transition-all duration-200 sm:size-5",
               optimisticWished
                 ? "scale-110 fill-red-500 text-red-500"
                 : "text-muted-foreground",
@@ -142,11 +142,11 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
         <p className="text-xs font-medium text-muted-foreground">
           {product.brandName}
         </p>
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
+        <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug sm:text-sm">
           <a
             href={detailHref}
             target="_blank"
@@ -169,22 +169,22 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
 
         {/* 인기상품(단순 집계) 카드는 추천 이유가 없어 영역 자체를 그리지 않음 */}
         {product.reason && (
-          <p className="line-clamp-2 text-sm text-muted-foreground">
+          <p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">
             {product.reason}
           </p>
         )}
 
-        <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+        <div className="mt-auto flex items-end justify-between gap-2 pt-1.5 sm:pt-2">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="text-base font-bold">
+            <span className="text-sm font-bold sm:text-base">
               {formatPrice(product.price)}
             </span>
             {hasDiscount && (
               <>
-                <span className="text-sm text-muted-foreground line-through">
+                <span className="text-xs text-muted-foreground line-through sm:text-sm">
                   {formatPrice(product.originalPrice)}
                 </span>
-                <span className="text-sm font-bold text-red-500">
+                <span className="text-xs font-bold text-red-500 sm:text-sm">
                   {discountRate}%
                 </span>
               </>
@@ -203,9 +203,9 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             }}
             disabled={addCart.isPending}
             aria-label="장바구니에 담기"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 disabled:opacity-50"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 disabled:opacity-50 sm:size-9"
           >
-            <ShoppingCart className="size-4" />
+            <ShoppingCart className="size-3.5 sm:size-4" />
           </button>
         </div>
 
@@ -220,7 +220,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
                 type="button"
                 onClick={() => addToCart(opt.optionId)}
                 disabled={addCart.isPending}
-                className="rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-muted disabled:opacity-50"
+                className="rounded-full border px-2 py-1 text-[11px] transition-colors hover:bg-muted disabled:opacity-50 sm:px-2.5 sm:text-xs"
               >
                 {opt.name}
                 {opt.extraPrice > 0 && ` +${formatPrice(opt.extraPrice)}`}
