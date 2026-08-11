@@ -37,7 +37,7 @@ export function ChatLayout({
   aboveInput,
   resultPanel,
 }: ChatLayoutProps) {
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(true);
 
   return (
     <div className="flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-background">
