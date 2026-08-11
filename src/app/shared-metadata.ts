@@ -14,7 +14,7 @@ function withProtocolIfMissing(value: string): string {
 }
 
 export function resolveMetadataBase(): URL {
-  const explicitSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const explicitSiteUrl = process.env.SITE_URL;
   const vercelSiteUrl =
     process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
 

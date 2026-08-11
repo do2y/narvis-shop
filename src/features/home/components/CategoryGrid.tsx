@@ -2,11 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/shared/ui/skeleton";
-import {
-  DEFAULT_CATEGORY_IMAGE,
-  categoryEmoji,
-  categoryImage,
-} from "../categoryEmoji";
+import { DEFAULT_CATEGORY_IMAGE } from "../categoryEmoji";
 import { useCategories } from "../useHomeData";
 import { SectionHeading } from "./SectionHeading";
 
@@ -15,8 +11,8 @@ export function CategoryGrid() {
   const { data: categories, isLoading, isError } = useCategories();
 
   return (
-    <section className="bg-muted/30 px-6 py-16">
-      <div className="mx-auto max-w-6xl">
+    <section className="bg-muted/30 px-5 py-14 sm:px-6 sm:py-16">
+      <div className="mx-auto max-w-[22rem] sm:max-w-6xl">
         <SectionHeading
           eyebrow="카테고리"
           title="어떤 걸 찾고 계세요?"
@@ -24,7 +20,7 @@ export function CategoryGrid() {
         />
 
         {/* 14개를 7열 2행으로 — 좁은 화면에서는 2·4열로 접어 행 수만 늘어난다 */}
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="mt-7 grid grid-cols-2 gap-4 sm:mt-8 sm:gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {isLoading &&
             Array.from({ length: 14 }).map((_, i) => (
               <Skeleton key={i} className="h-24 rounded-sm" />
@@ -37,7 +33,6 @@ export function CategoryGrid() {
           )}
 
           {categories?.map((cat) => {
-            const image = categoryImage(cat.name);
             return (
             // 인기상품 API에 카테고리 필터가 없어(P-4), 카테고리명을 질문으로 넘겨
             // 챗봇이 해당 분야를 추천하게 한다.
@@ -49,32 +44,17 @@ export function CategoryGrid() {
               }
               className="flex flex-col items-center gap-2 rounded-sm border bg-background px-3 py-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:bg-muted hover:shadow-md active:translate-y-0 active:scale-[0.98]"
             >
-              {/* 이미지가 준비된 카테고리만 그림으로, 나머지는 이모지로 폴백한다.
-                  표에 등록돼 있어도 파일이 없을 수 있어(에셋 교체 중) onError 로 기본 아이콘을 세운다.
-                  깨진 이미지 아이콘이 그대로 노출되는 것을 막는 마지막 방어다 */}
-              {image ? (
-                // eslint-disable-next-line @next/next/no-img-element -- 고정 크기 로컬 아이콘이라 최적화 이득이 없다
-                <img
-                  src={image}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="size-8 object-contain"
-                  aria-hidden
-                  onError={(e) => {
-                    // 기본 아이콘마저 실패하면 무한 루프가 되므로 한 번만 교체한다
-                    const img = e.currentTarget;
-                    if (img.dataset.fallback) return;
-                    img.dataset.fallback = "true";
-                    img.src = DEFAULT_CATEGORY_IMAGE;
-                  }}
-                />
-              ) : (
-                <span className="text-2xl leading-8" aria-hidden>
-                  {categoryEmoji(cat.name)}
-                </span>
-              )}
-              <span className="text-sm font-medium">#{cat.name}</span>
+              {/* 카테고리별 이미지를 쓰지 않고 공통 기본 아이콘만 노출한다. */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- 고정 크기 로컬 아이콘이라 최적화 이득이 없다 */}
+              <img
+                src={DEFAULT_CATEGORY_IMAGE}
+                alt=""
+                width={32}
+                height={32}
+                className="size-8 object-contain"
+                aria-hidden
+              />
+              <span className="text-[13px] font-medium sm:text-sm">#{cat.name}</span>
             </button>
             );
           })}
