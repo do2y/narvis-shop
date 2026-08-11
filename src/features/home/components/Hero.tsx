@@ -76,12 +76,15 @@ export function Hero() {
       const sectionHeight = Math.max(section.offsetHeight, 1);
       const inputActive = isFocusedRef.current;
       const rawProgress = Math.min(
-        Math.max(window.scrollY / Math.max(sectionHeight * 0.46, 1), 0),
+        Math.max(window.scrollY / Math.max(sectionHeight * 0.34, 1), 0),
         1,
       );
       const progress = prefersReducedMotion || inputActive ? 0 : rawProgress;
+      // 히어로 전환이 진행 중인 동안에는 스냅을 끈다 — 켜두면 전환 도중
+      // 스크롤이 되돌려져 모션이 중간에 걸린다. 히어로를 다 지난 뒤에야
+      // 아래 섹션들끼리 스냅되게 한다
       const snapState =
-        prefersReducedMotion || inputActive || window.scrollY > sectionHeight + 24
+        prefersReducedMotion || inputActive || window.scrollY < sectionHeight
           ? "inactive"
           : "active";
 
@@ -114,11 +117,13 @@ export function Hero() {
     };
   }, [isFocused]);
 
+  // 이 섹션에는 snap-start 를 걸지 않는다 — 스크롤 전환이 진행되는 구간이라
+  // 스냅이 히어로 시작점으로 되돌리면 모션이 중간에 걸린다. 스냅은 아래 카테고리부터다
   return (
-    <section ref={sectionRef} className="relative snap-start overflow-hidden px-5 sm:px-6">
+    <section ref={sectionRef} className="relative overflow-hidden px-5 sm:px-6">
       <div
         ref={sceneRef}
-        className="relative mx-auto w-full min-w-0 max-w-[24rem] text-center [--hero-scroll-progress:0] [--hero-scroll-shift:clamp(72px,12vh,152px)] [opacity:calc(1-var(--hero-scroll-progress)*0.17)] [transform:translate3d(0,calc(var(--hero-scroll-progress)*var(--hero-scroll-shift)*-1),0)] motion-reduce:[opacity:1] motion-reduce:[transform:none] sm:max-w-3xl"
+        className="relative mx-auto w-full min-w-0 max-w-[24rem] text-center [--hero-scroll-progress:0] [--hero-scroll-shift:clamp(180px,30vh,360px)] [opacity:calc(1-var(--hero-scroll-progress)*0.85)] [transform:translate3d(0,calc(var(--hero-scroll-progress)*var(--hero-scroll-shift)*-1),0)] motion-reduce:[opacity:1] motion-reduce:[transform:none] sm:max-w-3xl"
       >
         {/* 배경 격자 — 가장자리는 radial mask 로 지워 가운데만 남긴다.
             안 지우면 선이 섹션 경계에서 잘려 "잘린 표" 처럼 보인다 */}
