@@ -73,7 +73,7 @@ interface ChatState {
   claimFailure: ClaimFailure | null;
   messages: ChatMessage[];
   results: ChatResult[]; // 최신 응답의 결과 카드(상품·diff)
-  conditions: ConditionChip[]; // AI 추출 조건 칩(구매자) — field로 제거 왕복
+  conditions: ConditionChip[]; // AI 추출 조건 칩(구매자) — (field, value)로 제거 왕복
   suggestions: SuggestionChip[]; // 완화·되돌리기 제안 칩(구매자)
   isStreaming: boolean;
   lane: SellerLane | null; // 판매자 챗 화면 전환 신호 — 첫 프레임 meta.lane
