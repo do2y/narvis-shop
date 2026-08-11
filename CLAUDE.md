@@ -18,6 +18,13 @@
 ## 기능 명세
 - 페이지별 목적·핵심 기능은 `docs/features.md` 참조. 페이지 작업 시 해당 섹션을 먼저 읽고, 이번 세션에서 만들 범위는 프롬프트로 별도 지정받는다
 
+## 문서 (`docs/README.md`가 색인)
+이 파일은 **규칙 요약**이고, 구조와 그 근거는 아래에 있다. 해당 영역을 건드리기 전에 읽을 것.
+- `docs/architecture-chat.md` — 세 갈래 통신 경로 · SSE 11종 · 경로 B · 세션/멀티탭 · CH-7 승계 · 판매자 draft/report
+- `docs/architecture-auth.md` — 쿠키 전환 후 구조 · 부팅 복원 · 401 2종 규약 · 가드
+- `docs/architecture-data.md` — 쿼리 키 · staleTime 근거 · **SSR `initialData` 함정** · 무효화 · 로컬 프록시
+> 코드가 정본이다. 문서와 어긋나면 코드를 믿고 문서를 고친다
+
 ## 기술 스택
 - Next.js 16(App Router) · React Query · Zustand · RHF+Zod · Tailwind v4
 - **새 라이브러리 추가는 먼저 제안하고 승인받을 것**
@@ -46,7 +53,7 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
 
 ## 상태 구분
 - **서버 원본 데이터**(상품/장바구니/주문/찜) → React Query. useState로 복제 금지
-- **클라이언트 상태** → Zustand: 인증(authStore — user만 localStorage persist, AT는 메모리 전용), 현재 챗봇 대화(sessionStorage에 탭 단위 저장 — `chatPersistence`), UI 상태
+- **클라이언트 상태** → Zustand: 인증(authStore — user만 localStorage persist, **토큰은 저장하지 않는다**), 현재 챗봇 대화(sessionStorage에 탭 단위 저장 — `chatPersistence`), UI 상태
   - 챗 대화를 **탭 단위**로 잡은 이유: 서버 맥락 TTL이 10분(sliding)이라 그보다 오래 남기면
     화면엔 대화가 있는데 AI는 기억 못 하는 어긋난 상태가 길어진다. 탭 수명이 세션 수명과
     대체로 겹쳐 그 간극이 가장 작다. "새 대화"는 저장소도 함께 비운다
@@ -66,23 +73,36 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
 
 ## SSR 경계
 - **SSR하는 것**: 상품 상세·브랜드·홈 — 전부 공개 라우트라 인증 없이 서버에서 조회 가능
-- **하지 않는 것**: mypage·checkout·seller — 인증이 필요하고, AT가 메모리에만 있어 서버가 알 수 없다
+- **하지 않는 것**: mypage·checkout·seller — 인증이 필요하고, 가드·세션 복원 흐름이 클라이언트 기준이다
+  (AT가 httpOnly 쿠키가 된 뒤로 "서버가 못 읽어서"는 이유가 아니게 됐지만, 결론은 그대로 유지)
 - `shared/api/client.ts`(axios)는 **클라이언트 전용** — authStore·`window.location`을 참조한다.
   서버 컴포넌트는 `shared/api/server.ts`(`server-only`, 인증 없는 공개 API 전용)를 쓴다
 - 서버 fetch에는 5초 타임아웃이 있다 — 없으면 백엔드에 못 닿는 CI에서 빌드가 무한정 매달린다
 
 ## 인증/권한 (구현: src/shared/auth/guards.tsx, src/shared/api/client.ts, src/shared/stores/authStore.ts)
-- 계정 3종: MEMBER / SELLER / ADMIN. 라우트 가드에서 역할별 접근 제어 (RequireAuth, RequireRole)
+- 계정 3종: USER / SELLER / ADMIN (백엔드 role enum과 일치). 라우트 가드에서 역할별 접근 제어 (RequireAuth, RequireRole)
 - 게스트: 탐색·챗봇·**장바구니 담기**까지 가능(횟수 제한 없음, 개인화만 미적용). 구매·찜·마이페이지는 로그인 필요
 - **게스트 승계는 `guest_id` 쿠키로 서버가 자동 처리** — FE는 `withCredentials`로 쿠키가 실리는 것만 보장
 - 미인증 접근 → `?returnUrl=` 붙여 /login, 로그인 후 복귀
-- 토큰: 인터셉터에서 자동 첨부, 401 → refresh 1회 재시도 → 실패 시 clearAuth + 로그인 이동. **이 로직은 shared/api에만 존재**
-- **AT는 메모리에만 보관**(persist 제외). 새로고침 시 `useRestoreSession`(app/providers.tsx)이 refresh → `/api/auth/me`로 복원
-- **가드를 `proxy.ts`(구 middleware)로 옮기지 않는다** — AT가 메모리에만 있어 서버가 인증 상태를 모른다. 클라이언트 가드 + 백엔드 최종 방어를 유지
+- **AT·RT 모두 httpOnly 쿠키다**(2026-08-06 전환, `05e6b46`). AT `Path=/` · RT `Path=/api/auth`.
+  **JS가 토큰 값을 볼 수 없고 볼 필요도 없다** — 따라오는 결과 3가지:
+  - 브라우저가 자동 첨부하므로 **Authorization을 다는 요청 인터셉터가 없다.** 대신 `withCredentials: true`가 필수
+  - refresh 응답 **body에서 토큰을 꺼내지 않는다** — 새 AT는 `Set-Cookie`로 온다. 호출 성공 자체가 "AT가 심겼다"는 신호
+  - **"AT를 갖고 있는가"를 FE가 직접 판정할 수 없다** → `selectIsAuthReady`가 필요해진 이유
+- 401은 **code 2종으로 갈린다**(2026-07-18 규약). status만으로 분기하지 말 것:
+  `AUTH_TOKEN_EXPIRED` → refresh 1회 재시도(`_retry` 플래그로 1회 제한) /
+  `AUTH_REQUIRED` → 재발급 여지 없음, 즉시 로그인 유도. **이 로직은 shared/api에만 존재**
+- 새로고침 시 `useRestoreSession`(app/providers.tsx)이 refresh → `/api/auth/me`로 복원.
+  refresh는 **raw axios로 부른다**(인터셉터를 타면 게스트가 401에서 /login으로 튕긴다)
+- **가드를 `proxy.ts`(구 middleware)로 옮기지 않는다** — 쿠키가 되어 서버도 읽을 수는 있지만,
+  가드·복원 흐름이 클라이언트 기준이고 이중 관리가 된다. 클라이언트 가드 + 백엔드 최종 방어를 유지
 - **persist된 user는 신뢰 경계가 아님** — role 판정은 `me` 응답으로 덮어쓴다
 - 복원 중(`isRestoring`)에는 가드가 판정을 보류 — 없으면 새로고침마다 로그인으로 튕긴다
-- **인증 필요 쿼리의 `enabled`는 `selectIsAuthReady`(복원완료+AT보유) 필수**
+- **인증 필요 쿼리의 `enabled`는 `selectIsAuthReady`(복원완료 + user 존재) 필수** —
+  복원 중에 true를 주면 만료된 AT로 요청이 나가 401 → refresh 폭주
 - 복원 경로의 401은 리다이렉트 대상이 아님 — `fetchMe`는 `NO_AUTH_REDIRECT`로 호출
+- **수집(analytics)은 이 경로를 공유하지 않는다** — `api` 인스턴스를 쓰면 배경 작업의 401이
+  사용자를 로그인으로 튕긴다. 재전송 대상은 **401 하나뿐**(→ `docs/analytics-401-retry.md`)
 
 ## 배포 구조 (03 D-분산4)
 ```
@@ -103,12 +123,28 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
 - 챗봇은 단일 API를 `channel`(SHOPPING|SELLER)만 바꿔 공유. 공통 모듈 + 채널별 렌더러 주입
   (`CS`는 타입에 남아 있으나 넘기는 화면이 없다 — 백엔드 계약이라 임의로 지우지 않음)
 - 와이어는 `data: {"type":..,"data":{..}}` envelope 한 줄 — **`event:` 줄을 쓰지 않는다**. 이름이 아니라 `payload.type`으로 분기
-- 구매자 이벤트 **8종**: `progress`(0~1회, 첫 프레임) / `token`(append) / `conditions`(제거 가능 칩) / `suggestions`(완화 제안) / `action` / `products.ready`(상관키) / `done` / `error` + **판매자 전용 `meta`·`draft`**
-  - **`progress`는 채널별로 페이로드가 다르다** — 구매자 `{stage,message?}`(어휘 `analyzing` 1종) / 판매자 `{text}`. 수신부가 분기해야 한다
-  - **`progress` 도착을 전제하지 않는다** — 0회인 턴이 있고(첫 프레임이 `error`이거나 스트림이 안 열림), AI 서버도 아직 기본 off다
+- 이벤트 **11종** — 공통 3(`token` append / `done` / `error` 종결) + 구매자 4(`conditions` 제거 가능 칩 /
+  `suggestions` 완화 제안 / `products.ready` 상관키 / `action`) + 판매자 3(`meta` 레인 / `draft` HITL 초안 /
+  `report` 분석 리포트) + `progress`(채널 공용, 페이로드만 다름)
+  - **`progress`는 채널별로 페이로드가 다르다** — 구매자 `{stage,message?}` / 판매자 `{text}`. 수신부가 분기해야 한다
+  - **stage 어휘는 개방형이다** — 알려진 7종(`analyzing` `mapping` `expanding` `searching` `relaxing`
+    `reranking` `publishing`)은 자체 문구를 가진 것들일 뿐 **허용 집합이 아니다**. 계약이 "모르는 stage는 무시"를
+    명문화했으므로 닫힌 유니온으로 두지 않는다
+  - **`progress` 도착을 전제하지 않는다** — 0회인 턴이 있다(첫 프레임이 `error`이거나 스트림이 안 열림).
+    2026-08-06 다단계화로 **다회 나갈 수 있다**
+  - **`token`이 progress를 지우면 안 된다** — `publishing`은 근거 token 뒤 `products.ready` 직전에 온다.
+    여기서 지우면 그 한 종이 영영 화면에 닿지 못한다. 정리는 `done`·finally가 맡는다
+  - **`report`는 도착 즉시 반영하지 않는다** — 커밋 신호는 `done{panel:"replace"}`다. 바로 꽂으면
+    report 뒤 `error`로 끝나는 스트림에서 실패한 턴의 리포트가 패널에 남는다
 - **SSE는 nginx·Next를 타지 않는다** — 세션 발급(`POST /api/chat/sessions`)으로 받은 `llmSseUrl`(AI 서버 절대 URL)에 `streamChat`이 직접 fetch한다. AI 서버가 이 앱 오리진에 CORS를 열어줘야 한다
 - **EventSource 금지** — POST+body이므로 `streamChat`의 fetch 스트리밍으로 파싱
-- 조건 칩 X 제거 = 요청 body의 **`conditionActions`** 배열(`{op:"remove",field}`). 규약 문자열(`[조건 제거] …`) 왕복은 폐기됨
+- 조건 칩 X 제거 = 요청 body의 **`conditionActions`** 배열(`{op:"remove",field,value?}`). 규약 문자열(`[조건 제거] …`) 왕복은 폐기됨
+  - **⚠️ `field`는 칩을 유일하게 가리키지 않는다** — category·brand는 **값당 칩 1개**라 같은 field가 여러 개 온다(v0.32.14).
+    칩을 특정하려면 **`(field, value)` 쌍**이 필요하다. field만 보고 지우면 카테고리 하나를 눌렀는데 전부 사라지고,
+    React key도 `` `${field}:${value}` ``여야 한다(중복 키는 엉뚱한 칩이 사라져 보인다)
+  - `value` 생략 시 그 축 전체 제거. 값이 하나뿐인 축(priceMax 등)은 서버가 value를 무시하고 축을 통째로 지운다
+  - **`message`와 `conditionActions`가 둘 다 비면 400.** 칩 제거만 있는 턴은 사용자 말풍선을 남기지 않는다(제어 신호)
+  - 제안 칩(`suggestions`)은 방식이 다르다 — label을 그대로 message로 보내는 왕복이다
 - **카드는 SSE에 없다(경로 B)** — `products.ready`의 `listIds`(항상 배열)로 CH-5를 목록별 조회한다. 조회한 카드는 완전한 데이터라 상세 캐시 시딩용 — 카드 표시 위한 재조회 금지
 - `action.type` **10종** — 장바구니 담기·삭제·수량변경, 찜 추가·해제(각 성공/실패) + 판매자 수정 2종.
   성공 시 해당 쿼리 무효화(`['cart']`·`['wishlist']`) — 판정은 `isCartMutatingAction`/`isWishlistMutatingAction`(shared/types/chat) 경유.
@@ -138,7 +174,9 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
 - 범용 부품은 shadcn/ui를 shared/ui로 가져와 토큰에 맞게 수정. 같은 부품 새로 만들지 말 것
 - 도메인 컴포넌트(상품 카드·별점·리뷰 분포 바·이미지 갤러리·스펙 표)는 Tailwind 직접 구현
 - **토큰은 tailwind 테마 값만 사용, 임의 값 금지**:
-  - 색상: primary(검정)/배경(흰색)/회색 2~3단/포인트(할인 빨강·별점 노랑)/brand(청록 `--brand` — AI 기능 강조 전용) 외 금지
+  - 색상: primary(검정)/배경(흰색)/회색 2~3단/포인트(할인 빨강·별점 노랑)/brand(블루 `--brand` `#2a63b8` —
+    AI 기능 강조 전용) 외 금지. 2026-08-10에 청록에서 바꿨다 — 로고에 없는 색이라 다른 서비스처럼 보였다.
+    **알파를 섞지 말 것** — 면색으로 쓰여서 흰 글자 대비가 무너진다(한때 2.02:1까지 떨어졌음)
   - radius: 버튼·칩 `rounded-full`, 카드·이미지·입력 `rounded-sm` (이 2단계 외 금지)
   - 폰트: Pretendard / 간격: 정의된 스케일만 (임의 px 금지)
 - 시안에 없는 상태(로딩/에러/빈 상태)는 기존 페이지 패턴을 따라 통일
