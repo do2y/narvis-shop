@@ -11,7 +11,10 @@ export function CategoryGrid() {
   const { data: categories, isLoading, isError } = useCategories();
 
   return (
-    <section className="bg-muted/30 px-5 py-12 sm:px-6 sm:py-16">
+    <section
+      id="home-categories"
+      className="snap-start bg-muted/30 px-5 py-12 sm:px-6 sm:py-16"
+    >
       <div className="mx-auto max-w-[24rem] sm:max-w-6xl">
         <SectionHeading
           eyebrow="카테고리"
@@ -24,7 +27,7 @@ export function CategoryGrid() {
             Array.from({ length: 14 }).map((_, index) => (
               <Skeleton
                 key={index}
-                className="h-[68px] rounded-xl sm:h-24 sm:rounded-sm"
+                className="h-[68px] rounded-lg sm:h-24 sm:rounded-sm"
               />
             ))}
 
@@ -39,9 +42,11 @@ export function CategoryGrid() {
               key={category.id}
               type="button"
               onClick={() =>
-                router.push(`/chat?q=${encodeURIComponent(`${category.name} 추천해줘`)}`)
+                router.push(
+                  `/chat?q=${encodeURIComponent(`${category.name} 추천해줘`)}`,
+                )
               }
-              className="flex min-h-[68px] items-center gap-3 rounded-xl border border-border/80 bg-background px-3.5 py-3 text-left shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-[transform,background-color,box-shadow] duration-150 ease-out active:scale-[0.98] active:bg-muted/55 sm:flex-col sm:items-center sm:justify-center sm:gap-2 sm:rounded-sm sm:px-3 sm:py-4 sm:text-center sm:shadow-sm sm:hover:-translate-y-0.5 sm:hover:bg-muted sm:hover:shadow-md"
+              className="flex min-h-[68px] w-full items-center gap-3 rounded-lg border border-border/80 bg-background px-3.5 py-3 text-left shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-[transform,background-color,box-shadow] duration-150 ease-out active:scale-[0.98] active:bg-muted/55 sm:flex-col sm:items-center sm:justify-center sm:gap-2 sm:rounded-sm sm:px-3 sm:py-4 sm:text-center sm:shadow-sm sm:hover:-translate-y-0.5 sm:hover:bg-muted sm:hover:shadow-md"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size local icon */}
               <img

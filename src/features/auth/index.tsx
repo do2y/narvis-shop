@@ -32,7 +32,7 @@ export default function AuthPage() {
       {/* 로그인/회원가입 화면엔 우측 로그인·시작하기 메뉴 숨김 (이미 이 화면에 폼이 있어 중복) */}
       <AppHeader showMenu={false} />
 
-      <main className="flex min-h-[calc(100vh-4rem)] items-start justify-center px-4 pt-24 pb-10 sm:items-center sm:pt-12 sm:pb-24">
+      <main className="flex min-h-[calc(100vh-4rem)] items-start justify-center px-4 pt-8 pb-10 sm:items-center sm:pt-12 sm:pb-24">
         <div className="w-full max-w-md rounded-2xl bg-background p-6 shadow-sm sm:p-8">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="h-18 w-full">

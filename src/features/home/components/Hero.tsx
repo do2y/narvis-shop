@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, SendHorizontal } from "lucide-react";
+import { ChevronDown, Search, SendHorizontal } from "lucide-react";
 import { useTypingText } from "../hooks/useTypingText";
 
 // 예시 질문 칩 — 클릭 시 해당 문장으로 채팅 시작
 const EXAMPLE_CHIPS = [
-  "자취 시작템 추천",
-  "유럽 여행 준비물",
-  "2만원 이하 선물",
-  "집들이 선물 추천",
-  "무선 키보드 추천",
+  "시계 추천해줘",
+  "5만원 이하 집들이 선물 추천해줘",
+  "유럽 여행에 뭐 가져가야해?",
+  "감자탕 재료 추천해줘",
 ];
 
 // placeholder 예시 질문
@@ -26,6 +25,9 @@ export function Hero() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const isFocusedRef = useRef(false);
 
   const { text } = useTypingText(PLACEHOLDER_PHRASES, {
     typingMs: 70,
@@ -40,26 +42,98 @@ export function Hero() {
     if (q) router.push(`/chat?q=${encodeURIComponent(q)}`);
   };
 
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+  }, [isFocused]);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    const scene = sceneRef.current;
+    if (!section || !scene || typeof window === "undefined") return;
+
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let prefersReducedMotion = mediaQuery.matches;
+    let rafId = 0;
+    let lastProgress = -1;
+    let lastSnapState = "";
+
+    const setProgress = (progress: number) => {
+      if (progress === lastProgress) return;
+      scene.style.setProperty("--hero-scroll-progress", progress.toFixed(3));
+      lastProgress = progress;
+    };
+
+    const setSnapState = (state: "active" | "inactive") => {
+      if (state === lastSnapState) return;
+      root.dataset.homeSnap = state;
+      lastSnapState = state;
+    };
+
+    const syncScene = () => {
+      rafId = 0;
+
+      const sectionHeight = Math.max(section.offsetHeight, 1);
+      const inputActive = isFocusedRef.current;
+      const rawProgress = Math.min(
+        Math.max(window.scrollY / Math.max(sectionHeight * 0.46, 1), 0),
+        1,
+      );
+      const progress = prefersReducedMotion || inputActive ? 0 : rawProgress;
+      const snapState =
+        prefersReducedMotion || inputActive || window.scrollY > sectionHeight + 24
+          ? "inactive"
+          : "active";
+
+      setProgress(progress);
+      setSnapState(snapState);
+    };
+
+    const requestSync = () => {
+      if (rafId !== 0) return;
+      rafId = window.requestAnimationFrame(syncScene);
+    };
+
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      prefersReducedMotion = event.matches;
+      requestSync();
+    };
+
+    requestSync();
+
+    window.addEventListener("scroll", requestSync, { passive: true });
+    window.addEventListener("resize", requestSync);
+    mediaQuery.addEventListener("change", handleMediaChange);
+
+    return () => {
+      if (rafId !== 0) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", requestSync);
+      window.removeEventListener("resize", requestSync);
+      mediaQuery.removeEventListener("change", handleMediaChange);
+      scene.style.setProperty("--hero-scroll-progress", "0");
+    };
+  }, [isFocused]);
+
   return (
-    <section className="relative overflow-hidden px-5 sm:px-6 sm:pt-28 sm:pb-44">
-      {/* 배경 격자 — 가장자리는 radial mask 로 지워 가운데만 남긴다.
-          안 지우면 선이 섹션 경계에서 잘려 "잘린 표" 처럼 보인다 */}
+    <section ref={sectionRef} className="relative snap-start overflow-hidden px-5 sm:px-6">
       <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgb(150_165_200/0.13)_1px,transparent_1px),linear-gradient(90deg,rgb(150_165_200/0.13)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_70%_62%_at_50%_46%,#000_0%,transparent_78%)]"
-      />
-      {/* 로고색 글로우 — 제목·검색바 뒤에 깔린다 */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute top-[42%] left-1/2 h-[460px] w-[900px] max-w-[145vw] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse,rgb(169_196_245/0.5)_0%,rgb(169_220_182/0.32)_45%,rgb(246_225_151/0)_72%)] blur-[60px] animate-narvis-pulse motion-reduce:animate-none sm:top-[110px] sm:h-[420px] sm:max-w-[140vw] sm:translate-y-0"
-      />
+        ref={sceneRef}
+        className="relative mx-auto w-full min-w-0 max-w-[24rem] text-center [--hero-scroll-progress:0] [--hero-scroll-shift:clamp(72px,12vh,152px)] [opacity:calc(1-var(--hero-scroll-progress)*0.17)] [transform:translate3d(0,calc(var(--hero-scroll-progress)*var(--hero-scroll-shift)*-1),0)] motion-reduce:[opacity:1] motion-reduce:[transform:none] sm:max-w-3xl"
+      >
+        {/* 배경 격자 — 가장자리는 radial mask 로 지워 가운데만 남긴다.
+            안 지우면 선이 섹션 경계에서 잘려 "잘린 표" 처럼 보인다 */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgb(150_165_200/0.13)_1px,transparent_1px),linear-gradient(90deg,rgb(150_165_200/0.13)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_70%_62%_at_50%_46%,#000_0%,transparent_78%)]"
+        />
+        {/* 로고색 글로우 — 제목·검색바 뒤에 깔린다 */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-[42%] left-1/2 h-[460px] w-[900px] max-w-[145vw] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse,rgb(169_196_245/0.5)_0%,rgb(169_220_182/0.32)_45%,rgb(246_225_151/0)_72%)] blur-[60px] animate-narvis-pulse motion-reduce:animate-none sm:top-[44%] sm:h-[420px] sm:max-w-[140vw]"
+        />
 
-      <div className="relative mx-auto w-full min-w-0 max-w-[24rem] text-center sm:max-w-3xl">
-        {/* 모바일 첫 화면은 헤더 아래 한 화면을 히어로로 써 검색창이 시각적 중심이 되게 한다. */}
-        <div className="grid w-full min-w-0 max-w-full min-h-[calc(100svh-3.5rem)] grid-rows-[minmax(0,0.72fr)_auto_auto_auto_minmax(0,1fr)] py-8 sm:block sm:min-h-0 sm:py-0">
-          <div aria-hidden className="sm:hidden" />
-
-          <div className="row-start-2 row-end-5 flex w-full min-w-0 max-w-full flex-col translate-y-[clamp(-5rem,-8vh,-2rem)] sm:translate-y-0">
+        <div className="relative flex min-h-[calc(100svh-3.5rem)] flex-col justify-center pb-[calc(env(safe-area-inset-bottom)+4.75rem)] pt-8 sm:min-h-[calc(100svh-4rem)] sm:pb-28 sm:pt-12">
+          <div className="w-full min-w-0 max-w-full translate-y-[clamp(-5rem,-8vh,-2rem)] sm:translate-y-[clamp(-2rem,-3vh,0rem)]">
             <div className="w-full min-w-0 max-w-full self-end">
               <p className="text-sm font-medium tracking-widest text-muted-foreground">
                 AI SHOPPING AGENT
@@ -130,9 +204,16 @@ export function Hero() {
               </div>
             </div>
           </div>
-
-          <div aria-hidden className="sm:hidden" />
         </div>
+
+        <a
+          href="#home-categories"
+          aria-label="카테고리 섹션으로 이동"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 text-[11px] font-medium text-muted-foreground/75 transition-colors motion-reduce:transition-none hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wordmark/20 focus-visible:ring-offset-4 sm:bottom-8 sm:text-xs"
+        >
+          <span>아래로 스크롤</span>
+          <ChevronDown className="size-4 animate-hero-scroll-cue motion-reduce:animate-none" />
+        </a>
       </div>
     </section>
   );

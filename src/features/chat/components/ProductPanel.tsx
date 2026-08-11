@@ -15,7 +15,8 @@ interface ProductPanelProps {
 
 // 열 수를 바꾸면 useScreenContext 의 currentColumns 도 함께 고쳐야 한다 —
 // CH-2 screen.columns 가 좌표 지시("3번째 줄 2번째")를 푸는 값이라 어긋나면 조용히 틀린다.
-const GRID = "grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3";
+const GRID =
+  "grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-8 xl:grid-cols-3";
 
 export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
   // SHOPPING 채널은 상품 결과만 표시한다(다른 kind는 이 채널에 오지 않음)
@@ -24,7 +25,7 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
 
   if (isEmpty && isStreaming) {
     return (
-      <div className="pl-4 pr-3 pb-3 pt-5 sm:p-6">
+      <div className="pl-4 pr-3 pt-5 pb-[var(--mobile-chat-result-bottom-clearance)] sm:px-6 sm:pt-6 sm:pb-[var(--mobile-chat-result-bottom-clearance)] lg:p-6">
         <div className={GRID}>
           {Array.from({ length: 6 }).map((_, i) => (
             <ProductCardSkeleton key={i} />
@@ -48,7 +49,7 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6 pl-4 pr-3 pb-3 pt-5 sm:gap-8 sm:p-6">
+    <div className="flex flex-col gap-6 pl-4 pr-3 pt-5 pb-[var(--mobile-chat-result-bottom-clearance)] sm:gap-8 sm:px-6 sm:pt-6 sm:pb-[var(--mobile-chat-result-bottom-clearance)] lg:p-6">
       {groups.map((group) => (
         <ProductGroupSection key={group.title} group={group} />
       ))}
@@ -142,13 +143,24 @@ function RecommendationSummary({
 
 function ProductCardSkeleton() {
   return (
-    <div className="flex flex-col overflow-hidden rounded-sm border">
-      <Skeleton className="aspect-square rounded-none" />
-      <div className="flex flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
-        <Skeleton className="h-3 w-1/3 rounded-full" />
-        <Skeleton className="h-4 w-4/5 rounded-full" />
-        <Skeleton className="h-3 w-full rounded-full" />
-        <Skeleton className="mt-2 h-5 w-1/2 rounded-full" />
+    <div className="flex h-full min-w-0 flex-col">
+      <Skeleton className="aspect-square rounded-[12px] bg-muted/80 sm:aspect-[4/3]" />
+      <div className="mt-3 flex flex-1 flex-col px-0.5 sm:mt-4">
+        <div className="flex flex-col gap-2 sm:gap-2.5">
+          <div className="flex items-center justify-between gap-2 sm:min-h-[1.125rem]">
+            <Skeleton className="h-3 w-2/5 rounded-full sm:h-3.5" />
+            <Skeleton className="h-3.5 w-1/4 rounded-full sm:h-4" />
+          </div>
+
+          <div className="space-y-1">
+            <Skeleton className="h-4 rounded-full sm:h-4.5" />
+            <Skeleton className="h-4 w-4/5 rounded-full sm:h-4.5" />
+          </div>
+        </div>
+
+        <div className="pt-4 sm:pt-[18px]">
+          <Skeleton className="h-5 w-3/4 rounded-full sm:h-6" />
+        </div>
       </div>
     </div>
   );

@@ -28,6 +28,7 @@ export function LandingFooter({
             <div className="flex items-center gap-2.5">
               {/* 화면 아래쪽이라 늦게 받아도 된다 — 히어로 자원과 경쟁시키지 않는다.
                   width·height 명시로 로드 전에도 자리를 잡는다(CLS 방지). */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size local logo mark; optimization overhead outweighs benefit here */}
               <img
                 src="/logo-mark.png"
                 alt=""

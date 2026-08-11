@@ -67,6 +67,7 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
               첫 조각만 eager 인 이유: 펼친 직후 화면에 남아 있는 것이 그 조각이라
               lazy 로 두면 이미 보이는 자리가 비어 보인다. */}
           {rendered.map((src, i) => (
+            /* eslint-disable-next-line @next/next/no-img-element -- long detail slices use native lazy loading and runtime fallback without next/image constraints */
             <img
               key={src}
               src={src}

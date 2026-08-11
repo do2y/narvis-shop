@@ -35,7 +35,7 @@ export const sharedOpenGraph = {
   images: [
     {
       url: "/og-image.png",
-      width: 1730,
+      width: 1731,
       height: 909,
       alt: "Narvis AI 쇼핑 에이전트",
     },

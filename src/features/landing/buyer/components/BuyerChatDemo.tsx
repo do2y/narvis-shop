@@ -36,7 +36,7 @@ export function BuyerChatDemo({
   scenario: DemoScenario;
   active: boolean;
 }) {
-  const { step, resetting, reducedMotion, reached } = useDemoSequence(
+  const { resetting, reducedMotion, reached } = useDemoSequence(
     // 각 장면 체류 시간. 읽을 글자가 많은 장면(답변·완료)에 더 준다.
     [2100, 900, 1500, 1700, 2400, 1500, 1400, 2000],
     { paused: !active, loopDelayMs: 3200 },

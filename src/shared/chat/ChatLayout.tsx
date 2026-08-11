@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import type { CSSProperties } from "react";
 import { ChatConversation } from "./ChatConversation";
-import { MobileBottomSheetFrame } from "./MobileBottomSheetFrame";
+import {
+  MobileBottomSheetFrame,
+  MOBILE_BOTTOM_SHEET_COLLAPSED_PEEK,
+} from "./MobileBottomSheetFrame";
 
 interface ChatLayoutProps {
   onSend: (message: string) => void;
@@ -37,15 +41,25 @@ export function ChatLayout({
   aboveInput,
   resultPanel,
 }: ChatLayoutProps) {
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(true);
+  const mobileResultBottomClearance = `calc(${MOBILE_BOTTOM_SHEET_COLLAPSED_PEEK}px + env(safe-area-inset-bottom) + 20px)`;
 
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-background">
+    <div
+      style={
+        {
+          "--mobile-chat-result-bottom-clearance":
+            mobileResultBottomClearance,
+        } as CSSProperties
+      }
+      className="flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-background"
+    >
       {header}
 
       <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* 결과는 모바일의 기본 콘텐츠다. 채팅 시트가 펼쳐지면 뒤 스크롤을 잠근다. */}
         <div
+          style={{ scrollPaddingBottom: mobileResultBottomClearance }}
           className={[
             "min-h-0 flex-1 bg-muted/30",
             sheetExpanded

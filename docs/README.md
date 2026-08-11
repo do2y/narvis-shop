@@ -45,6 +45,12 @@
 | [image-loading-review.md](image-loading-review.md) | 상품 이미지 로딩 점검과 조치 |
 | [hero-animation-perf-review.md](hero-animation-perf-review.md) | 가설이 측정으로 반증된 기록 (**코드 수정 없음**) |
 
+## 3-1. 발표·포트폴리오
+
+| 문서 | 한 줄 |
+|---|---|
+| [tech-talk-candidates.md](tech-talk-candidates.md) | 기술 발표 후보 5선과 상위 3개 상세 (코드·커밋 근거만) |
+
 ## 4. 이전·배포
 
 | 문서 | 다루는 것 |

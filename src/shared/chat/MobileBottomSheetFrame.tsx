@@ -25,7 +25,7 @@ interface DragState {
 
 const DRAG_SNAP_DISTANCE = 44;
 const DRAG_SNAP_VELOCITY = 0.12;
-const DEFAULT_COLLAPSED_PEEK = 48;
+export const MOBILE_BOTTOM_SHEET_COLLAPSED_PEEK = 48;
 const DEFAULT_EXPANDED_TOP_INSET = 220;
 
 function clamp(value: number, min: number, max: number) {
@@ -35,7 +35,7 @@ function clamp(value: number, min: number, max: number) {
 export function MobileBottomSheetFrame({
   expanded,
   onExpandedChange,
-  collapsedPeek = DEFAULT_COLLAPSED_PEEK,
+  collapsedPeek = MOBILE_BOTTOM_SHEET_COLLAPSED_PEEK,
   expandedTopInset = DEFAULT_EXPANDED_TOP_INSET,
   children,
   className,

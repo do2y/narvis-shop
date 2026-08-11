@@ -2,38 +2,39 @@
 
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ProductImage } from "@/shared/ui/ProductImage";
 import { track } from "@/shared/analytics/track";
 import {
-  useVisibleOnce,
   VISIBLE_MS,
   VISIBLE_RATIO,
+  useVisibleOnce,
 } from "@/shared/analytics/useVisibleOnce";
-import { useWishlistToggleWithToast } from "@/shared/hooks/useWishlist";
 import { useAddCartItem } from "@/shared/hooks/useCart";
-import { formatPrice } from "@/shared/utils/formatPrice";
+import { useWishlistToggleWithToast } from "@/shared/hooks/useWishlist";
 import type { ProductCard } from "@/shared/types/chat";
+import { ProductImage } from "@/shared/ui/ProductImage";
+import { formatPrice } from "@/shared/utils/formatPrice";
+
+function normalizeProductDisplayName(name: string) {
+  return name.replace(/\s+[xX]\s+(?=\d)/g, " \u00D7 ");
+}
 
 export function ChatProductCard({ product }: { product: ProductCard }) {
-  // 찜 상태는 서버 목록에서 파생 — 로컬 토글이면 새로고침·다른 화면과 어긋난다.
-  // 결과 토스트와 낙관적 하트는 훅이 함께 맡는다.
   const {
     wished: optimisticWished,
     isPending,
     toggle,
   } = useWishlistToggleWithToast(product.productId);
-
   const addCart = useAddCartItem();
   const { optionChoices } = addCart;
-
-  /**
-   * 노출·클릭은 추천 성과(CTR) 측정용이라 추천 카드에만 붙인다 —
-   * 인기상품 카드는 recommendationContext 가 없어 귀속시킬 목록이 없다.
-   * 서버도 recommendation 문맥이 없으면 지면·순위를 도출하지 못한다.
-   */
   const rec = product.recommendationContext;
+  const hasReviews = product.reviewCount > 0;
+  const hasDiscount = product.originalPrice > product.price;
+  const discountRate = hasDiscount
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
+    : 0;
+  const detailHref = `/products/${product.productId}`;
+  const displayName = normalizeProductDisplayName(product.name);
 
-  // CTR 분모. 같은 목록 안에서는 재발화하지 않는다(listId+productId 로 관찰 대상을 고정).
   const cardRef = useVisibleOnce<HTMLDivElement>(
     () => {
       if (!rec) return;
@@ -46,7 +47,6 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
     rec ? `${rec.listId}:${product.productId}` : undefined,
   );
 
-  // CTR 분자. clickTarget 으로 카드 본문과 담기 버튼을 구분한다(계약 E-1).
   const trackClick = (clickTarget: "card" | "button") => {
     if (!rec) return;
     track("product_click", {
@@ -56,12 +56,6 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
     });
   };
 
-  /**
-   * 담기 — 기본(옵션 없음)과 옵션 칩 선택이 같은 경로를 쓴다.
-   *
-   * add_to_cart 수집은 BE CartService 로 이관됨(A 문서, 2026-08-06).
-   * recommendationContext 는 요청 body 에 그대로 싣는다 — 서버가 추천 귀속에 쓴다.
-   */
   const addToCart = (optionId?: string) => {
     addCart.mutate({
       productId: product.productId,
@@ -70,10 +64,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
       recommendationContext: product.recommendationContext,
     });
   };
-  /**
-   * 찜 토글 — 낙관적 반영에 쓸 카드 데이터를 함께 넘긴다.
-   * 넘기지 않으면 목록 캐시에 끼울 수 없어 하트가 서버 응답까지 안 움직인다.
-   */
+
   const toggleWishlist = () => {
     toggle({
       name: product.name,
@@ -83,57 +74,44 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
       imageUrl: product.imageUrl,
       rating: product.rating,
       reviewCount: product.reviewCount,
-      // 챗 카드에는 purchaseState 가 없다 — 못 사는 상품은 BE 가 목록에서
-      // 드롭하므로 남은 카드는 항상 구매 가능하다(chat.ts ProductCard 주석).
-      // 어차피 onSettled 재조회가 서버 값으로 덮는다.
       purchaseState: "AVAILABLE",
     });
   };
 
-  const hasDiscount = product.originalPrice > product.price;
-  const discountRate = hasDiscount
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
-    : 0;
-
-  // 챗봇 카드만 새 탭으로 연다. 대화 상태는 persist하지 않아(CLAUDE.md) 같은 탭에서
-  // 상세로 나갔다 돌아오면 대화가 사라지기 때문. 새 탭은 캐시를 공유하지 않아
-  // useGoToProduct의 상세 캐시 시딩을 쓸 수 없다(스켈레톤부터 시작) — 대화 보존을 택한 것.
-  // window.open 대신 <a target="_blank">: 팝업 차단을 피하고 Ctrl·가운데 클릭도 그대로 동작한다.
-  const detailHref = `/products/${product.productId}`;
-
   return (
     <div
       ref={cardRef}
-      className="group flex flex-col overflow-hidden rounded-sm border bg-background transition-shadow duration-200 hover:shadow-md"
+      className="group flex h-full min-w-0 flex-col text-left transition-transform duration-150 ease-out motion-reduce:transition-none sm:hover:-translate-y-0.5"
     >
-      <div className="relative aspect-square overflow-hidden bg-muted">
-        <a
-          href={detailHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => trackClick("card")}
-          aria-label={`${product.name} 상세 보기 (새 탭)`}
-          className="block size-full"
-        >
-          <ProductImage
-            src={product.imageUrl}
-            alt={product.name}
-            className="size-full object-cover transition-transform group-hover:scale-105"
-          />
-        </a>
+      <div className="relative overflow-hidden rounded-[12px] bg-[#F7F7F7] ring-1 ring-black/[0.04]">
+        <div className="flex aspect-square items-center justify-center sm:aspect-[4/3]">
+          <a
+            href={detailHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackClick("card")}
+            aria-label={`${product.name} 상세 보기 (새 탭)`}
+            className="block size-full"
+          >
+            <ProductImage
+              src={product.imageUrl}
+              alt={product.name}
+              className="size-full object-contain transition-transform duration-200 ease-out will-change-transform motion-reduce:transition-none sm:group-hover:scale-[1.02]"
+            />
+          </a>
+        </div>
+
         <button
           type="button"
           onClick={toggleWishlist}
           disabled={isPending}
           aria-label={optimisticWished ? "찜 해제" : "찜하기"}
           aria-pressed={optimisticWished}
-          // 요청 중에도 흐려지지 않는다 — 낙관적 하트가 켜진 채로 반투명해지면
-          // "눌렀는데 뭔가 안 됐다"로 읽힌다. 연타는 disabled 로 이미 막힌다.
-          className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center rounded-full bg-background/80 backdrop-blur transition-all hover:bg-background active:scale-90 sm:right-3 sm:top-3 sm:size-9"
+          className="absolute right-2.5 top-2.5 flex size-9 items-center justify-center rounded-full bg-white/88 text-muted-foreground shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-all duration-150 ease-out hover:bg-white active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wordmark/20 disabled:opacity-60 sm:right-3 sm:top-3 sm:size-10"
         >
           <Heart
             className={cn(
-              "size-4 transition-all duration-200 sm:size-5",
+              "size-4 transition-all duration-200 sm:size-[18px]",
               optimisticWished
                 ? "scale-110 fill-red-500 text-red-500"
                 : "text-muted-foreground",
@@ -142,85 +120,89 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
-        <p className="text-xs font-medium text-muted-foreground">
-          {product.brandName}
-        </p>
-        <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug sm:text-sm">
-          <a
-            href={detailHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackClick("card")}
-            className="text-left hover:underline"
-          >
-            {product.name}
-          </a>
-        </h3>
-        {/* 홈·브랜드 카드와 같은 표기(별 + 평점 + 리뷰수). 리뷰가 0건이면
-            "0 (0)"이 신뢰도를 깎아 보이게 하므로 줄 자체를 그리지 않는다. */}
-        {product.reviewCount > 0 && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium text-foreground">{product.rating}</span>
-            <span>({product.reviewCount.toLocaleString("ko-KR")})</span>
-          </div>
-        )}
-
-        {/* 인기상품(단순 집계) 카드는 추천 이유가 없어 영역 자체를 그리지 않음 */}
-        {product.reason && (
-          <p className="line-clamp-2 text-xs text-muted-foreground sm:text-sm">
-            {product.reason}
-          </p>
-        )}
-
-        <div className="mt-auto flex items-end justify-between gap-2 pt-1.5 sm:pt-2">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="text-sm font-bold sm:text-base">
-              {formatPrice(product.price)}
+      <div className="flex min-w-0 flex-1 flex-col px-0.5 pt-3 sm:pt-4">
+        <div className="flex flex-col gap-2 sm:gap-2.5">
+          <div className="flex min-w-0 items-center justify-between gap-2 sm:min-h-[1.125rem]">
+            <span className="min-w-0 truncate text-[11px] leading-4 text-muted-foreground/90 sm:text-[12px]">
+              {product.brandName}
             </span>
-            {hasDiscount && (
-              <>
-                <span className="text-xs text-muted-foreground line-through sm:text-sm">
-                  {formatPrice(product.originalPrice)}
+
+            {hasReviews && (
+              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] leading-4 text-muted-foreground/90 sm:text-[13px]">
+                <Star className="size-[13px] shrink-0 fill-[#D6A13C] text-[#D6A13C] sm:size-[14px]" />
+                <span className="font-medium text-foreground/85">
+                  {product.rating.toFixed(1)}
                 </span>
-                <span className="text-xs font-bold text-red-500 sm:text-sm">
-                  {discountRate}%
+                <span className="text-muted-foreground">
+                  ({product.reviewCount.toLocaleString("ko-KR")})
                 </span>
-              </>
+              </span>
             )}
           </div>
 
-          {/* 옵션이 필요한 상품은 서버가 400(CART_OPTION_REQUIRED)으로 알려주므로
-              먼저 1개 담기를 시도하고, 실패하면 아래 옵션 칩으로 고르게 한다.
-              자동 재시도 없음. */}
-          <button
-            type="button"
-            onClick={() => {
-              // 클릭 자체가 CTR 분자다 — 담기 성공 여부와 무관하게 누른 시점에 발화한다
-              trackClick("button");
-              addToCart();
-            }}
-            disabled={addCart.isPending}
-            aria-label="장바구니에 담기"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-90 disabled:opacity-50 sm:size-9"
+          <h3
+            title={product.name}
+            className="line-clamp-2 min-h-[2.45rem] text-[14px] font-medium leading-[1.4] text-foreground sm:min-h-[2.7rem] sm:text-[15px] sm:leading-[1.45]"
           >
-            <ShoppingCart className="size-3.5 sm:size-4" />
-          </button>
+            <a
+              href={detailHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackClick("card")}
+              className="transition-colors hover:text-foreground/80 focus-visible:outline-none"
+            >
+              {displayName}
+            </a>
+          </h3>
         </div>
 
-        {/* 옵션 미선택으로 막혔으면 서버가 준 선택지를 그대로 띄운다(C-2 detail.options).
-            카드에는 옵션 UI 가 없어 문구만 보여주면 사용자가 뭘 골라야 할지 알 수 없다 —
-            상세로 되돌아가야 했던 흐름을 여기서 끝낸다. */}
+        <div className="pt-4 sm:pt-[18px]">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="min-h-[1.6rem] sm:min-h-[1.75rem]">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:gap-x-2.5">
+                  <span className="text-[17px] font-bold tracking-tight text-foreground sm:text-[18px]">
+                    {formatPrice(product.price)}
+                  </span>
+
+                  {hasDiscount && (
+                    <span className="flex items-baseline gap-1.5 whitespace-nowrap sm:gap-2">
+                      <span className="text-[12px] leading-4 text-muted-foreground line-through sm:text-[13px]">
+                        {formatPrice(product.originalPrice)}
+                      </span>
+                      <span className="text-[13px] font-semibold tracking-[-0.01em] text-red-500/90 sm:text-[14px]">
+                        {discountRate}%
+                      </span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                trackClick("button");
+                addToCart();
+              }}
+              disabled={addCart.isPending}
+              aria-label="장바구니에 담기"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-muted-foreground transition-all duration-150 ease-out hover:bg-black/[0.03] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wordmark/20 disabled:opacity-50 sm:size-10"
+            >
+              <ShoppingCart className="size-4" />
+            </button>
+          </div>
+        </div>
+
         {optionChoices && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 pt-3 sm:pt-3.5">
             {optionChoices.map((opt) => (
               <button
                 key={opt.optionId}
                 type="button"
                 onClick={() => addToCart(opt.optionId)}
                 disabled={addCart.isPending}
-                className="rounded-full border px-2 py-1 text-[11px] transition-colors hover:bg-muted disabled:opacity-50 sm:px-2.5 sm:text-xs"
+                className="rounded-full border border-black/[0.08] px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-black/[0.03] hover:text-foreground disabled:opacity-50 sm:px-3 sm:text-xs"
               >
                 {opt.name}
                 {opt.extraPrice > 0 && ` +${formatPrice(opt.extraPrice)}`}
