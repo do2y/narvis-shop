@@ -144,7 +144,7 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             id="signup-password"
             type={showPassword ? "text" : "password"}
             autoComplete="new-password"
-            placeholder="8자 이상"
+            placeholder="8자 이상, 영문·숫자 포함"
             aria-invalid={!!errors.password}
             className="h-11 rounded-sm pr-11"
             {...register("password")}
