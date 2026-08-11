@@ -24,67 +24,58 @@ export function MyPageNav() {
   const pathname = usePathname();
 
   return (
-    <nav>
-      {/* 모바일: 가로 스크롤 필 / 데스크탑: 세로 리스트 (Apple 설정앱 스타일 셀) */}
-      <ul className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0 lg:pb-0">
-        {MENU.map((item) => {
-          const isActive =
-            pathname === item.to || pathname.startsWith(`${item.to}/`);
-          return (
-            <li key={item.to} className="shrink-0 lg:shrink">
-              <Link
-                href={item.to}
-                className={cn(
-                  "group relative flex h-11 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-all duration-200 active:scale-[0.98] lg:justify-between lg:rounded-sm lg:px-3.5",
-                  // 포커스 링 — 키보드 사용자가 지금 어디 있는지 항상 보이게.
-                  // 브랜드색 링이라 마우스 hover(회색 배경)와 성격이 구분된다.
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-                  isActive
-                    ? "bg-primary text-primary-foreground lg:bg-muted lg:text-foreground"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                  /*
-                    이 서비스의 고유 기능이라는 표시.
-
-                    나머지 5개는 "내가 한 일의 기록"(주문·찜·배송지)이고 이것만
-                    AI가 만든 것이라, 같은 셀로 두면 성격 차이가 사라진다.
-
-                    아이콘(스파클·별)을 쓰지 않는다 — AI를 아이콘으로 말하는 건
-                    상투적이고, 여섯 항목 중 하나만 아이콘이 붙으면 정렬도 깨진다.
-                    대신 **왼쪽 그라데이션 바**로 로고색(파랑→초록→노랑)을 얇게
-                    끌어와 로고와 같은 계열임을 알린다. 비활성일 때는 옅게 두고
-                    hover·활성에서 또렷해져, CTA처럼 튀지 않으면서 존재를 알린다.
-                  */
-                  item.featured && [
-                    "before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full",
-                    "before:bg-[linear-gradient(180deg,#8FB4F2,#8FD3A6_55%,#F0D274)]",
-                    "before:transition-opacity before:duration-200",
-                    // 모바일 알약은 좌측에 여백이 없어 바가 글자에 닿는다 —
-                    // 데스크탑(세로 목록)에서만 바를 쓰고, 모바일은 배경으로 구분
-                    "before:hidden lg:before:block",
-                    isActive
-                      ? "lg:before:opacity-100"
-                      : "before:opacity-45 hover:before:opacity-100",
-                    // 비활성일 때도 아주 옅은 배경을 깔아 목록에서 먼저 눈에 든다.
-                    // 활성 상태(bg-muted)를 이기지 않을 만큼만 준다.
-                    !isActive &&
-                      "bg-brand/[0.045] hover:bg-brand/[0.085] lg:bg-brand/[0.05]",
-                  ],
-                )}
-              >
-                <span className="tracking-tight">{item.label}</span>
-                <ChevronRight
+    <nav aria-label="마이페이지 메뉴">
+      {/* 모바일은 가벼운 스크롤 탭 바, 데스크탑은 기존 세로 목록을 유지한다. */}
+      <div className="-mx-4 overflow-x-auto border-b border-border/60 px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:overflow-visible lg:border-b-0 lg:px-0">
+        <ul className="flex w-max min-w-full items-center gap-5 lg:flex-col lg:gap-0.5">
+          {MENU.map((item) => {
+            const isActive =
+              pathname === item.to || pathname.startsWith(`${item.to}/`);
+            return (
+              <li key={item.to} className="shrink-0 lg:w-full">
+                <Link
+                  href={item.to}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "hidden size-4 shrink-0 transition-colors lg:block",
+                    "group relative inline-flex h-11 items-center whitespace-nowrap px-1 text-[15px] font-medium tracking-tight text-muted-foreground transition-[color] duration-150 ease-out-strong",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    "after:absolute after:bottom-[-1px] after:left-1 after:right-1 after:h-0.5 after:rounded-full after:bg-brand after:opacity-0 after:transition-opacity after:duration-150",
+                    "lg:flex lg:w-full lg:justify-between lg:rounded-sm lg:px-3.5 lg:text-sm lg:after:hidden",
                     isActive
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground/40 group-hover:text-muted-foreground",
+                      ? "font-semibold text-wordmark after:opacity-100 lg:bg-muted lg:font-medium lg:text-foreground"
+                      : "hover:[@media(hover:hover)]:text-foreground lg:hover:bg-muted/60",
+                    /*
+                      이 서비스의 고유 기능이라는 표식은 데스크탑 목록에서만 남긴다.
+                      모바일에선 탭 전부를 같은 계층의 내비게이션으로 읽히게 해야 해
+                      배경·알약 처리 없이 텍스트와 인디케이터만 쓴다.
+                    */
+                    item.featured && [
+                      "lg:before:absolute lg:before:left-0 lg:before:top-1/2 lg:before:h-5 lg:before:w-[3px] lg:before:-translate-y-1/2 lg:before:rounded-full",
+                      "lg:before:bg-[linear-gradient(180deg,#8FB4F2,#8FD3A6_55%,#F0D274)]",
+                      "lg:before:transition-opacity lg:before:duration-200",
+                      isActive
+                        ? "lg:before:opacity-100"
+                        : "lg:before:opacity-45 lg:hover:before:opacity-100",
+                      !isActive &&
+                        "lg:bg-brand/[0.05] lg:hover:bg-brand/[0.085]",
+                    ],
                   )}
-                />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+                >
+                  <span>{item.label}</span>
+                  <ChevronRight
+                    className={cn(
+                      "hidden size-4 shrink-0 transition-colors lg:block",
+                      isActive
+                        ? "text-muted-foreground"
+                        : "text-muted-foreground/40 group-hover:text-muted-foreground",
+                    )}
+                  />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </nav>
   );
 }
