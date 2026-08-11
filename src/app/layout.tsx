@@ -3,14 +3,40 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
+
   title: "Narvis",
   description: "AI 쇼핑 에이전트 Narvis — 대화로 찾는 쇼핑",
-  // 파비콘은 헤더와 같은 로고 마크를 쓴다 — 탭과 헤더가 같은 그림이라야
-  // 어느 탭이 이 서비스인지 바로 이어진다.
-  // 32/180 두 벌: 탭용과 iOS 홈화면 추가용으로 요구 크기가 다르다.
+
   icons: {
     icon: "/icon-32.png",
     apple: "/icon-180.png",
+  },
+
+  openGraph: {
+    title: "Narvis | 대화로 찾는 AI 쇼핑",
+    description: "AI 쇼핑 에이전트 Narvis — 대화로 찾는 쇼핑",
+    url: "/",
+    siteName: "Narvis",
+    locale: "ko_KR",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Narvis AI 쇼핑 에이전트",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Narvis | 대화로 찾는 AI 쇼핑",
+    description: "AI 쇼핑 에이전트 Narvis — 대화로 찾는 쇼핑",
+    images: ["/og-image.png"],
   },
 };
 
