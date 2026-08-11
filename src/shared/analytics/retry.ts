@@ -1,3 +1,5 @@
+import { refreshAccessToken } from "@/shared/auth/refresh";
+
 /**
  * 401 배치 1회 재전송 (E-1).
  *
@@ -5,8 +7,6 @@
  * 이 판정이 느슨해지면 수집이 조용히 재시도 루프가 되는데, 화면으로는 아무것도
  * 보이지 않는다(수집은 실패해도 앱이 멀쩡히 돈다).
  */
-
-const REFRESH_ENDPOINT = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/auth/refresh`;
 
 /**
  * 이 응답을 재전송 대상으로 볼지.
@@ -25,21 +25,18 @@ export function shouldRetryBatch(status: number): boolean {
 /**
  * AT 재발급 — 성공 여부만 돌려준다.
  *
- * **client.ts 의 refresh 를 쓰지 않는다.** 그쪽은 실패하면 로그인 화면으로
- * 리다이렉트하는데, 수집은 배경 작업이라 상품을 보던 사용자가 갑자기 로그인
- * 화면으로 튕기게 된다. track.ts 가 api 인스턴스를 피하는 것과 같은 이유다.
+ * 재발급 호출 자체는 client.ts 와 **공용 single-flight helper**를 쓴다.
+ * 다만 실패 후처리는 공유하지 않는다 — 화면 쪽은 로그인 화면으로 이동하지만,
+ * 수집은 배경 작업이라 여기서는 조용히 포기해야 한다.
  *
  * 재발급에 실패하면 그냥 포기한다(그 배치는 잃는다) — 로그인 상태가 정말 끝난
  * 것이므로, 다시 보내도 또 401 이다.
  */
 async function refreshToken(): Promise<boolean> {
   try {
-    const res = await fetch(REFRESH_ENDPOINT, {
-      method: "POST",
-      credentials: "include",
-      keepalive: true,
-    });
-    return res.ok;
+    // keepalive 배치도 이 helper를 타게 두되, 탭 종료 구간 편향은 별도 과제로 남긴다.
+    await refreshAccessToken({ keepalive: true });
+    return true;
   } catch {
     return false;
   }
