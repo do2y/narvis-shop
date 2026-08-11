@@ -79,7 +79,7 @@ function NavIconLink({
       {badgeText && (
         <span
           aria-hidden
-          className="absolute right-0.5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground ring-2 ring-background"
+          className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground ring-2 ring-background sm:right-0.5"
         >
           {badgeText}
         </span>
@@ -115,12 +115,12 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-      <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-4">
+      <div className="flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           <Link
             href="/"
             aria-label="Narvis 홈"
-            className="flex shrink-0 items-center gap-2.5 rounded-full"
+            className="flex min-w-0 shrink items-center gap-1.5 rounded-full sm:gap-2.5"
           >
             {/* 워드마크 옆 심볼. alt=""·aria-hidden — 바로 옆 "Narvis" 와 Link 의
                 aria-label 이 이미 이름을 말하므로 중복해 읽히지 않게 한다. */}
@@ -128,9 +128,9 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
               src="/logo-mark.png"
               alt=""
               aria-hidden
-              className="size-7 shrink-0"
+              className="size-6 shrink-0 sm:size-7"
             />
-            <span className="text-lg font-bold tracking-tight text-wordmark">
+            <span className="truncate text-base font-bold tracking-tight text-wordmark sm:text-lg">
               Narvis
             </span>
           </Link>
@@ -138,7 +138,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
         </div>
 
         {showMenu && (
-          <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <nav className="flex shrink-0 items-center gap-0 sm:gap-1">
             {/* 채팅: 핵심 기능 진입점 — 홈·채팅 화면엔 이미 진입점이 있어 숨김 */}
             {!hasChatEntry && (
               <NavIconLink
@@ -152,10 +152,10 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
 
             {/* 찜·장바구니: 항상 노출. 게스트는 각 페이지에서 로그인 유도/담기 처리 */}
             <NavIconLink to="/wishlist" label="찜 목록">
-              <Heart className="size-5" />
+              <Heart className="size-5 translate-x-0.5 sm:translate-x-0" />
             </NavIconLink>
             <NavIconLink to="/cart" label="장바구니" badge={cartCount}>
-              <ShoppingCart className="size-5" />
+              <ShoppingCart className="size-5 -translate-x-0.5 sm:translate-x-0" />
             </NavIconLink>
 
             {user ? (
@@ -164,15 +164,15 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
                   aria-label={`${user.nickname}님 계정 메뉴`}
                   className={cn(
                     buttonVariants({ variant: "ghost" }),
-                    "ml-1 h-11 shrink-0 gap-1.5 rounded-full px-3 text-sm font-medium",
+                    "h-11 shrink-0 gap-0.5 rounded-full px-1.5 text-sm font-medium sm:ml-1 sm:gap-1.5 sm:px-3",
                   )}
                 >
-                  <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground sm:hidden">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground sm:hidden">
                     {user.nickname.charAt(0)}
                   </span>
                   <span className="hidden sm:inline">{user.nickname}님</span>
                   {/* 열림 상태를 chevron 회전으로 피드백 */}
-                  <ChevronDown className="size-4 text-muted-foreground transition-transform group-aria-expanded/button:rotate-180" />
+                  <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-aria-expanded/button:rotate-180 sm:size-4" />
                 </DropdownMenuTrigger>
                 {/* 페이지가 각진 카드(rounded-sm)로 가득 → 메뉴는 더 둥글고(rounded-xl)
                     그림자 깊은(shadow-lg) 떠 있는 층위로 구분해 '카드 하나 더'처럼 안 보이게(§12).
