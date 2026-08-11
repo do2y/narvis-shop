@@ -1,26 +1,21 @@
 "use client";
 
-import { Skeleton } from "@/shared/ui/skeleton";
 import { usePopularProducts } from "../useHomeData";
-import { ProductCard } from "./ProductCard";
+import { ProductCard, ProductCardSkeleton } from "./ProductCard";
 import { SectionHeading } from "./SectionHeading";
 
 export function PopularProducts() {
   const { data: products, isLoading, isError } = usePopularProducts();
 
   return (
-    <section className="px-6 py-16">
-      <div className="mx-auto max-w-6xl">
+    <section className="px-5 py-12 sm:px-6 sm:py-16">
+      <div className="mx-auto w-full min-w-0 max-w-[24rem] sm:max-w-6xl">
         <SectionHeading eyebrow="인기 상품" title="지금 많이 찾는 상품" />
 
-        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
           {isLoading &&
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex flex-col gap-3">
-                <Skeleton className="aspect-[4/3] rounded-sm" />
-                <Skeleton className="h-4 w-3/4 rounded-full" />
-                <Skeleton className="h-4 w-1/2 rounded-full" />
-              </div>
+            Array.from({ length: 4 }).map((_, index) => (
+              <ProductCardSkeleton key={index} />
             ))}
 
           {isError && (

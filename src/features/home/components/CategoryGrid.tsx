@@ -11,19 +11,21 @@ export function CategoryGrid() {
   const { data: categories, isLoading, isError } = useCategories();
 
   return (
-    <section className="bg-muted/30 px-5 py-14 sm:px-6 sm:py-16">
-      <div className="mx-auto max-w-[22rem] sm:max-w-6xl">
+    <section className="bg-muted/30 px-5 py-12 sm:px-6 sm:py-16">
+      <div className="mx-auto max-w-[24rem] sm:max-w-6xl">
         <SectionHeading
           eyebrow="카테고리"
           title="어떤 걸 찾고 계세요?"
           aside="클릭하면 AI가 해당 분야에서 도와드려요"
         />
 
-        {/* 14개를 7열 2행으로 — 좁은 화면에서는 2·4열로 접어 행 수만 늘어난다 */}
-        <div className="mt-7 grid grid-cols-2 gap-4 sm:mt-8 sm:gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="mt-5 grid grid-cols-2 gap-2.5 sm:mt-8 sm:grid-cols-4 sm:gap-3 lg:grid-cols-7">
           {isLoading &&
-            Array.from({ length: 14 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-sm" />
+            Array.from({ length: 14 }).map((_, index) => (
+              <Skeleton
+                key={index}
+                className="h-[68px] rounded-xl sm:h-24 sm:rounded-sm"
+              />
             ))}
 
           {isError && (
@@ -32,32 +34,32 @@ export function CategoryGrid() {
             </p>
           )}
 
-          {categories?.map((cat) => {
-            return (
-            // 인기상품 API에 카테고리 필터가 없어(P-4), 카테고리명을 질문으로 넘겨
-            // 챗봇이 해당 분야를 추천하게 한다.
+          {categories?.map((category) => (
             <button
-              key={cat.id}
+              key={category.id}
               type="button"
               onClick={() =>
-                router.push(`/chat?q=${encodeURIComponent(`${cat.name} 추천해줘`)}`)
+                router.push(`/chat?q=${encodeURIComponent(`${category.name} 추천해줘`)}`)
               }
-              className="flex flex-col items-center gap-2 rounded-sm border bg-background px-3 py-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:bg-muted hover:shadow-md active:translate-y-0 active:scale-[0.98]"
+              className="flex min-h-[68px] items-center gap-3 rounded-xl border border-border/80 bg-background px-3.5 py-3 text-left shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-[transform,background-color,box-shadow] duration-150 ease-out active:scale-[0.98] active:bg-muted/55 sm:flex-col sm:items-center sm:justify-center sm:gap-2 sm:rounded-sm sm:px-3 sm:py-4 sm:text-center sm:shadow-sm sm:hover:-translate-y-0.5 sm:hover:bg-muted sm:hover:shadow-md"
             >
-              {/* 카테고리별 이미지를 쓰지 않고 공통 기본 아이콘만 노출한다. */}
-              {/* eslint-disable-next-line @next/next/no-img-element -- 고정 크기 로컬 아이콘이라 최적화 이득이 없다 */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size local icon */}
               <img
                 src={DEFAULT_CATEGORY_IMAGE}
                 alt=""
-                width={32}
-                height={32}
-                className="size-8 object-contain"
+                width={28}
+                height={28}
+                className="size-6 shrink-0 object-contain sm:size-8"
                 aria-hidden
               />
-              <span className="text-[13px] font-medium sm:text-sm">#{cat.name}</span>
+
+              <span className="min-w-0 text-[14px] font-semibold leading-[1.28] text-foreground sm:text-sm sm:font-medium">
+                <span className="line-clamp-2 break-words text-left sm:line-clamp-none sm:text-center">
+                  #{category.name}
+                </span>
+              </span>
             </button>
-            );
-          })}
+          ))}
         </div>
       </div>
     </section>
