@@ -241,7 +241,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
                   onClick={handleAuthNavigate}
                   className={cn(
                     buttonVariants(),
-                    "h-11 rounded-full px-4",
+                    "h-[39px] rounded-full px-4 sm:h-11",
                   )}
                 >
                   시작하기

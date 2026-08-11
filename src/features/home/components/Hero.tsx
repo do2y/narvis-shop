@@ -114,7 +114,7 @@ export function Hero() {
 
             <div className="mt-4 w-full min-w-0 max-w-full self-start sm:mt-6">
               <div className="w-full min-w-0 max-w-full overflow-x-auto text-left [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:overflow-visible sm:text-center">
-                <ul className="flex w-max min-w-max justify-start gap-2 sm:mx-auto sm:w-fit sm:min-w-0 sm:justify-center sm:pr-0">
+                <ul className="motion-safe:animate-home-chip-drift flex w-max min-w-max justify-start gap-2 sm:mx-auto sm:w-fit sm:min-w-0 sm:justify-center sm:animate-none sm:pr-0">
                   {EXAMPLE_CHIPS.map((chip) => (
                     <li key={chip} className="shrink-0">
                       <button
