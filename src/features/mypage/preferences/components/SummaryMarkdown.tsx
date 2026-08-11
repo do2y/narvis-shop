@@ -72,7 +72,7 @@ export function SummaryMarkdown({
   return (
     // gap-3 → gap-2: 블록이 3개(제목·핵심문장·근거목록)뿐이라 사이가 넓으면
     // 짧은 내용이 세로로 늘어져 그래프를 밀어낸다
-    <div className="flex flex-col gap-2 text-muted-foreground">
+    <div className="flex flex-col gap-1.5 text-muted-foreground sm:gap-2">
       {blocks.map((block, i) => {
         if (block.type === "heading") {
           const Tag = HEADING_TAG[block.level];
@@ -142,8 +142,8 @@ export function SummaryMarkdown({
             className={cn(
               "text-foreground/90",
               headlineOnly
-                ? "max-w-[30ch] text-[17px] font-medium leading-[1.45] tracking-tight sm:text-[19px]"
-                : "text-[15px] leading-snug",
+                ? "max-w-[28ch] text-base font-medium leading-[1.55] tracking-tight sm:max-w-[30ch] sm:text-[19px] sm:leading-[1.45]"
+                : "text-sm leading-relaxed sm:text-[15px] sm:leading-snug",
             )}
           >
             <Inlines inlines={block.inlines} />
