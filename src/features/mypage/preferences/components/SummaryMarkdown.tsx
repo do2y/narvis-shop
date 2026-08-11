@@ -109,6 +109,10 @@ export function SummaryMarkdown({
             >
               {block.items.map((item, j) => (
                 <li key={j} className="flex gap-2 leading-snug">
+                  {/* 요약에서는 번호 목록도 점으로 그린다 — 근거 나열이라 순서에
+                      의미가 없고, 2열로 펴면 번호가 열을 가로질러 읽히는 순서와
+                      어긋난다(1·3이 왼쪽, 2·4가 오른쪽). 번호가 의미를 갖는 곳은
+                      챗 되물음이고 거기는 1열이다. */}
                   <span
                     aria-hidden="true"
                     className="mt-[0.45em] size-1 shrink-0 rounded-full bg-muted-foreground/50"
