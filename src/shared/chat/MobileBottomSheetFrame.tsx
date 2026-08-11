@@ -24,7 +24,7 @@ interface DragState {
 
 const DRAG_SNAP_DISTANCE = 44;
 const DRAG_SNAP_VELOCITY = 0.12;
-const DEFAULT_COLLAPSED_PEEK = 156;
+const DEFAULT_COLLAPSED_PEEK = 48;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -87,9 +87,7 @@ export function MobileBottomSheetFrame({
     onExpandedChange(nextExpanded);
   };
 
-  const handlePointerDown = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -108,9 +106,7 @@ export function MobileBottomSheetFrame({
     setDragTranslate(currentTranslate);
   };
 
-  const handlePointerMove = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -143,9 +139,7 @@ export function MobileBottomSheetFrame({
     finishDrag(false);
   };
 
-  const handlePointerCancel = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const handlePointerCancel = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (dragRef.current?.pointerId !== event.pointerId) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
