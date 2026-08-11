@@ -19,6 +19,8 @@ interface ChatInputProps {
   placeholder?: string;
   /** 이미지 첨부 허용(판매자 상품 등록). 기본은 꺼짐 — 구매자 챗엔 쓸 곳이 없다 */
   allowImage?: boolean;
+  /** 입력 포커스 시 바깥 레이아웃이 반응해야 할 때(모바일 바텀시트 확장) */
+  onFocus?: () => void;
 }
 
 
@@ -63,6 +65,7 @@ export function ChatInput({
   disabled,
   placeholder,
   allowImage = false,
+  onFocus,
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [attach, setAttach] = useState<AttachState>({ status: "idle" });
@@ -203,6 +206,7 @@ export function ChatInput({
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          onFocus={onFocus}
           placeholder={placeholder ?? "특별히 바꾸고 싶은 점이 있으신가요?"}
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
