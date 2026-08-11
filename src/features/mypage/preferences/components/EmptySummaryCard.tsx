@@ -34,7 +34,7 @@ export function EmptySummaryCard() {
   return (
     <section
       aria-labelledby="preference-summary-heading"
-      className="relative overflow-hidden rounded-lg border border-brand/15 bg-brand/[0.035] px-5 py-6 sm:px-7 sm:py-7"
+      className="relative overflow-hidden rounded-lg border border-brand/15 bg-brand/[0.035] px-4 py-5 sm:px-7 sm:py-7"
     >
       {/* 채워진 카드와 같은 로고색 라인 — 빈 상태여도 대표 카드임은 같다 */}
       <span
@@ -45,7 +45,7 @@ export function EmptySummaryCard() {
       {/* 모바일은 items-start 로 좁히지 않는다 — 그러면 자식이 콘텐츠 폭으로
           줄어들어 CTA 의 `w-full`(카드 폭 채우기)이 먹지 않는다. 그래픽만
           self-start 로 왼쪽에 붙인다 */}
-      <div className="flex flex-col-reverse gap-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+      <div className="flex flex-col-reverse gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
         {/*
           제목 → 핵심 안내 → 보조 설명 → CTA 가 한 덩어리로 읽히도록 묶는다.
 
@@ -75,7 +75,7 @@ export function EmptySummaryCard() {
             0이 이 카드의 핵심 정보가 되는데, 0은 사용자가 알아야 할 값이
             아니라 아직 시작 전이라는 상태일 뿐이다. 숫자를 지우고 상태로 쓴다.
           */}
-          <p className="text-base font-bold tracking-tight break-keep sm:text-lg">
+          <p className="text-[15px] font-bold tracking-tight break-keep sm:text-lg">
             아직 발견한 취향이 없어요
           </p>
           {/*
@@ -84,7 +84,7 @@ export function EmptySummaryCard() {
             break-keep: 한국어는 기본 줄바꿈이 글자 단위라 "모여 / 요." 처럼
             어절 한가운데가 잘린다. 어절을 통째로 넘겨 띄어쓰기에서만 끊는다.
           */}
-          <p className="mt-1.5 text-sm leading-relaxed break-keep text-muted-foreground">
+          <p className="mt-1.5 text-[13px] leading-relaxed break-keep text-muted-foreground sm:text-sm">
             나비스와 이야기하다 보면 좋아하는 브랜드와 조건이 이곳에 하나씩
             모여요.
           </p>
@@ -138,7 +138,7 @@ export function EmptySummaryCard() {
             href="/chat"
             className={cn(
               buttonVariants(),
-              "mt-6 h-11 w-full rounded-xl px-5 text-sm font-semibold sm:mt-7 sm:w-auto",
+              "mt-5 h-11 w-full rounded-xl px-4 text-[13px] font-semibold sm:mt-7 sm:w-auto sm:px-5 sm:text-sm",
               "bg-brand text-brand-foreground",
               "transition-[transform,background-color] duration-150 ease-out-strong",
               "hover:[@media(hover:hover)]:-translate-y-px hover:[@media(hover:hover)]:bg-brand/90",
@@ -184,7 +184,7 @@ function ConvergingDots() {
     <svg
       aria-hidden
       viewBox={`0 0 ${SIZE} ${SIZE}`}
-      className="size-28 shrink-0 self-start sm:size-32 sm:self-auto"
+      className="size-24 shrink-0 self-start sm:size-32 sm:self-auto"
     >
       <defs>
         {/* 로고색 3색 — 카드 상단 라인과 같은 순서(파랑→초록→노랑) */}

@@ -138,7 +138,7 @@ export default function PreferencesPage() {
         헤더 — 제목·설명(좌)과 개인화 설정(우)을 한 줄에 묶는다.
         설정이 콘텐츠 위에 따로 떠 있으면 무엇에 대한 설정인지 읽히지 않는다.
       */}
-      <header className="flex flex-col gap-3.5 border-b border-border/70 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:pb-5">
+      <header className="flex flex-col gap-3 border-b border-border/70 pb-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:pb-5">
         <div className="min-w-0">
           {/*
             "AI가 이해한 내 취향 / 대화와 구매 내역에서 파악한 내용이에요"에서 바꿨다.
@@ -150,7 +150,7 @@ export default function PreferencesPage() {
             존댓말·"~해요"체는 앱 나머지와 같다.
           */}
           <PageTitle>내 취향 나비게이션</PageTitle>
-          <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-1 max-w-lg text-[13px] leading-[1.6] text-muted-foreground sm:mt-1.5 sm:max-w-xl sm:text-sm">
             대화하고 쇼핑하며 발견한 취향을 모아뒀어요. 다른 길로 샜다면 원하는
             방향으로 돌려주세요.
           </p>
@@ -169,7 +169,7 @@ export default function PreferencesPage() {
         ) : null}
       </header>
 
-      <div className="mt-4 sm:mt-5">
+      <div className="mt-3.5 sm:mt-5">
         {isPending ? (
           <PreferencesSkeleton />
         ) : isError ? (
@@ -178,7 +178,7 @@ export default function PreferencesPage() {
             onRetry={() => refetch()}
           />
         ) : (
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4 sm:gap-5">
             {/*
               개인화가 꺼져 있어도 이 아래 전부가 보이고 편집도 된다.
               "개인화를 켜야 편집할 수 있습니다" 화면을 만들지 않는 이유:

@@ -27,7 +27,7 @@ export function PersonalizationControls({
   onResetClick: () => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-5">
+    <div className="flex shrink-0 self-start items-center gap-3 sm:gap-5">
       {/*
         스위치 — 확인창 없음(다시 켜면 복원되므로). 연타도 허용된다.
 
@@ -35,10 +35,10 @@ export function PersonalizationControls({
         버튼을 감싸면 라벨 클릭이 버튼 클릭으로 한 번 더 전달돼 토글이 두 번
         일어날 수 있다. 텍스트는 aria-labelledby로 연결한다.
       */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2 sm:gap-2.5">
         <span
           id="personalization-switch-label"
-          className="text-sm font-medium tracking-tight"
+          className="text-[13px] font-medium tracking-tight sm:text-sm"
         >
           개인화
         </span>
@@ -50,17 +50,31 @@ export function PersonalizationControls({
           disabled={isToggling}
           onClick={() => onToggle(!enabled)}
           className={cn(
-            "relative flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-60",
-            // 강한 색을 쓰는 세 군데 중 하나(노션 10.5) — 켜진 스위치
-            enabled ? "bg-primary" : "bg-muted",
+            "relative inline-flex h-11 w-[46px] shrink-0 items-center justify-center rounded-full disabled:opacity-60",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45 focus-visible:ring-offset-2",
+            "transition-transform duration-150 ease-out-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+            "[--toggle-track-width:40px] [--toggle-track-height:22px] [--toggle-thumb-size:18px] [--toggle-track-padding:2px]",
+            "sm:w-12 sm:[--toggle-track-width:42px] sm:[--toggle-track-height:24px] sm:[--toggle-thumb-size:18px] sm:[--toggle-track-padding:3px]",
           )}
         >
           <span
+            aria-hidden
             className={cn(
-              "absolute size-5 rounded-full bg-background shadow-sm transition-transform",
-              enabled ? "translate-x-6" : "translate-x-1",
+              "relative h-[var(--toggle-track-height)] w-[var(--toggle-track-width)] rounded-full transition-colors duration-150 ease-out-strong",
+              enabled ? "bg-primary" : "bg-muted",
             )}
-          />
+          >
+            <span
+              aria-hidden
+              className={cn(
+                "absolute left-[var(--toggle-track-padding)] top-1/2 size-[var(--toggle-thumb-size)] -translate-y-1/2 rounded-full bg-background shadow-[0_1px_2px_rgba(15,23,42,0.18)]",
+                "transition-transform duration-150 ease-out-strong will-change-transform",
+                enabled
+                  ? "translate-x-[calc(var(--toggle-track-width)-var(--toggle-thumb-size)-(var(--toggle-track-padding)*2))]"
+                  : "translate-x-0",
+              )}
+            />
+          </span>
         </button>
       </div>
 
@@ -68,9 +82,21 @@ export function PersonalizationControls({
         type="button"
         onClick={onResetClick}
         disabled={isResetting}
-        className="h-11 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
+        className={cn(
+          "group inline-flex h-11 items-center justify-center rounded-full px-0 disabled:opacity-60",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/45 focus-visible:ring-offset-2",
+          "transition-transform duration-150 ease-out-strong active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+        )}
       >
-        전체 초기화
+        <span
+          className={cn(
+            "inline-flex h-8 items-center justify-center rounded-full border border-border px-3.5 text-[13px] font-medium leading-none text-muted-foreground",
+            "transition-colors duration-150 ease-out-strong group-hover:[@media(hover:hover)]:bg-muted group-hover:[@media(hover:hover)]:text-foreground",
+            "sm:h-11 sm:px-4 sm:text-sm",
+          )}
+        >
+          전체 초기화
+        </span>
       </button>
     </div>
   );

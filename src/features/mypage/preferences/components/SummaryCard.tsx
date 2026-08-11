@@ -34,7 +34,7 @@ export function SummaryCard({
   return (
     <section
       aria-labelledby="preference-summary-heading"
-      className="relative overflow-hidden rounded-lg border border-brand/15 bg-brand/[0.035] px-5 py-5 sm:px-7 sm:py-6"
+      className="relative overflow-hidden rounded-lg border border-brand/15 bg-brand/[0.035] px-4 py-4 sm:px-7 sm:py-6"
     >
       {/* 로고색 라인 — 이 카드가 대표라는 유일한 장식. 2px 라 글자를 방해하지 않는다 */}
       <span
@@ -44,7 +44,7 @@ export function SummaryCard({
 
       <h2
         id="preference-summary-heading"
-        className="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand"
+        className="text-[10px] font-semibold uppercase tracking-[0.08em] text-brand sm:text-[11px]"
       >
         취향 요약
       </h2>
@@ -53,14 +53,14 @@ export function SummaryCard({
         데스크탑 2열: 왼쪽은 "무엇을 좋아하나"(문장), 오른쪽은 "얼마나 쌓였나"(수치).
         성격이 다른 두 정보라 섞으면 둘 다 흐려진다. 모바일에서는 세로로 쌓인다.
       */}
-      <div className="mt-3 grid gap-x-10 gap-y-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <div className="mt-2.5 grid gap-x-7 gap-y-4 sm:mt-3 sm:gap-x-10 sm:gap-y-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         {/*
           왼쪽은 **정성적 요약** — "나는 어떤 취향인가".
           gap 을 균등하게 두지 않는다. 결론(핵심 문장) → 근거(단서) →
           곁가지(최근 관심) 로 갈수록 간격을 벌려, 간격 자체가 묶음을 말한다.
         */}
-        <div className="flex min-w-0 flex-col gap-5">
-          <div className="flex min-w-0 flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
+          <div className="flex min-w-0 flex-col gap-2.5 sm:gap-3">
             {/* ① 결론 한 문장 — 카드에서 가장 큰 글자.
                 불릿은 그리지 않는다(headlineOnly): 그 내용은 아래 단서에
                 라벨+값으로 다시 나오므로 함께 두면 같은 말이 두 번이다 */}
@@ -79,13 +79,13 @@ export function SummaryCard({
               1~3개 어디든 정렬이 무너지지 않는다.
             */}
             {stats.facets.length > 0 ? (
-              <dl className="flex flex-wrap gap-x-8 gap-y-3">
+              <dl className="flex flex-wrap gap-x-6 gap-y-2.5 sm:gap-x-8 sm:gap-y-3">
                 {stats.facets.map((facet) => (
                   <div key={facet.label} className="flex min-w-0 flex-col gap-0.5">
-                    <dt className="text-[11px] font-medium text-brand/80">
+                    <dt className="text-[10px] font-medium text-brand/80 sm:text-[11px]">
                       {facet.label}
                     </dt>
-                    <dd className="min-w-0 text-sm font-semibold tracking-tight">
+                    <dd className="min-w-0 text-[13px] font-semibold tracking-tight sm:text-sm">
                       {facet.value}
                       {facet.extra ? (
                         // 보조값은 한 단계 낮춰 대표값과 구분한다
@@ -111,8 +111,8 @@ export function SummaryCard({
             뒷문장이 홀로 떨어져 나온다. 라벨을 앞에 한 번만 둔다.
           */}
           {stats.recent.length > 0 ? (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">
+            <div className="flex flex-col gap-1 sm:gap-1.5">
+              <span className="text-[11px] text-muted-foreground sm:text-xs">
                 요즘 자주 보신 것
               </span>
               <ul className="flex flex-wrap gap-1.5">
@@ -120,7 +120,7 @@ export function SummaryCard({
                   <li
                     key={label}
                     className={cn(
-                      "max-w-full truncate rounded-full border px-2.5 py-0.5 text-[13px] font-medium",
+                      "max-w-full truncate rounded-full border px-2.5 py-0.5 text-[12px] font-medium sm:text-[13px]",
                       PREDICATE_STYLE.interestedIn.chipClass,
                     )}
                   >
@@ -133,7 +133,7 @@ export function SummaryCard({
         </div>
 
         {/* ── 오른쪽: 얼마나 쌓였나 ── */}
-        <div className="flex min-w-0 flex-col gap-2.5">
+        <div className="flex min-w-0 flex-col gap-2 sm:gap-2.5">
           {/*
             오른쪽은 **정량적 요약** — "얼마나, 어떻게 쌓였나".
 
@@ -142,7 +142,7 @@ export function SummaryCard({
             것은 총 개수 하나뿐이고 나머지는 아래 막대·라벨이 말한다.
             (가장 많은 관계·대상 종류는 막대와 범례에 이미 드러난다)
           */}
-          <p className="text-[13px] leading-snug text-muted-foreground">
+          <p className="text-[12px] leading-snug text-muted-foreground sm:text-[13px]">
             지금까지{" "}
             <strong className="font-semibold tabular-nums text-foreground">
               {stats.total}개
@@ -184,7 +184,7 @@ export function SummaryCard({
                 {filled.map((c) => (
                   <li
                     key={c.predicate}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground sm:text-xs"
                   >
                     <span
                       className={cn(
