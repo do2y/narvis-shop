@@ -58,7 +58,7 @@ export function ProductCard({ product, recommendation }: ProductCardProps) {
       type="button"
       onClick={handleClick}
       aria-label={`${product.name} 상세 보기`}
-      className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-border/80 bg-background text-left shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-[transform,box-shadow] duration-150 ease-out active:scale-[0.985] sm:rounded-sm sm:shadow-sm sm:hover:-translate-y-1 sm:hover:shadow-md"
+      className="group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-border/80 bg-background text-left shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-[transform,box-shadow] duration-150 ease-out active:scale-[0.985] sm:rounded-sm sm:shadow-sm sm:hover:-translate-y-1 sm:hover:shadow-md"
     >
       <div className="aspect-square overflow-hidden bg-muted sm:aspect-[4/3]">
         <ProductImage
@@ -115,8 +115,8 @@ export function ProductCard({ product, recommendation }: ProductCardProps) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-border/80 bg-background p-2.5 shadow-[0_1px_2px_rgb(15_23_42/0.04)] sm:rounded-sm sm:p-4 sm:shadow-sm">
-      <Skeleton className="aspect-square rounded-lg sm:aspect-[4/3] sm:rounded-sm" />
+    <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-border/80 bg-background p-2.5 shadow-[0_1px_2px_rgb(15_23_42/0.04)] sm:rounded-sm sm:p-4 sm:shadow-sm">
+      <Skeleton className="aspect-square rounded-md sm:aspect-[4/3] sm:rounded-sm" />
       <div className="mt-2.5 flex flex-1 flex-col gap-1.5 sm:mt-3 sm:gap-2">
         <Skeleton className="h-3 w-2/5 rounded-full sm:h-3.5" />
         <Skeleton className="h-8 rounded-md sm:h-9" />
