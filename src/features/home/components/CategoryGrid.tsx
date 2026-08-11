@@ -15,8 +15,9 @@ export function CategoryGrid() {
 
   return (
     <section
+      id="home-categories"
       ref={ref}
-      className="bg-muted/30 px-5 py-12 md:snap-start md:scroll-mt-20 sm:px-6 sm:py-16"
+      className="snap-start bg-muted/30 px-5 py-12 sm:px-6 sm:py-16"
     >
       <div className="mx-auto max-w-[24rem] sm:max-w-6xl">
         <div

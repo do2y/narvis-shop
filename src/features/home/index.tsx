@@ -12,8 +12,10 @@ export default function HomePage() {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.homeScroll = "true";
+    root.dataset.homeSnap = "active";
 
     return () => {
+      delete root.dataset.homeSnap;
       delete root.dataset.homeScroll;
     };
   }, []);
@@ -24,10 +26,7 @@ export default function HomePage() {
       <main className="flex-1">
         <Hero />
         <CategoryGrid />
-        <section
-          aria-label="추천 및 인기 상품"
-          className="md:snap-start md:scroll-mt-20"
-        >
+        <section aria-label="추천 및 인기 상품">
           {/* 개인화 추천은 로그인 시에만 렌더(게스트는 null) → 인기 상품보다 위 */}
           <RecommendedProducts />
           <PopularProducts />
