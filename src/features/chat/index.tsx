@@ -42,7 +42,10 @@ export default function ChatPage() {
   const hasResults = results.length > 0;
 
   // 전송 시점의 우측 패널을 실어 "이거 담아줘" 같은 지시어를 AI 가 풀 수 있게 한다.
-  // 인기상품만 대상이다 — 추천 카드는 서버가 listId 로 이미 안다(계약 CH-2 §screen).
+  // 기준은 "인기상품이냐"가 아니라 "서버가 아직 모르는 목록이냐"다 —
+  // 추천 카드는 서버가 listId 로 이미 안다(계약 CH-2 §screen).
+  // screen 은 현재 보이는 패널 자체를 뜻한다. 추천 카드만 떠 있어도 columns 는 보내고,
+  // products 는 서버가 아직 모르는 목록에만 싣는다.
   const getScreenContext = useScreenContext(results);
 
   const { send, retry, removeCondition, applySuggestion, startNewChat, isStreaming } =
