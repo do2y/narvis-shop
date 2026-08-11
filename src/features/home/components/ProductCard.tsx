@@ -40,7 +40,9 @@ export function ProductCard({ product, recommendation }: ProductCardProps) {
         properties: { visibleRatio: VISIBLE_RATIO, visibleMs: VISIBLE_MS },
       });
     },
-    recommendation ? `${recommendation.listId}:${product.productId}` : undefined,
+    recommendation
+      ? `${recommendation.listId}:${product.productId}`
+      : undefined,
   );
 
   const handleClick = () => {
@@ -76,11 +78,23 @@ export function ProductCard({ product, recommendation }: ProductCardProps) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col px-0.5 pt-3 sm:pt-4">
-        <div className="flex flex-col gap-1.5 sm:gap-2">
-          <div className="flex min-h-4 items-center sm:min-h-[1.125rem]">
-            <span className="truncate text-[11px] leading-4 text-muted-foreground/90 sm:text-[12px]">
+        <div className="flex flex-col gap-2 sm:gap-2.5">
+          <div className="flex min-w-0 items-center justify-between gap-2 sm:min-h-[1.125rem]">
+            <span className="min-w-0 truncate text-[11px] leading-4 text-muted-foreground/90 sm:text-[12px]">
               {product.brandName}
             </span>
+
+            {hasReviews && (
+              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] leading-4 text-muted-foreground/90 sm:text-[13px]">
+                <Star className="size-[13px] shrink-0 fill-[#D6A13C] text-[#D6A13C] sm:size-[14px]" />
+                <span className="font-medium text-foreground/85">
+                  {product.rating.toFixed(1)}
+                </span>
+                <span className="text-muted-foreground">
+                  ({product.reviewCount.toLocaleString("ko-KR")})
+                </span>
+              </span>
+            )}
           </div>
 
           <h3
@@ -91,43 +105,24 @@ export function ProductCard({ product, recommendation }: ProductCardProps) {
           </h3>
         </div>
 
-        <div
-          className={`flex flex-col pt-2.5 sm:pt-3 ${
-            hasReviews ? "gap-3 sm:gap-3" : "gap-3.5 sm:gap-4"
-          }`}
-        >
-          {hasReviews && (
-            <div className="flex items-center">
-              <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-muted-foreground/90 sm:text-[13px]">
-                <Star className="size-[13px] shrink-0 fill-[#D6A13C] text-[#D6A13C] sm:size-[14px]" />
-                <span className="font-medium text-foreground/85">
-                  {product.rating.toFixed(1)}
-                </span>
-                <span className="truncate text-muted-foreground">
-                  ({product.reviewCount.toLocaleString("ko-KR")})
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div className="min-h-[2.45rem] sm:min-h-[2.7rem]">
-            <div className="flex items-baseline gap-2">
+        <div className="pt-4 sm:pt-[28px]">
+          <div className="min-h-[1.6rem] sm:min-h-[1.75rem]">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:gap-x-2.5">
               <span className="text-[17px] font-bold tracking-tight text-foreground sm:text-[18px]">
                 {formatPrice(product.price)}
               </span>
 
               {hasDiscount && (
-                <span className="text-[13px] font-semibold tracking-[-0.01em] text-red-500/90 sm:text-[14px]">
-                  {discountRate}%
+                <span className="flex items-baseline gap-1.5 whitespace-nowrap sm:gap-2">
+                  <span className="text-[12px] leading-4 text-muted-foreground line-through sm:text-[13px]">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                  <span className="text-[13px] font-semibold tracking-[-0.01em] text-red-500/90 sm:text-[14px]">
+                    {discountRate}%
+                  </span>
                 </span>
               )}
             </div>
-
-            {hasDiscount && (
-              <span className="mt-1 block text-[12px] leading-4 text-muted-foreground line-through sm:text-[13px]">
-                {formatPrice(product.originalPrice)}
-              </span>
-            )}
           </div>
         </div>
       </div>
@@ -140,8 +135,11 @@ export function ProductCardSkeleton() {
     <div className="flex h-full min-w-0 flex-col">
       <Skeleton className="aspect-square rounded-[12px] bg-muted/80 sm:aspect-[4/3]" />
       <div className="mt-3 flex flex-1 flex-col px-0.5 sm:mt-4">
-        <div className="flex flex-col gap-1.5 sm:gap-2">
-          <Skeleton className="h-3 w-2/5 rounded-full sm:h-3.5" />
+        <div className="flex flex-col gap-2 sm:gap-2.5">
+          <div className="flex items-center justify-between gap-2 sm:min-h-[1.125rem]">
+            <Skeleton className="h-3 w-2/5 rounded-full sm:h-3.5" />
+            <Skeleton className="h-3.5 w-1/4 rounded-full sm:h-4" />
+          </div>
 
           <div className="space-y-1">
             <Skeleton className="h-4 rounded-full sm:h-4.5" />
@@ -149,12 +147,9 @@ export function ProductCardSkeleton() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 pt-2.5 sm:gap-3.5 sm:pt-3">
-          <Skeleton className="h-3.5 w-1/3 rounded-full sm:h-4" />
-
-          <div className="space-y-1.5">
-            <Skeleton className="h-5 w-1/2 rounded-full sm:h-6" />
-            <Skeleton className="h-3.5 w-1/3 rounded-full sm:h-4" />
+        <div className="pt-4 sm:pt-[18px]">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-3/4 rounded-full sm:h-6" />
           </div>
         </div>
       </div>

@@ -12,7 +12,7 @@ export function PopularProducts() {
       <div className="mx-auto w-full min-w-0 max-w-[24rem] sm:max-w-6xl">
         <SectionHeading eyebrow="인기 상품" title="지금 많이 찾는 상품" />
 
-        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-6 sm:mt-8 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-4">
           {isLoading &&
             Array.from({ length: 4 }).map((_, index) => (
               <ProductCardSkeleton key={index} />

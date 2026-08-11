@@ -47,7 +47,7 @@ function RecommendedSection({
       <div className="mx-auto w-full min-w-0 max-w-[24rem] sm:max-w-6xl">
         <SectionHeading eyebrow="AI 추천" title={`${nickname}님을 위한 추천`} />
 
-        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-6 sm:mt-8 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-4">
           {data.items.map((product) => (
             <ProductCard
               key={product.productId}
@@ -67,7 +67,7 @@ function RecommendedSkeleton({ nickname }: { nickname: string }) {
       <div className="mx-auto w-full min-w-0 max-w-[24rem] sm:max-w-6xl">
         <SectionHeading eyebrow="AI 추천" title={`${nickname}님을 위한 추천`} />
 
-        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+        <div className="mt-5 grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-6 sm:mt-8 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <ProductCardSkeleton key={index} />
           ))}
