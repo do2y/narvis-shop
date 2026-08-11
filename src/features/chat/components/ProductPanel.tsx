@@ -15,7 +15,7 @@ interface ProductPanelProps {
 
 // 열 수를 바꾸면 useScreenContext 의 currentColumns 도 함께 고쳐야 한다 —
 // CH-2 screen.columns 가 좌표 지시("3번째 줄 2번째")를 푸는 값이라 어긋나면 조용히 틀린다.
-const GRID = "grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3";
+const GRID = "grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3";
 
 export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
   // SHOPPING 채널은 상품 결과만 표시한다(다른 kind는 이 채널에 오지 않음)
@@ -24,7 +24,7 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
 
   if (isEmpty && isStreaming) {
     return (
-      <div className="p-4 sm:p-6">
+      <div className="pl-4 pr-3 pb-3 pt-5 sm:p-6">
         <div className={GRID}>
           {Array.from({ length: 6 }).map((_, i) => (
             <ProductCardSkeleton key={i} />
@@ -48,7 +48,7 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
   }
 
   return (
-    <div className="flex flex-col gap-8 p-4 sm:p-6">
+    <div className="flex flex-col gap-6 pl-4 pr-3 pb-3 pt-5 sm:gap-8 sm:p-6">
       {groups.map((group) => (
         <ProductGroupSection key={group.title} group={group} />
       ))}
@@ -80,9 +80,9 @@ function ProductGroupSection({ group }: { group: ProductGroup }) {
   return (
     <section
       ref={sectionRef}
-      className="flex animate-in flex-col gap-4 duration-300 fade-in slide-in-from-bottom-2"
+      className="flex animate-in flex-col gap-3 duration-300 fade-in slide-in-from-bottom-2 sm:gap-4"
     >
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5 sm:gap-2">
         <h2 className="text-lg font-bold tracking-tight">{group.title}</h2>
         <RecommendationSummary recommendation={group.recommendation} />
       </div>
@@ -144,7 +144,7 @@ function ProductCardSkeleton() {
   return (
     <div className="flex flex-col overflow-hidden rounded-sm border">
       <Skeleton className="aspect-square rounded-none" />
-      <div className="flex flex-col gap-2 p-4">
+      <div className="flex flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
         <Skeleton className="h-3 w-1/3 rounded-full" />
         <Skeleton className="h-4 w-4/5 rounded-full" />
         <Skeleton className="h-3 w-full rounded-full" />
