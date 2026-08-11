@@ -137,7 +137,7 @@ export default function PreferencesPage() {
         헤더 — 제목·설명(좌)과 개인화 설정(우)을 한 줄에 묶는다.
         설정이 콘텐츠 위에 따로 떠 있으면 무엇에 대한 설정인지 읽히지 않는다.
       */}
-      <header className="flex flex-col gap-4 border-b border-border/70 pb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+      <header className="flex flex-col gap-3.5 border-b border-border/70 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:pb-5">
         <div className="min-w-0">
           {/*
             "AI가 이해한 내 취향 / 대화와 구매 내역에서 파악한 내용이에요"에서 바꿨다.
@@ -168,7 +168,7 @@ export default function PreferencesPage() {
         ) : null}
       </header>
 
-      <div className="mt-5">
+      <div className="mt-4 sm:mt-5">
         {isPending ? (
           <PreferencesSkeleton />
         ) : isError ? (

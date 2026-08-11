@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import {
+  resolveMetadataBase,
+  sharedOpenGraph,
+  sharedTwitter,
+} from "./shared-metadata";
 
 export const metadata: Metadata = {
   metadataBase: new URL(

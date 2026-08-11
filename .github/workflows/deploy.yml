@@ -12,6 +12,7 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}   # ghcr.io/toss-delta-final/jarvis-frontend
+  SITE_URL: ${{ vars.SITE_URL }}
 
 jobs:
   # 1단계: 이미지 빌드 — EC2 대신 러너에서 빌드 (타입체크/린트는 ci.yml이 담당)
@@ -120,6 +121,7 @@ jobs:
               --log-opt max-size=10m \
               --log-opt max-file=3 \
               -e API_PROXY_TARGET="http://localhost:8080" \
+              -e SITE_URL="${{ env.SITE_URL }}" \
               ${{ env.IMAGE }}:${{ github.sha }} || true
 
             # 4. 기동 확인 — 2초 간격 최대 60회(약 120초)
@@ -164,6 +166,7 @@ jobs:
                 --log-opt max-size=10m \
                 --log-opt max-file=3 \
                 -e API_PROXY_TARGET="http://localhost:8080" \
+                -e SITE_URL="${{ env.SITE_URL }}" \
                 "$ROLLBACK_IMAGE" || true
 
               # 롤백이 실제로 살아났는지 검증 — 최대 120초

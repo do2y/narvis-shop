@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
 import LandingPage from "@/features/landing";
 import { parseTab } from "@/features/landing/types";
+import { sharedOpenGraph, sharedTwitter } from "../shared-metadata";
 
 export const metadata: Metadata = {
   title: "Narvis — 대화로 끝내는 쇼핑, 물어보는 판매 분석",
   description:
     "원하는 상황과 취향을 말하면 이유와 함께 상품을 추천해 드려요. 판매자는 판매 데이터를 자연어로 묻고 보고서와 개선안을 받아볼 수 있어요.",
   openGraph: {
+    ...sharedOpenGraph,
     title: "Narvis — 대화로 끝내는 쇼핑, 물어보는 판매 분석",
     description:
       "소비자는 대화로 상품을 찾고, 판매자는 데이터를 물어봅니다. Narvis 서비스 소개.",
-    type: "website",
+    url: "/landing",
+  },
+  twitter: {
+    ...sharedTwitter,
+    title: "Narvis — 대화로 끝내는 쇼핑, 물어보는 판매 분석",
+    description:
+      "소비자는 대화로 상품을 찾고, 판매자는 데이터를 물어봅니다. Narvis 서비스 소개.",
   },
 };
 

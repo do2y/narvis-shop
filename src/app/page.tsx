@@ -6,16 +6,24 @@ import {
 } from "@tanstack/react-query";
 import HomePage from "@/features/home";
 import { getCategories, getPopularProducts } from "@/features/home/serverApi";
+import { sharedOpenGraph, sharedTwitter } from "./shared-metadata";
 
 export const metadata: Metadata = {
   title: "Narvis — 대화로 찾는 쇼핑",
   description:
     "찾는 물건을 말로 설명하면 Narvis가 조건에 맞는 상품을 추천해드려요.",
   openGraph: {
+    ...sharedOpenGraph,
     title: "Narvis — 대화로 찾는 쇼핑",
     description:
       "찾는 물건을 말로 설명하면 Narvis가 조건에 맞는 상품을 추천해드려요.",
-    type: "website",
+    url: "/",
+  },
+  twitter: {
+    ...sharedTwitter,
+    title: "Narvis — 대화로 찾는 쇼핑",
+    description:
+      "찾는 물건을 말로 설명하면 Narvis가 조건에 맞는 상품을 추천해드려요.",
   },
 };
 

@@ -5,6 +5,7 @@ import { ServerFetchError } from "@/shared/api/server";
 import { getBrandHome } from "@/features/brand/serverApi";
 import BrandPage from "@/features/brand";
 import type { BrandQuery, BrandSort } from "@/features/brand/types";
+import { sharedOpenGraph, sharedTwitter } from "../../shared-metadata";
 
 type Props = {
   params: Promise<{ brandId: string }>;
@@ -69,10 +70,19 @@ export async function generateMetadata({
     title,
     description,
     openGraph: {
+      ...sharedOpenGraph,
       title,
       description,
-      type: "website",
-      images: brand.logoUrl ? [{ url: brand.logoUrl }] : undefined,
+      url: `/brands/${id}`,
+      images: brand.logoUrl
+        ? [{ url: brand.logoUrl, alt: `${brand.name} 로고` }]
+        : sharedOpenGraph.images,
+    },
+    twitter: {
+      ...sharedTwitter,
+      title,
+      description,
+      images: brand.logoUrl ? [brand.logoUrl] : sharedTwitter.images,
     },
     // 필터·정렬·페이지 조합이 전부 별도 URL이 되므로, 색인은 기본 화면 하나로 모은다.
     // (같은 상품 목록이 정렬만 다른 URL로 중복 색인되는 것을 막는다)

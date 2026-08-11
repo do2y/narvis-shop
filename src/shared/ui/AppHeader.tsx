@@ -43,11 +43,13 @@ function NavIconLink({
   to,
   label,
   badge,
+  className,
   children,
 }: {
   to: string;
   label: string;
   badge?: number;
+  className?: string;
   children: React.ReactNode;
 }) {
   // 0(빈 장바구니)이면 뱃지를 숨긴다. 99를 넘으면 자릿수가 늘어 아이콘을 가리므로 99+로 절삭.
@@ -67,6 +69,7 @@ function NavIconLink({
         buttonVariants({ variant: "ghost", size: "icon" }),
         // 최소 44px 클릭 영역 (터치 안정성)
         "relative size-11 rounded-full",
+        className,
         isActive && "bg-muted text-foreground",
       )}
     >
@@ -112,12 +115,12 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-4">
+      <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-4">
           <Link
             href="/"
             aria-label="Narvis 홈"
-            className="flex items-center gap-2.5 rounded-full"
+            className="flex shrink-0 items-center gap-2.5 rounded-full"
           >
             {/* 워드마크 옆 심볼. alt=""·aria-hidden — 바로 옆 "Narvis" 와 Link 의
                 aria-label 이 이미 이름을 말하므로 중복해 읽히지 않게 한다. */}
@@ -135,10 +138,14 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
         </div>
 
         {showMenu && (
-          <nav className="flex items-center gap-0.5 sm:gap-1">
+          <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             {/* 채팅: 핵심 기능 진입점 — 홈·채팅 화면엔 이미 진입점이 있어 숨김 */}
             {!hasChatEntry && (
-              <NavIconLink to="/chat" label="채팅">
+              <NavIconLink
+                to="/chat"
+                label="채팅"
+                className={user ? "hidden sm:inline-flex" : undefined}
+              >
                 <MessageSquare className="size-5" />
               </NavIconLink>
             )}
@@ -154,12 +161,16 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger
+                  aria-label={`${user.nickname}님 계정 메뉴`}
                   className={cn(
                     buttonVariants({ variant: "ghost" }),
-                    "ml-1 h-11 gap-1.5 rounded-full px-3 text-sm font-medium",
+                    "ml-1 h-11 shrink-0 gap-1.5 rounded-full px-3 text-sm font-medium",
                   )}
                 >
-                  {user.nickname}님
+                  <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground sm:hidden">
+                    {user.nickname.charAt(0)}
+                  </span>
+                  <span className="hidden sm:inline">{user.nickname}님</span>
                   {/* 열림 상태를 chevron 회전으로 피드백 */}
                   <ChevronDown className="size-4 text-muted-foreground transition-transform group-aria-expanded/button:rotate-180" />
                 </DropdownMenuTrigger>
@@ -187,6 +198,15 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
                   </div>
                   {/* 구분선 1개만 — 정체성 ↔ 메뉴. 항목끼리는 이어 붙여 칸 분할감 줄임 */}
                   <DropdownMenuSeparator />
+                  {!hasChatEntry && (
+                    <DropdownMenuItem
+                      render={<Link href="/chat" />}
+                      className="rounded-lg py-2 sm:hidden"
+                    >
+                      <MessageSquare />
+                      AI 채팅
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     render={<Link href="/mypage" />}
                     className="rounded-lg py-2"
