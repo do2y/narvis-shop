@@ -2,8 +2,8 @@
 
 export function HomeFooter() {
   return (
-    <footer className="border-t px-6 py-8">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row">
+    <footer className="border-t px-6 py-10 md:py-12">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 text-sm text-muted-foreground sm:flex-row sm:gap-4">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-wordmark">Narvis</span>
           <span className="hidden sm:inline">AI Shopping Agent</span>
