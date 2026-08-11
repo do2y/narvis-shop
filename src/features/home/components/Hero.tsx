@@ -40,7 +40,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative overflow-hidden px-5 sm:px-6 sm:pt-28 sm:pb-44">
+    <section className="relative overflow-hidden px-5 md:snap-start md:scroll-mt-20 sm:px-6 sm:pt-28 sm:pb-44">
       {/* 배경 격자 — 가장자리는 radial mask 로 지워 가운데만 남긴다.
           안 지우면 선이 섹션 경계에서 잘려 "잘린 표" 처럼 보인다 */}
       <div
