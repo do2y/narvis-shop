@@ -24,7 +24,7 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
 
   if (isEmpty && isStreaming) {
     return (
-      <div className="pl-4 pr-3 pb-3 pt-5 sm:p-6">
+      <div className="pl-4 pr-3 pt-5 pb-[var(--mobile-chat-result-bottom-clearance)] sm:px-6 sm:pt-6 sm:pb-[var(--mobile-chat-result-bottom-clearance)] lg:p-6">
         <div className={GRID}>
           {Array.from({ length: 6 }).map((_, i) => (
             <ProductCardSkeleton key={i} />
@@ -48,7 +48,7 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6 pl-4 pr-3 pb-3 pt-5 sm:gap-8 sm:p-6">
+    <div className="flex flex-col gap-6 pl-4 pr-3 pt-5 pb-[var(--mobile-chat-result-bottom-clearance)] sm:gap-8 sm:px-6 sm:pt-6 sm:pb-[var(--mobile-chat-result-bottom-clearance)] lg:p-6">
       {groups.map((group) => (
         <ProductGroupSection key={group.title} group={group} />
       ))}
