@@ -17,7 +17,12 @@ interface NewChatButtonProps {
  * 구분선만 고정 높이로 그린다.
  */
 function HeaderDivider() {
-  return <span aria-hidden className="h-6 w-px shrink-0 bg-border" />;
+  return (
+    <span
+      aria-hidden
+      className="hidden h-6 w-px shrink-0 bg-border sm:inline-block"
+    />
+  );
 }
 
 /**
@@ -32,13 +37,13 @@ function HeaderDivider() {
 export function NewChatButton({ onClick, className }: NewChatButtonProps) {
   return (
     // 구분선 + 버튼 묶음. gap-4 로 선 좌우 여백을 같게 둔다(로고쪽 gap-4 와 대칭)
-    <div className="flex items-center gap-4">
+    <div className="flex shrink-0 items-center gap-2 sm:gap-4">
       <HeaderDivider />
       <button
         type="button"
         onClick={onClick}
         className={cn(
-          "flex h-11 items-center gap-1 text-sm font-medium text-muted-foreground",
+          "flex h-11 shrink-0 items-center gap-1 whitespace-nowrap text-[13px] font-medium text-muted-foreground sm:text-sm",
           // 색만 전환한다 — transition-all 은 layout·shadow 까지 잡아 불필요한 리페인트를 만든다
           "transition-colors duration-150 ease-out-strong",
           // 터치에서 탭이 hover 로 잡혀 손을 뗀 뒤에도 색이 남는 것을 막는다
@@ -48,7 +53,8 @@ export function NewChatButton({ onClick, className }: NewChatButtonProps) {
           className,
         )}
       >
-        <Plus className="size-4" />새 대화
+        <Plus className="size-3.5 sm:size-4" />
+        새 대화
       </button>
     </div>
   );
