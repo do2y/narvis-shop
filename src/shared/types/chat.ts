@@ -166,9 +166,21 @@ export type ConditionField =
  * 칩 제거는 conditionActions 배열로 보낸다(아래) — 규약 문자열 왕복은 폐기(2026-07-28, #84).
  */
 export interface ConditionChip {
-  field: ConditionField; // "priceMax" — 제거 액션의 식별자
-  label: string; // "5만원 이하" — 표시용
-  value: string | number; // 50000 | "여행용품/보안용품"
+  /**
+   * "priceMax" — 제거 액션의 축 식별자.
+   *
+   * **칩을 유일하게 가리키지 않는다.** category·brand 는 값당 칩 1개로 나뉘어
+   * 같은 field 가 여러 개 온다(v0.32.14). 칩을 특정하려면 (field, value) 쌍이 필요하다.
+   */
+  field: ConditionField;
+  label: string; // "카테고리 · 여행용품" | "5만원 이하" — 표시용
+  /**
+   * 항상 스칼라다.
+   *
+   * v0.32.14 이전에는 brand 칩에 한해 리스트(["삼성","LG"])가 실려 이 선언과
+   * 어긋나 있었다. 값당 분리로 brand 도 스칼라가 되어 선언과 실제가 일치한다.
+   */
+  value: string | number; // 50000 | "여행용품"
 }
 
 /**
@@ -179,6 +191,17 @@ export interface ConditionChip {
 export interface ConditionAction {
   op: "remove";
   field: ConditionField;
+  /**
+   * 지울 값(선택, v0.32.14 신설). 와이어는 추가 전용이라 생략하면 종전과 동일하게
+   * 그 축 전체가 제거된다.
+   *
+   * - category·brand: 그 값만 빼고 나머지로 재검색
+   * - priceMax·priceMin·ratingMin·keyword: 값이 하나뿐인 축이라 서버가 무시하고 축 전체 제거
+   * - 서버가 모르는 값은 관대 무시(400 아님)
+   *
+   * 같은 축에 value 없는 액션이 섞이면 전체 제거가 이긴다(상위집합).
+   */
+  value?: string | number;
 }
 
 /**
