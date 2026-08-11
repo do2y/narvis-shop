@@ -48,6 +48,34 @@ describe("sendWithAuthRetry", () => {
     expect(send).toHaveBeenCalledTimes(2);
   });
 
+  it("동시 401 배치도 재발급은 한 번만 보낸다", async () => {
+    let resolveRefresh!: (value: { ok: boolean }) => void;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const sendA = vi.fn().mockResolvedValueOnce(401).mockResolvedValueOnce(202);
+    const sendB = vi.fn().mockResolvedValueOnce(401).mockResolvedValueOnce(202);
+
+    const first = sendWithAuthRetry(sendA);
+    const second = sendWithAuthRetry(sendB);
+    try {
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      resolveRefresh({ ok: true });
+      await Promise.all([first, second]);
+    }
+
+    expect(sendA).toHaveBeenCalledTimes(2);
+    expect(sendB).toHaveBeenCalledTimes(2);
+  });
+
   it("재발급이 실패하면 다시 보내지 않는다 — 로그인이 정말 끝난 상태다", async () => {
     stubRefresh(false);
     const send = vi.fn().mockResolvedValue(401);

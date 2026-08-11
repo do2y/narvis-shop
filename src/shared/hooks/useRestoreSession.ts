@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import axios from "axios";
 import { fetchMe } from "@/shared/api/auth";
+import { refreshAccessToken } from "@/shared/auth/refresh";
 import { useAuthStore } from "@/shared/stores/authStore";
 
 /**
@@ -38,11 +38,7 @@ async function restore(): Promise<void> {
   try {
     // 새 AT는 Set-Cookie로 내려온다 — body에서 꺼낼 토큰이 없다.
     // 이 호출이 성공했다는 사실 자체가 "AT 쿠키가 심겼다"는 신호다.
-    await axios.post(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/auth/refresh`,
-      null,
-      { withCredentials: true },
-    );
+    await refreshAccessToken();
   } catch {
     // RT 없음/만료 = 비로그인 상태. 캐시된 user를 지워 가드가 통과시키지 않게 한다.
     clearAuth();
@@ -57,9 +53,9 @@ async function restore(): Promise<void> {
   }
 }
 
-// StrictMode는 이펙트를 2회 실행한다. 그대로 두면 refresh가 두 번 나가고,
-// 백엔드가 RT를 회전시키므로 두 번째 호출이 첫 번째가 받은 토큰을 무효화할 수 있다.
-// 모듈 레벨에 프라미스를 두어 실제 복원은 1회만 수행한다(client.ts의 refreshing과 같은 방식).
+// StrictMode는 이펙트를 2회 실행한다. 그대로 두면 복원 흐름 전체가 두 번 돌고,
+// 그 안에서 공용 refresh single-flight가 있어도 me 조회·상태 반영이 중복된다.
+// 모듈 레벨에 프라미스를 두어 실제 복원은 1회만 수행한다.
 let restoring: Promise<void> | null = null;
 
 /** App 최상단에서 1회 실행. 완료 전까지 isRestoring=true라 가드는 판정을 보류한다. */
