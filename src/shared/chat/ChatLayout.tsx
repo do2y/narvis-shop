@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { ChatConversation } from "./ChatConversation";
+import { MobileBottomSheetFrame } from "./MobileBottomSheetFrame";
 
 interface ChatLayoutProps {
   onSend: (message: string) => void;
@@ -35,28 +37,52 @@ export function ChatLayout({
   aboveInput,
   resultPanel,
 }: ChatLayoutProps) {
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-background">
       {header}
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        {/* 좌측: 대화 */}
-        <div className="flex min-h-0 flex-col border-b lg:w-[420px] lg:shrink-0 lg:border-b-0 lg:border-r">
+      <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* 결과는 모바일의 기본 콘텐츠다. 채팅 시트가 펼쳐지면 뒤 스크롤을 잠근다. */}
+        <div
+          className={[
+            "min-h-0 flex-1 bg-muted/30",
+            sheetExpanded
+              ? "overflow-hidden lg:overflow-y-auto"
+              : "overflow-y-auto",
+          ].join(" ")}
+        >
+          {resultPanel}
+        </div>
+
+        <MobileBottomSheetFrame
+          expanded={sheetExpanded}
+          onExpandedChange={setSheetExpanded}
+        >
           <ChatConversation
-            onSend={onSend}
-            onRetry={onRetry}
+            onSend={(message) => {
+              setSheetExpanded(true);
+              onSend(message);
+            }}
+            onRetry={() => {
+              setSheetExpanded(true);
+              onRetry();
+            }}
             isStreaming={isStreaming}
             placeholder={placeholder}
             headerSlot={conversationHeader}
             noticeSlot={notice}
             aboveInput={aboveInput}
+            aboveInputClassName={
+              sheetExpanded ? "block" : "hidden lg:block"
+            }
+            scrollAreaClassName="overscroll-y-contain"
+            inputAreaClassName="bg-background/98 pb-[calc(1rem+env(safe-area-inset-bottom))] supports-[backdrop-filter]:bg-background/80 lg:bg-background lg:pb-4"
+            onInputFocus={() => setSheetExpanded(true)}
+            onInputAreaPointerDown={() => setSheetExpanded(true)}
           />
-        </div>
-
-        {/* 우측: 결과 */}
-        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/30">
-          {resultPanel}
-        </div>
+        </MobileBottomSheetFrame>
       </div>
     </div>
   );

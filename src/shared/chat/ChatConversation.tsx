@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { useChatStore } from "./store";
@@ -24,6 +25,12 @@ interface ChatConversationProps {
    * 채널별로 필요 여부가 달라 부모가 주입한다.
    */
   noticeSlot?: React.ReactNode;
+  className?: string;
+  scrollAreaClassName?: string;
+  inputAreaClassName?: string;
+  aboveInputClassName?: string;
+  onInputFocus?: () => void;
+  onInputAreaPointerDown?: () => void;
 }
 
 /**
@@ -39,6 +46,12 @@ export function ChatConversation({
   aboveInput,
   headerSlot,
   noticeSlot,
+  className,
+  scrollAreaClassName,
+  inputAreaClassName,
+  aboveInputClassName,
+  onInputFocus,
+  onInputAreaPointerDown,
 }: ChatConversationProps) {
   const messages = useChatStore((s) => s.messages);
   // 분석 진행 상태(판매자) — 최종 답변(token) 전 로딩 텍스트로 표시, token 오면 소멸
@@ -52,13 +65,19 @@ export function ChatConversation({
 
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       {headerSlot}
 
       {/* 대화 영역과 그 위에 떠 있는 안내를 겹치기 위한 기준면 —
           안내는 흐름을 밀어내지 않고 얹힌다(§12 floating layer) */}
-      <div className="relative min-h-0 flex-1">
-        <div ref={scrollRef} className="h-full overflow-y-auto p-4 sm:p-6">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={scrollRef}
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto p-4 sm:p-6",
+            scrollAreaClassName,
+          )}
+        >
           <MessageList
             messages={messages}
             isStreaming={isStreaming}
@@ -73,13 +92,22 @@ export function ChatConversation({
         <div className="absolute inset-x-0 top-0">{noticeSlot}</div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t p-4">
-        {aboveInput}
+      <div
+        className={cn(
+          "shrink-0 flex flex-col gap-3 border-t p-4",
+          inputAreaClassName,
+        )}
+        onPointerDown={onInputAreaPointerDown}
+      >
+        {aboveInput ? (
+          <div className={aboveInputClassName}>{aboveInput}</div>
+        ) : null}
         <ChatInput
           onSend={onSend}
           disabled={isStreaming}
           placeholder={placeholder}
           allowImage={allowImage}
+          onFocus={onInputFocus}
         />
       </div>
     </div>
