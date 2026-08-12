@@ -193,11 +193,21 @@ if (DEBUG_API) api.interceptors.request.use(logRequest);
 // "/api/orders/1/retry-payment"(O-2)까지 함께 덮는다. 둘 다 적재 지점이라 의도한 것이다.
 const SESSION_KEY_PATHS = ["/api/cart/items", "/api/orders"];
 
+/**
+ * 이 요청에 X-Session-Key 를 실어야 하나.
+ *
+ * 인터셉터에서 분리해 둔 이유: 붙는 곳이 곧 "서버가 이벤트를 적재하는 지점"이라
+ * 조건이 어긋나면 에러 없이 이벤트만 조용히 빠진다 — 테스트로 고정할 수 있게 한다.
+ */
+export function shouldAttachSessionKey(url: string, method: string): boolean {
+  if (method.toLowerCase() === "get") return false;
+  return SESSION_KEY_PATHS.some((path) => url.startsWith(path));
+}
+
 function attachSessionKey(config: InternalAxiosRequestConfig) {
   const url = config.url ?? "";
-  const method = (config.method ?? "get").toLowerCase();
-  if (method === "get") return config;
-  if (!SESSION_KEY_PATHS.some((path) => url.startsWith(path))) return config;
+  const method = config.method ?? "get";
+  if (!shouldAttachSessionKey(url, method)) return config;
 
   try {
     config.headers.set("X-Session-Key", getSessionKey().sessionKey);
@@ -216,9 +226,20 @@ api.interceptors.request.use(attachSessionKey);
  * RFC 7231은 초(delta-seconds)와 HTTP-date 두 형식을 허용하지만 백엔드는 초로 보낸다.
  * 그래도 날짜가 오면 화면에 NaN이 뜨므로, 숫자로 파싱되지 않으면 undefined로 접는다 —
  * 읽는 쪽이 "안내 문구만 띄우고 차단은 하지 않는" 폴백을 갖고 있다.
+ *
+ * ⚠️ 대괄호 접근(`headers["retry-after"]`)을 쓰지 말 것 — AxiosHeaders 는 서버가 보낸
+ * 원래 대소문자를 그대로 보존해서, 표준 표기인 `Retry-After` 로 오면 소문자 키로는
+ * undefined 가 나온다. 그러면 조용히 카운트다운이 영영 안 뜬다(타입 에러도 안 남).
+ * `.get()` 이 대소문자를 무시하고 찾아준다.
  */
-function readRetryAfter(error: AxiosError): number | undefined {
-  const raw = error.response?.headers?.["retry-after"];
+export function readRetryAfter(error: AxiosError): number | undefined {
+  const headers = error.response?.headers;
+  // 테스트·목에서 평범한 객체가 올 수 있어 .get 이 없으면 양쪽 표기를 직접 본다.
+  const raw =
+    typeof headers?.get === "function"
+      ? headers.get("retry-after")
+      : ((headers as Record<string, unknown> | undefined)?.["retry-after"] ??
+        (headers as Record<string, unknown> | undefined)?.["Retry-After"]);
   if (typeof raw !== "string" && typeof raw !== "number") return undefined;
   const seconds = Number(raw);
   return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : undefined;
