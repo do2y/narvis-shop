@@ -157,6 +157,9 @@ export function useChat({
 
   // 진행 중 요청 취소용
   const abortRef = useRef<AbortController | null>(null);
+  // 언마운트 취소 예약 — StrictMode 의 가짜 언마운트를 걸러내기 위해 한 틱 미룬다.
+  // (아래 cleanup 주석 참조)
+  const abortTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 콜백들은 매 렌더 갱신되도록 ref로 보관(send의 deps를 안정적으로 유지)
   const onActionRef = useRef(onAction);
@@ -210,10 +213,32 @@ export function useChat({
   // abort 는 streamChat 의 fetch 를 AbortError 로 끊고, 그 예외는 run 의 catch 로
   // 떨어진다. 언마운트된 화면에 실패 말풍선을 남기지 않도록 catch 에서 AbortError 를
   // 따로 걸러낸다(사용자가 의도적으로 떠난 것이지 오류가 아니다).
+  //
+  // ⚠️ StrictMode(dev)는 마운트 → 언마운트 → 재마운트를 한 번 흉내 낸다. 그 가짜
+  // 언마운트에서 바로 abort 하면, 같은 마운트 사이클에 시작된 스트림이 첫 프레임도
+  // 받기 전에 끊긴다 — 홈에서 ?q= 로 진입하는 경로가 정확히 그렇다(전송 이펙트는
+  // ref 가드로 1회만 돌지만, 이 cleanup 은 가드가 없어 그 1회를 죽였다).
+  // 증상은 "말풍선은 뜨는데 SSE 요청이 아예 안 나가고 로딩만 도는" 모양이었다.
+  //
+  // 그래서 즉시 끊지 않고 한 틱 미뤄, 재마운트가 뒤따르면 취소를 철회한다.
+  // 진짜 이탈이면 타이머가 그대로 실행돼 종전처럼 스트림이 끊긴다.
+  // (프로덕션에는 가짜 언마운트가 없어 동작이 달라지지 않는다 — 한 틱 늦어질 뿐이다.)
   useEffect(() => {
+    // 재마운트로 되돌아온 경우: 직전 cleanup 이 걸어 둔 취소 예약을 무른다.
+    const pending = abortTimerRef.current;
+    if (pending !== null) {
+      clearTimeout(pending);
+      abortTimerRef.current = null;
+    }
+
     return () => {
-      abortRef.current?.abort();
-      abortRef.current = null;
+      const controller = abortRef.current;
+      if (!controller) return;
+      abortTimerRef.current = setTimeout(() => {
+        abortTimerRef.current = null;
+        controller.abort();
+        if (abortRef.current === controller) abortRef.current = null;
+      }, 0);
     };
   }, []);
 
