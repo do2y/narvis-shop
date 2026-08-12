@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { useRevealOnce } from "../hooks/useRevealOnce";
 import { usePopularProducts } from "../useHomeData";
-import { ProductCard, ProductCardSkeleton } from "./ProductCard";
+import { ProductCard, ProductCardSkeleton } from "@/shared/ui/ProductCard";
 import { SectionHeading } from "./SectionHeading";
 
 export function PopularProducts() {
