@@ -211,6 +211,7 @@ export default function SellerChatPage() {
         onSend={(message, imageUrls) => send(message, undefined, { imageUrls })}
         onRetry={retry}
         isStreaming={isStreaming}
+        showUserAvatar={false}
         // 사진을 올려 상품 등록 초안을 받는 경로 — 판매자 챗에만 연다
         allowImage
         // 초안 검토 중에도 입력창은 활성이다 — 수정 요청("카테고리가 틀렸어")을

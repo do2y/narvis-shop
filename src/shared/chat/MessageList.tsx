@@ -9,6 +9,7 @@ interface MessageListProps {
   isStreaming: boolean;
   /** 진행 상태 문구(progress 이벤트, 구매자·판매자 공용). 답변 전 로딩 표시용 */
   progress?: string | null;
+  showUserAvatar?: boolean;
   onRetry: () => void;
 }
 
@@ -30,6 +31,7 @@ export function MessageList({
   messages,
   isStreaming,
   progress,
+  showUserAvatar = true,
   onRetry,
 }: MessageListProps) {
   return (
@@ -58,12 +60,15 @@ export function MessageList({
         return msg.role === "user" ? (
           <div
             key={msg.id}
-            className="flex animate-in items-start justify-end gap-2 duration-300 fade-in slide-in-from-bottom-2 slide-in-from-right-2"
+            className={cn(
+              "flex animate-in items-start justify-end duration-300 fade-in slide-in-from-bottom-2 slide-in-from-right-2",
+              showUserAvatar ? "gap-2" : "gap-0",
+            )}
           >
             <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm leading-relaxed tracking-tight text-primary-foreground">
               {msg.text}
             </span>
-            <UserAvatar />
+            {showUserAvatar && <UserAvatar />}
           </div>
         ) : (
           <div
