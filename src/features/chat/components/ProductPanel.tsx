@@ -1,6 +1,7 @@
 "use client";
 
 import { MessagesSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { track } from "@/shared/analytics/track";
 import { useVisibleOnce } from "@/shared/analytics/useVisibleOnce";
@@ -20,7 +21,9 @@ const GRID =
 
 export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
   // SHOPPING 채널은 상품 결과만 표시한다(다른 kind는 이 채널에 오지 않음)
-  const groups = results.flatMap((r) => (r.kind === "products" ? r.groups : []));
+  const groups = results.flatMap((r) =>
+    r.kind === "products" ? r.groups : [],
+  );
   const isEmpty = groups.length === 0;
 
   if (isEmpty && isStreaming) {
@@ -42,7 +45,7 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
           <MessagesSquare className="size-7" strokeWidth={1.5} />
         </span>
         <p className="text-sm text-muted-foreground">
-          대화를 시작하면 추천 상품이 여기에 표시돼요.
+          대화를 시작하면 조건에 맞는 상품이 여기에 표시돼요.
         </p>
       </div>
     );
@@ -57,7 +60,10 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
         // 남거나 impression 이 엉뚱한 묶음에 귀속된다.
         // listId 가 있으면 그것이 서버가 인정한 묶음 식별자다(인기상품 묶음은 없다).
         <ProductGroupSection
-          key={group.items[0]?.recommendationContext?.listId ?? `${group.title}:${i}`}
+          key={
+            group.items[0]?.recommendationContext?.listId ??
+            `${group.title}:${i}`
+          }
           group={group}
         />
       ))}
@@ -78,13 +84,10 @@ function ProductGroupSection({ group }: { group: ProductGroup }) {
   // 묶음의 추천 출처는 카드마다 동일하므로 첫 카드에서 읽는다(CH-5 가 목록 단위로 부여).
   const rec = group.items[0]?.recommendationContext;
 
-  const sectionRef = useVisibleOnce<HTMLElement>(
-    () => {
-      if (!rec) return;
-      track("recommendation_impression", { recommendation: rec });
-    },
-    rec?.listId,
-  );
+  const sectionRef = useVisibleOnce<HTMLElement>(() => {
+    if (!rec) return;
+    track("recommendation_impression", { recommendation: rec });
+  }, rec?.listId);
 
   return (
     <section
@@ -92,7 +95,14 @@ function ProductGroupSection({ group }: { group: ProductGroup }) {
       className="flex animate-in flex-col gap-3 duration-300 fade-in slide-in-from-bottom-2 sm:gap-4"
     >
       <div className="flex flex-col gap-1.5 sm:gap-2">
-        <h2 className="text-lg font-bold tracking-tight">{group.title}</h2>
+        <h2
+          className={cn(
+            "text-lg font-bold tracking-tight",
+            group.titleKind === "label" && "text-wordmark",
+          )}
+        >
+          {group.title}
+        </h2>
         <RecommendationSummary recommendation={group.recommendation} />
       </div>
       <div className={GRID}>
