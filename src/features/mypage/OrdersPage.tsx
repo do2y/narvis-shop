@@ -5,7 +5,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { PackageOpen } from "lucide-react";
 import { useOrders } from "./useOrders";
 import { OrderCard } from "./components/OrderCard";
-import { PageTitle, ErrorState, EmptyState } from "./components/PageState";
+import { PageTitle, ErrorState, EmptyState } from "@/shared/ui/PageState";
 
 function OrdersSkeleton() {
   return (

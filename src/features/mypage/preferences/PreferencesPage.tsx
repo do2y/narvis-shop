@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { ErrorState, PageTitle } from "../components/PageState";
+import { ErrorState, PageTitle } from "@/shared/ui/PageState";
 import { DeleteEdgeDialog } from "./components/DeleteEdgeDialog";
 import { EditEdgeDialog } from "./components/EditEdgeDialog";
 import { EmptySummaryCard } from "./components/EmptySummaryCard";
