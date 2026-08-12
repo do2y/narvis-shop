@@ -38,7 +38,13 @@ export default function ChatPage() {
   // startNewChat 이 저장소까지 비우므로 복원분과 섞이지 않는다).
   useChatPersistence();
 
-  const { results, setResults, conditions, suggestions } = useChatStore();
+  // 필드별 선택자로 구독한다 — useChatStore() 를 통째로 구조분해하면 스토어 전체를
+  // 구독해 token 마다 갱신되는 messages 까지 걸리고, 이 페이지가 매 토큰 리렌더된다.
+  // (대화 말풍선은 ChatConversation 이 messages 를 따로 구독해 그린다.)
+  const results = useChatStore((s) => s.results);
+  const conditions = useChatStore((s) => s.conditions);
+  const suggestions = useChatStore((s) => s.suggestions);
+  const setResults = useChatStore((s) => s.setResults);
   const hasResults = results.length > 0;
 
   // 전송 시점의 우측 패널을 실어 "이거 담아줘" 같은 지시어를 AI 가 풀 수 있게 한다.

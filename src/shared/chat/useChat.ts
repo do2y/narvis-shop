@@ -37,6 +37,19 @@ function newId(): string {
 }
 
 /**
+ * 중단(abort) 판정 — 사용자가 스스로 끊은 것이라 오류로 표시하지 않는다.
+ *
+ * 이름으로 보는 이유: fetch 중단은 DOMException("AbortError")로 오지만 axios 경로는
+ * CanceledError 로 오고, jsdom·polyfill 환경에서는 DOMException 생성자가 다를 수 있어
+ * instanceof 가 어긋난다. 이름은 세 경우 모두에서 안정적이다.
+ */
+export function isAbortError(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const name = (err as { name?: unknown }).name;
+  return name === "AbortError" || name === "CanceledError";
+}
+
+/**
  * 세션 축출(404) 판정 — 출처가 둘이라 타입도 둘이다.
  * 스트림 fetch 는 StreamStartError(status), 티켓 재발급은 ApiError(code/status).
  */
@@ -114,8 +127,17 @@ export function useChat({
   onDone,
   getScreenContext,
 }: UseChatOptions) {
+  // 이 훅이 실제로 "구독"해야 하는 값은 isStreaming 하나다.
+  //
+  // 종전엔 useChatStore() 를 선택자 없이 호출해 스토어 전체를 구독했다. 그러면
+  // token 이벤트마다 갱신되는 messages 까지 이 훅의 구독에 걸려, 스트리밍 한 턴에
+  // 수백 번 이 훅을 쓰는 화면(구매자·판매자 챗 페이지 루트)이 통째로 리렌더된다.
+  // 정작 훅이 돌려주는 값(send·retry…)은 그대로라 그 리렌더는 아무것도 바꾸지 않는다.
+  //
+  // 액션은 zustand 에서 생성 시 고정이라 구독 없이 스토어 참조로 꺼내 쓴다 —
+  // getState() 로 매번 읽지 않고 여기서 한 번 구조분해해도 동일한 함수 참조다.
+  const isStreaming = useChatStore((s) => s.isStreaming);
   const {
-    isStreaming,
     addMessage,
     appendToLastAssistant,
     failLastAssistant,
@@ -131,7 +153,7 @@ export function useChat({
     setAnalysisReport,
     setActiveDraft,
     reset,
-  } = useChatStore();
+  } = useChatStore.getState();
 
   // 진행 중 요청 취소용
   const abortRef = useRef<AbortController | null>(null);
@@ -176,6 +198,24 @@ export function useChat({
   useEffect(() => {
     useChatStore.getState().setThreadId(getThreadId(channel));
   }, [channel]);
+
+  // 언마운트 시 진행 중인 스트림을 끊는다.
+  //
+  // 없으면 화면을 떠난 뒤에도 fetch 리더가 계속 돌며 onEvent 가 스토어를 갱신한다.
+  // 스토어는 모듈 전역(zustand)이라 언마운트로 사라지지 않으므로 조용히 살아남고,
+  // 특히 finally 의 setStreaming(false) 가 언마운트 뒤에 도착하는 경우가 문제다 —
+  // 다시 채팅에 들어오면 복원된 대화 위에 이전 턴의 token 이 이어붙거나
+  // isStreaming 이 true 로 굳어 입력창이 막힌 채로 남는다.
+  //
+  // abort 는 streamChat 의 fetch 를 AbortError 로 끊고, 그 예외는 run 의 catch 로
+  // 떨어진다. 언마운트된 화면에 실패 말풍선을 남기지 않도록 catch 에서 AbortError 를
+  // 따로 걸러낸다(사용자가 의도적으로 떠난 것이지 오류가 아니다).
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
 
   /**
    * 스트림 실행 공통부 — 일반 발화(send)와 승인(confirm)이 공유한다.
@@ -473,7 +513,12 @@ export function useChat({
         // 세션을 축출하는 일은 없으므로 "다른 곳에서 종료됨"이 아니라 단순 만료다.
         // 캐시를 비워 두면 다음 전송의 ensureSession 이 새로 발급한다 — 여기서 자동
         // 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지).
-        if (err instanceof SessionClaimPendingError) {
+        if (isAbortError(err)) {
+          // 사용자가 스스로 끊은 것이다(새 대화·화면 이탈) — 오류가 아니므로
+          // 말풍선에 실패를 남기지 않는다. 종전엔 startNewChat 의 abort 가 이 자리로
+          // 떨어져 "응답을 받지 못했어요"가 새 대화 직전 말풍선에 붙었다.
+          // (reset() 이 뒤따라 지우지만, 언마운트 경로에서는 지울 주체가 없다.)
+        } else if (err instanceof SessionClaimPendingError) {
           // 승계 실패가 미해결 — 배너가 이미 떠 있고 사용자가 재시도/새 대화를
           // 골라야 한다. 말풍선의 재시도 버튼은 감춘다(같은 이유로 또 막힌다).
           failLastAssistant(

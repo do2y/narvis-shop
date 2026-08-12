@@ -50,8 +50,16 @@ export function ProductPanel({ results, isStreaming }: ProductPanelProps) {
 
   return (
     <div className="flex flex-col gap-6 pl-4 pr-3 pt-5 pb-[var(--mobile-chat-result-bottom-clearance)] sm:gap-8 sm:px-6 sm:pt-6 sm:pb-[var(--mobile-chat-result-bottom-clearance)] lg:p-6">
-      {groups.map((group) => (
-        <ProductGroupSection key={group.title} group={group} />
+      {groups.map((group, i) => (
+        // title 은 유일 키가 아니다 — label 이 선택 필드라(CH-5) 한 턴에 온 여러
+        // RECOMMENDATION 묶음이 전부 "추천 상품"이 된다. 조건 칩에서 겪은 것과 같은
+        // 함정으로, 중복 키는 리컨실리에이션을 어긋나게 해 묶음이 바뀔 때 이전 카드가
+        // 남거나 impression 이 엉뚱한 묶음에 귀속된다.
+        // listId 가 있으면 그것이 서버가 인정한 묶음 식별자다(인기상품 묶음은 없다).
+        <ProductGroupSection
+          key={group.items[0]?.recommendationContext?.listId ?? `${group.title}:${i}`}
+          group={group}
+        />
       ))}
     </div>
   );

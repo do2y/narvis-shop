@@ -75,14 +75,42 @@ export async function streamChat(
     const chunks = buffer.split('\n\n');
     buffer = chunks.pop() ?? ''; // 미완성 조각 보류
 
-    for (const chunk of chunks) {
-      // 와이어 포맷: `data: {"type":..., "data":{...}}` 한 줄(구매자·판매자 공통).
-      // event: 라인은 없다 — payload 의 type 으로 이벤트를 구분한다.
-      let data = '';
-      for (const line of chunk.split('\n')) {
-        if (line.startsWith('data:')) data += line.slice(5).trim();
-      }
-      if (data) onEvent(JSON.parse(data) as ChatEvent);
-    }
+    for (const chunk of chunks) emitChunk(chunk, onEvent);
   }
+
+  // 마지막 조각을 흘려보내지 않는다.
+  //
+  // 서버가 종료 직전 프레임을 `\n\n` 으로 닫지 않고 끊으면 그 조각이 buffer 에 남는데,
+  // 종전엔 루프를 그냥 빠져나가 버렸다. 마지막 프레임은 대개 `done` 이라 —
+  // 잃으면 done 절이 실행되지 않아 분석 리포트가 패널에 커밋되지 않고(판매자),
+  // zero_result 기본 문구도 채워지지 않는다. 남은 조각도 같은 규칙으로 파싱한다.
+  if (buffer) emitChunk(buffer, onEvent);
+}
+
+/**
+ * SSE 청크 하나를 이벤트로 옮긴다.
+ *
+ * 와이어 포맷: `data: {"type":..., "data":{...}}` 한 줄(구매자·판매자 공통).
+ * event: 라인은 없다 — payload 의 type 으로 이벤트를 구분한다.
+ *
+ * 해석할 수 없는 프레임은 조용히 버린다. 깨진 프레임 하나가 턴 전체를 죽이지 않게
+ * 하기 위해서다 — 종전엔 JSON.parse 가 read 루프 밖으로 던져 뒤따라 오던 정상
+ * 이벤트(done·products.ready 포함)를 영영 못 읽었고, 호출부는 그걸 스트림 실패로
+ * 처리해 이미 화면에 찍힌 답변 위에 오류 말풍선을 씌웠다. 계약이 "모르는 이벤트는
+ * 무시"를 이미 명문화하므로(개방형 유니온) 같은 규칙으로 흘려보내는 편이 일관된다.
+ */
+export function emitChunk(chunk: string, onEvent: (e: ChatEvent) => void): void {
+  let data = '';
+  for (const line of chunk.split('\n')) {
+    if (line.startsWith('data:')) data += line.slice(5).trim();
+  }
+  if (!data) return;
+
+  let event: ChatEvent;
+  try {
+    event = JSON.parse(data) as ChatEvent;
+  } catch {
+    return;
+  }
+  onEvent(event);
 }
