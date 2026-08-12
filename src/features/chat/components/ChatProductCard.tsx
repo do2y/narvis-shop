@@ -144,7 +144,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
 
           <h3
             title={product.name}
-            className="line-clamp-2 min-h-[2.45rem] text-[14px] font-medium leading-[1.4] text-foreground sm:min-h-[2.7rem] sm:text-[15px] sm:leading-[1.45]"
+            className="product-card-two-line text-[14px] font-medium text-foreground [--product-card-two-line-lh:1.4] sm:text-[15px] sm:[--product-card-two-line-lh:1.45]"
           >
             <a
               href={detailHref}
@@ -163,7 +163,7 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
             아래에 고정되므로 이유 길이가 달라도 그리드 행이 어긋나지 않는다 */}
         {reason && (
           <p
-            className="mt-2.5 line-clamp-3 rounded-sm bg-brand/10 px-2 py-1.5 text-[12px] leading-[1.45] text-brand sm:mt-3 sm:text-[13px]"
+            className="product-card-two-line mt-2.5 rounded-sm bg-brand/10 px-2 py-1.5 text-[12px] text-brand [--product-card-two-line-lh:1.45] [--product-card-two-line-py:0.375rem] sm:mt-3 sm:text-[13px]"
             title={reason}
           >
             {reason}

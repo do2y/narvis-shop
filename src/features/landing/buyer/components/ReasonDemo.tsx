@@ -142,7 +142,7 @@ export function ReasonDemo() {
                       <span className="truncate text-[10px] text-muted-foreground">
                         {p.brandName}
                       </span>
-                      <h4 className="line-clamp-2 text-[11px] font-semibold leading-snug">
+                      <h4 className="product-card-two-line text-[11px] font-semibold [--product-card-two-line-lh:1.375]">
                         {p.name}
                       </h4>
                       <span className="text-[11px] font-bold tabular-nums">
@@ -154,7 +154,7 @@ export function ReasonDemo() {
                       <p
                         style={{ transitionDelay: `${gi * 90}ms` }}
                         className={cn(
-                          "mt-auto line-clamp-3 rounded-sm px-1.5 py-1 text-[10px] leading-snug",
+                          "product-card-two-line mt-auto rounded-sm px-1.5 py-1 text-[10px] [--product-card-two-line-lh:1.375] [--product-card-two-line-py:0.25rem]",
                           "transition-[opacity,background-color,color] duration-500 ease-out-strong",
                           reached(2)
                             ? "bg-brand/10 text-brand opacity-100"
