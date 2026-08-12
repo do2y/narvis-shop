@@ -383,11 +383,11 @@ export default function ProductPage({
               </p>
             )}
 
-            {/* 담기 결과 — 토스트가 없어 액션 하단에 인라인으로 노출.
-                실패는 자동 재시도하지 않고(중복 담기 방지) 버튼을 다시 누르게 한다. */}
+            {/* 담기 성공 안내는 useAddCartItem 의 토스트가 맡는다(다른 호출부와 동일).
+                여기서는 토스트에 담을 수 없는 다음 행동(장바구니로 이동)만 남긴다 —
+                문구까지 함께 그리면 같은 말이 토스트와 인라인으로 두 번 나간다. */}
             {addCart.isSuccess && (
               <p className="mt-4 text-sm text-muted-foreground" role="status">
-                장바구니에 담았어요.{" "}
                 <button
                   type="button"
                   onClick={() => router.push("/cart")}
