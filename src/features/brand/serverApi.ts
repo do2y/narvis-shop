@@ -21,7 +21,7 @@ export function getBrandHome(
   query: BrandQuery = {},
 ): Promise<BrandHome> {
   const params = new URLSearchParams();
-  if (query.category !== undefined) params.set("category", String(query.category));
+  if (query.category !== undefined) params.set("category", query.category);
   if (query.sort) params.set("sort", query.sort);
   if (query.page) params.set("page", String(query.page));
   if (query.size) params.set("size", String(query.size));

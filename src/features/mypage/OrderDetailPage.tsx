@@ -132,14 +132,17 @@ function DetailSkeleton() {
 }
 
 export default function OrderDetailPage() {
-  const { orderId = "" } = useParams();
-  const numericOrderId = Number(orderId);
+  const { orderId: rawOrderId = "" } = useParams();
+  // Number() 로 감싸지 않는다 — orderId 는 BIGINT 라 JS 안전 정수를 넘으면
+  // 끝자리가 조용히 바뀌어 남의 주문을 조회하거나 404 가 된다(2026-08-06 공통 규약).
+  // useParams 는 catch-all 라우트에서 배열을 줄 수 있어 문자열로 좁힌다.
+  const orderId = Array.isArray(rawOrderId) ? (rawOrderId[0] ?? "") : rawOrderId;
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: order, isPending, isError, refetch } = useOrder(numericOrderId);
+  const { data: order, isPending, isError, refetch } = useOrder(orderId);
   // 열린 신청 모달의 대상·종류. null 이면 닫힘.
   const [claim, setClaim] = useState<{
-    orderItemId: number;
+    orderItemId: string;
     type: ClaimType;
   } | null>(null);
 

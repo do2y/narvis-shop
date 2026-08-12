@@ -50,13 +50,21 @@ export class ApiError extends Error {
   status?: number;
   fields?: ApiFieldError[];
   detail?: ApiErrorDetail;
-  constructor(body: ApiErrorBody, status?: number) {
+  /**
+   * 429 RATE_LIMITED에 동반되는 Retry-After 헤더값(초) — A-1·A-2, 2026-08-04.
+   *
+   * 본문이 아니라 헤더로 오므로 봉투를 벗기는 자리에서 같이 실어준다.
+   * 계정 잠금이 아니라 일시 차단이라, 이 초만큼 지나면 자동으로 풀린다.
+   */
+  retryAfterSeconds?: number;
+  constructor(body: ApiErrorBody, status?: number, retryAfterSeconds?: number) {
     super(body.message);
     this.name = "ApiError";
     this.code = body.code;
     this.status = status;
     this.fields = body.fields;
     this.detail = body.detail;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
   // 검증 실패면 필드 사유("수량은 99 이하여야 합니다.")를, 없으면 공통 message를 반환
@@ -165,21 +173,41 @@ function logRequest(config: InternalAxiosRequestConfig) {
 if (DEBUG_API) api.interceptors.request.use(logRequest);
 
 /**
- * 장바구니 변경 요청에 X-Session-Key 를 싣는다 (A 문서, 2026-08-06).
+ * 서버가 행동 이벤트를 적재하는 요청에 X-Session-Key 를 싣는다 (E-1).
  *
- * 담기·삭제·수량변경 이벤트는 FE track() 이 아니라 BE CartService 가 적재한다.
- * 서버는 이 헤더로만 방문 세션을 알 수 있다 — member_id·guest_id 는 JWT·쿠키에서
- * 뽑지만 sessionKey 는 FE 가 localStorage 로 관리하는 값이라 그렇다.
+ * 담기·삭제·수량변경(2026-08-06)과 결제 완료(2026-08-11 이관)는 FE track() 이 아니라
+ * BE 가 afterCommit 으로 적재한다. 서버는 이 헤더로만 방문 세션을 알 수 있다 —
+ * member_id·guest_id 는 JWT·쿠키에서 뽑지만 sessionKey 는 FE 가 localStorage 로
+ * 관리하는 값이라 그렇다.
  *
- * 조회(GET /api/cart)에는 붙이지 않는다. 적재 대상이 변경 3종뿐이다.
+ * 주문(O-1·O-2)이 대상에 들어온 이유: purchase_complete 의 producer 가 FE → 서버로
+ * 바뀌었다(2026-08-11). 헤더가 없으면 결제는 정상 처리되지만 이벤트만 스킵되어
+ * 퍼널의 마지막 단이 계속 비고, S-1 aiAttribution.coverage 분자가 0이 된다.
+ *
+ * 조회(GET)에는 붙이지 않는다. 적재 대상이 상태를 바꾸는 요청뿐이다.
  *
  * 값을 모듈 로드 시점에 캐시하지 않고 **요청 시점에** 읽는 이유: sessionKey 는
  * 30분 무활동이면 재발급되는데, 캐시하면 만료된 옛 키를 계속 보내게 된다.
  */
+// startsWith 로 맞추므로 접두사가 경계에서 끊기는지 확인할 것 — "/api/orders" 는
+// "/api/orders/1/retry-payment"(O-2)까지 함께 덮는다. 둘 다 적재 지점이라 의도한 것이다.
+const SESSION_KEY_PATHS = ["/api/cart/items", "/api/orders"];
+
+/**
+ * 이 요청에 X-Session-Key 를 실어야 하나.
+ *
+ * 인터셉터에서 분리해 둔 이유: 붙는 곳이 곧 "서버가 이벤트를 적재하는 지점"이라
+ * 조건이 어긋나면 에러 없이 이벤트만 조용히 빠진다 — 테스트로 고정할 수 있게 한다.
+ */
+export function shouldAttachSessionKey(url: string, method: string): boolean {
+  if (method.toLowerCase() === "get") return false;
+  return SESSION_KEY_PATHS.some((path) => url.startsWith(path));
+}
+
 function attachSessionKey(config: InternalAxiosRequestConfig) {
   const url = config.url ?? "";
-  const method = (config.method ?? "get").toLowerCase();
-  if (!url.startsWith("/api/cart/items") || method === "get") return config;
+  const method = config.method ?? "get";
+  if (!shouldAttachSessionKey(url, method)) return config;
 
   try {
     config.headers.set("X-Session-Key", getSessionKey().sessionKey);
@@ -191,6 +219,31 @@ function attachSessionKey(config: InternalAxiosRequestConfig) {
 }
 
 api.interceptors.request.use(attachSessionKey);
+
+/**
+ * Retry-After 헤더(초)를 읽는다 — 429 RATE_LIMITED 동반(A-1·A-2).
+ *
+ * RFC 7231은 초(delta-seconds)와 HTTP-date 두 형식을 허용하지만 백엔드는 초로 보낸다.
+ * 그래도 날짜가 오면 화면에 NaN이 뜨므로, 숫자로 파싱되지 않으면 undefined로 접는다 —
+ * 읽는 쪽이 "안내 문구만 띄우고 차단은 하지 않는" 폴백을 갖고 있다.
+ *
+ * ⚠️ 대괄호 접근(`headers["retry-after"]`)을 쓰지 말 것 — AxiosHeaders 는 서버가 보낸
+ * 원래 대소문자를 그대로 보존해서, 표준 표기인 `Retry-After` 로 오면 소문자 키로는
+ * undefined 가 나온다. 그러면 조용히 카운트다운이 영영 안 뜬다(타입 에러도 안 남).
+ * `.get()` 이 대소문자를 무시하고 찾아준다.
+ */
+export function readRetryAfter(error: AxiosError): number | undefined {
+  const headers = error.response?.headers;
+  // 테스트·목에서 평범한 객체가 올 수 있어 .get 이 없으면 양쪽 표기를 직접 본다.
+  const raw =
+    typeof headers?.get === "function"
+      ? headers.get("retry-after")
+      : ((headers as Record<string, unknown> | undefined)?.["retry-after"] ??
+        (headers as Record<string, unknown> | undefined)?.["Retry-After"]);
+  if (typeof raw !== "string" && typeof raw !== "number") return undefined;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : undefined;
+}
 
 // 동시 401이 여러 건일 때 리다이렉트가 중복 실행되는 것을 막는다.
 // (refresh 프라미스를 공유해도 각 요청이 개별적으로 실패 경로를 타므로 필요)
@@ -315,7 +368,9 @@ api.interceptors.response.use(
     // 그 외 에러도 가능하면 ApiError로 정규화(봉투가 실려 있으면)
     const body = axiosError.response?.data;
     if (body && typeof body === "object" && "error" in body && body.error) {
-      return Promise.reject(new ApiError(body.error, status));
+      return Promise.reject(
+        new ApiError(body.error, status, readRetryAfter(axiosError)),
+      );
     }
     return Promise.reject(axiosError);
   },

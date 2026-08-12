@@ -16,7 +16,7 @@ export async function createAddress(body: AddressInput): Promise<Address> {
 }
 
 export async function updateAddress(
-  addressId: number,
+  addressId: string,
   body: AddressPatch,
 ): Promise<Address> {
   const { data } = await api.patch<Address>(
@@ -28,6 +28,6 @@ export async function updateAddress(
 
 // 삭제 규칙(서버): 유일한 배송지는 400 ADDRESS_LAST_UNDELETABLE로 거부되고,
 // 기본 배송지를 지우면 가장 오래된 주소가 자동으로 기본 승격된다.
-export async function deleteAddress(addressId: number): Promise<void> {
+export async function deleteAddress(addressId: string): Promise<void> {
   await api.delete(`/api/addresses/${addressId}`);
 }

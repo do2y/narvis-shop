@@ -18,7 +18,7 @@ export async function fetchOrders(page = 0, size = 10): Promise<OrderPage> {
   return data;
 }
 
-export async function fetchOrder(orderId: number): Promise<OrderDetail> {
+export async function fetchOrder(orderId: string): Promise<OrderDetail> {
   const { data } = await api.get<OrderDetail>(`/api/orders/${orderId}`);
   return data;
 }
@@ -43,7 +43,7 @@ export async function fetchClaims(page = 0, size = 10): Promise<ClaimPage> {
 // 취소·반품 신청 접수 — 대상은 orderItemId(path). 성공 시 훅에서 claims 캐시 무효화.
 // 허용 여부는 서버가 아이템 상태×타입 매트릭스로 판정한다(FE에서 중복 판단하지 않음).
 export async function createClaim(
-  orderItemId: number,
+  orderItemId: string,
   body: CreateClaimRequest,
 ): Promise<CreateClaimResponse> {
   const { data } = await api.post<CreateClaimResponse>(

@@ -14,6 +14,7 @@ import {
   type LoginRequest,
   type SignupRequest,
 } from "./api";
+import { formatRetryAfter, useRateLimit } from "./useRateLimit";
 
 // returnUrl은 앱 내부 경로만 허용 (오픈 리다이렉트 방지)
 function safeReturnUrl(raw: string | null): string {
@@ -61,11 +62,30 @@ function useAuthSuccess(method: "login" | "signup") {
   };
 }
 
+/**
+ * 429 RATE_LIMITED 안내 (A-1·A-2, 2026-08-04) — 로그인·가입 공용.
+ *
+ * 두 경로가 같은 카운터를 쓰므로(한쪽을 채운 뒤 다른 쪽으로 넘어가는 우회 차단)
+ * 문구도 하나로 둔다. 401 문구가 대신 나가던 것을 여기서 가른다 —
+ * "비밀번호가 틀렸다"고 하면 사용자가 맞는 비밀번호를 계속 다시 넣는다.
+ */
+function toRateLimitMessage(error: ApiError): string {
+  const seconds = error.retryAfterSeconds;
+  if (seconds) {
+    return `시도가 너무 많습니다. ${formatRetryAfter(seconds)} 후에 다시 시도해주세요`;
+  }
+  return error.message || "시도가 너무 많습니다. 잠시 후 다시 시도해주세요";
+}
+
 // 로그인 실패는 계정 존재 여부를 노출하지 않도록 통합 메시지로 처리 (features.md).
 // 백엔드는 이메일 없음/비번 불일치를 AUTH_LOGIN_FAILED 하나로 통일해 내려줌.
 function toLoginErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && error.code === "AUTH_LOGIN_FAILED") {
-    return error.message || "이메일 또는 비밀번호가 올바르지 않습니다";
+  if (error instanceof ApiError) {
+    // status로 먼저 가른다 — code만 보면 백엔드가 code를 바꿨을 때 조용히 401 문구로 샌다.
+    if (error.status === 429) return toRateLimitMessage(error);
+    if (error.code === "AUTH_LOGIN_FAILED") {
+      return error.message || "이메일 또는 비밀번호가 올바르지 않습니다";
+    }
   }
   return "로그인에 실패했습니다. 잠시 후 다시 시도해주세요";
 }
@@ -75,6 +95,9 @@ function toLoginErrorMessage(error: unknown): string {
 // 같은 규칙을 Zod가 먼저 잡으므로 실제로는 프론트 검증 우회·규칙 불일치 시의 2차 방어선.
 function toSignupErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    // 429는 중복 이메일 확인(409)보다 먼저 걸린다 — 가입 실패를 반복해
+    // 이메일 존재 여부를 캐묻는 것도 함께 막히기 때문이다(A-1).
+    if (error.status === 429) return toRateLimitMessage(error);
     // RESOURCE_CONFLICT는 같은 이메일로 동시에 가입 요청이 들어와 DB UNIQUE 제약에서
     // 진 쪽이다(A-1). 명세가 MEMBER_EMAIL_DUPLICATE와 동일하게 안내하라고 정했다.
     if (
@@ -94,9 +117,13 @@ export function useLogin() {
     mutationFn: (body: LoginRequest) => login(body),
     onSuccess,
   });
+  const { blocked, remaining } = useRateLimit(mutation.error);
   return {
     ...mutation,
     errorMessage: mutation.error ? toLoginErrorMessage(mutation.error) : null,
+    // 차단 중에는 제출 자체를 막는다 — 눌러봐야 429가 다시 나고 그 시도가 카운터를 또 올린다.
+    rateLimited: blocked,
+    retryAfterSeconds: remaining,
   };
 }
 
@@ -106,8 +133,11 @@ export function useSignup() {
     mutationFn: (body: SignupRequest) => signup(body),
     onSuccess,
   });
+  const { blocked, remaining } = useRateLimit(mutation.error);
   return {
     ...mutation,
     errorMessage: mutation.error ? toSignupErrorMessage(mutation.error) : null,
+    rateLimited: blocked,
+    retryAfterSeconds: remaining,
   };
 }

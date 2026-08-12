@@ -45,7 +45,7 @@ function toClaimErrorMessage(error: unknown): string {
 export function useCreateClaim() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: (args: { orderItemId: number; body: CreateClaimRequest }) =>
+    mutationFn: (args: { orderItemId: string; body: CreateClaimRequest }) =>
       createClaim(args.orderItemId, args.body),
     retry: false,
     onSuccess: () => {

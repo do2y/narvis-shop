@@ -41,7 +41,8 @@ export interface ProductBrand {
 }
 
 export interface ProductCategory {
-  id: number;
+  // 응답 id 는 문자열(2026-08-06 공통 규약) — ProductBrand.id 와 같은 이유
+  id: string;
   name: string;
 }
 
@@ -53,7 +54,7 @@ export interface ProductRating {
 
 // 상품 후기 (P-3) — status=VISIBLE인 것만 내려온다.
 export interface ProductReview {
-  reviewId: number;
+  reviewId: string;
   rating: number;
   content: string;
   authorNickname: string;

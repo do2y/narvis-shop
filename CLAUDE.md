@@ -7,7 +7,8 @@
 - 부트캠프 최종 프로젝트, **프론트 1인 체제** — 단순함과 일관성이 최우선
 - 백엔드는 Spring Boot로 분리. 프론트는 **Next.js(App Router)** 이며, SEO가 필요한 공개 페이지만 SSR하고 나머지는 클라이언트 렌더
 - 챗봇 2개(상품 추천 / 판매자 분석)는 단일 채팅 API를 공유하는 공통 모듈로 구현
-  (문의 챗봇은 폐기 — `ChatChannel`의 `CS`는 계약에만 남고 쓰는 화면이 없다)
+  (문의 챗봇은 폐기 — `CS` 채널은 2026-08-11 CH-1 개정으로 계약에서도 빠졌고
+   `ChatChannel` 타입에서 제거했다. 보내면 400)
 
 ## 명령어
 - `npm run dev` — 개발 서버 (**포트 3000 고정** — 백엔드 CORS가 `http://localhost:3000`만 허용)
@@ -121,7 +122,7 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
 
 ## 챗봇 공통 모듈 (src/shared/chat, 타입: src/shared/types/chat.ts)
 - 챗봇은 단일 API를 `channel`(SHOPPING|SELLER)만 바꿔 공유. 공통 모듈 + 채널별 렌더러 주입
-  (`CS`는 타입에 남아 있으나 넘기는 화면이 없다 — 백엔드 계약이라 임의로 지우지 않음)
+  (`CS`는 2026-08-11 폐기 — 타입에서도 제거했다. 유효한 값은 SHOPPING·SELLER 2종)
 - 와이어는 `data: {"type":..,"data":{..}}` envelope 한 줄 — **`event:` 줄을 쓰지 않는다**. 이름이 아니라 `payload.type`으로 분기
 - 이벤트 **11종** — 공통 3(`token` append / `done` / `error` 종결) + 구매자 4(`conditions` 제거 가능 칩 /
   `suggestions` 완화 제안 / `products.ready` 상관키 / `action`) + 판매자 3(`meta` 레인 / `draft` HITL 초안 /

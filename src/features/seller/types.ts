@@ -148,7 +148,8 @@ export interface SellerOrderRepProduct {
 }
 
 export interface SellerOrder {
-  orderId: number;
+  // 응답 id 는 문자열(2026-08-06 공통 규약)
+  orderId: string;
   orderNo: string; // "ORD-20260716-0342" — 화면은 ORD- 접두사를 떼고 표시
   orderedAt: string; // ISO8601 +09:00
   recipientName: string; // 배송지 수령인명(마스킹 없음)

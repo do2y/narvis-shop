@@ -24,11 +24,15 @@ function toQuery(sp: Record<string, string | string[] | undefined>): BrandQuery 
   const sortRaw = one(sp.sort);
   const pageRaw = one(sp.page);
 
-  const category = categoryRaw ? Number(categoryRaw) : undefined;
+  // category 는 문자열 그대로 다룬다 — brandId 와 같은 64비트 id라 Number() 를
+  // 거치면 끝자리가 조용히 바뀌고, Number.isFinite 는 뭉개진 값도 통과시킨다
+  // (아래 resolveId 주석과 같은 사유). 형식 검증만 정규식으로 한다.
+  const category =
+    categoryRaw && /^\d+$/.test(categoryRaw) ? categoryRaw : undefined;
   const page = pageRaw ? Number(pageRaw) : undefined;
 
   return {
-    ...(category !== undefined && Number.isFinite(category) ? { category } : {}),
+    ...(category !== undefined ? { category } : {}),
     ...(sortRaw && SORTS.includes(sortRaw as BrandSort)
       ? { sort: sortRaw as BrandSort }
       : {}),

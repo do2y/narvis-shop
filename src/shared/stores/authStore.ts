@@ -8,7 +8,9 @@ export type UserRole = "USER" | "SELLER" | "ADMIN";
 
 // 백엔드 member 객체 계약
 export interface AuthUser {
-  id: number;
+  // 응답 id 는 문자열이다(2026-08-06 공통 규약) — A-1·A-2·A-5 모두 "1" 처럼 내려온다.
+  // number 로 두면 쿼리 키에 섞일 때 "1" 과 1 이 다른 키가 되어 캐시가 갈린다.
+  id: string;
   email: string;
   nickname: string;
   role: UserRole;
@@ -53,8 +55,17 @@ export const useAuthStore = create<AuthState>()(
       partialize: (s) => ({ user: s.user }),
       // partialize는 앞으로의 저장만 막는다. 과거 버전에서 AT를 저장한 브라우저가
       // 남아 있으므로 version을 올려 기존 항목을 마이그레이션(=토큰 폐기)한다.
-      version: 2,
-      migrate: (persisted) => ({ user: (persisted as { user?: AuthUser }).user ?? null }),
+      //
+      // v3: id 를 number → string 으로 정정(2026-08-06 공통 규약). 이미 숫자로 저장된
+      // 브라우저가 남아 있어 그대로 두면 추천 쿼리 키가 1 과 "1" 로 갈린다.
+      // 로그아웃시키지 않고 문자열로 접어서 살린다 — 어차피 role 은 me 로 덮어쓴다.
+      version: 3,
+      migrate: (persisted) => {
+        const user = (persisted as { user?: AuthUser }).user ?? null;
+        return {
+          user: user ? { ...user, id: String(user.id) } : null,
+        };
+      },
     },
   ),
 );

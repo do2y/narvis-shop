@@ -32,9 +32,9 @@ export default function BrandPage({
   // 필터·정렬·페이지를 URL 쿼리에 둔다(원본은 useState).
   // 이유: 이 조합이 곧 하나의 화면이라 공유·뒤로가기가 동작해야 하고,
   // 서버가 같은 조건으로 렌더할 수 있어야 필터별 URL이 색인된다.
-  const category = searchParams.get("category")
-    ? Number(searchParams.get("category"))
-    : null;
+  // Number() 로 감싸지 않는다 — 64비트 카테고리 id 의 끝자리가 조용히 바뀐다
+  // (brandId 와 같은 사유 — app/brands/[brandId]/page.tsx 의 resolveId 주석 참조).
+  const category = searchParams.get("category") || null;
   const sort = (searchParams.get("sort") as BrandSort | null) ?? "popular";
   const page = Number(searchParams.get("page") ?? 0);
 
@@ -51,7 +51,7 @@ export default function BrandPage({
   // 쿼리스트링 갱신 헬퍼. 기본값은 URL에서 빼 주소를 짧게 유지한다
   // (같은 화면이 ?sort=popular 유무로 두 URL이 되면 색인이 갈린다).
   const updateQuery = (next: {
-    category?: number | null;
+    category?: string | null;
     sort?: BrandSort;
     page?: number;
   }) => {
@@ -62,7 +62,7 @@ export default function BrandPage({
     };
 
     if ("category" in next) {
-      set("category", next.category == null ? null : String(next.category));
+      set("category", next.category ?? null);
     }
     if (next.sort !== undefined) {
       set("sort", next.sort === "popular" ? null : next.sort);
@@ -80,7 +80,7 @@ export default function BrandPage({
   };
 
   // 필터·정렬을 바꾸면 첫 페이지로 되돌린다(2페이지에서 필터를 바꾸면 빈 목록이 될 수 있음)
-  const changeCategory = (next: number | null) =>
+  const changeCategory = (next: string | null) =>
     updateQuery({ category: next, page: 0 });
   const changeSort = (next: BrandSort) => updateQuery({ sort: next, page: 0 });
   const changePage = (next: number) => updateQuery({ page: next });

@@ -36,7 +36,7 @@ export function useCartMutations() {
   const queryClient = useQueryClient();
 
   const setQuantity = useMutation({
-    mutationFn: (args: { cartItemId: number; quantity: number }) =>
+    mutationFn: (args: { cartItemId: string; quantity: number }) =>
       updateCartQuantity(args.cartItemId, args.quantity),
     retry: false,
     onMutate: async (args) => {
@@ -61,7 +61,7 @@ export function useCartMutations() {
   });
 
   const remove = useMutation({
-    mutationFn: (cartItemId: number) => removeCartItem(cartItemId),
+    mutationFn: (cartItemId: string) => removeCartItem(cartItemId),
     retry: false,
     onMutate: async (cartItemId) => {
       await queryClient.cancelQueries({ queryKey: ["cart"] });

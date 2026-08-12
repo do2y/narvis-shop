@@ -5,16 +5,16 @@ import { api } from "@/shared/api/client";
 // 수량 변경 (C-3) — 게스트 허용(본인 소유 아이템만). quantity 1~99.
 // 남의 아이템이면 403 AUTH_FORBIDDEN, 없는 항목이면 404 CART_ITEM_NOT_FOUND.
 export async function updateCartQuantity(
-  cartItemId: number,
+  cartItemId: string,
   quantity: number,
-): Promise<{ cartItemId: number; quantity: number }> {
-  const { data } = await api.patch<{ cartItemId: number; quantity: number }>(
+): Promise<{ cartItemId: string; quantity: number }> {
+  const { data } = await api.patch<{ cartItemId: string; quantity: number }>(
     `/api/cart/items/${cartItemId}`,
     { quantity },
   );
   return data;
 }
 
-export async function removeCartItem(cartItemId: number): Promise<void> {
+export async function removeCartItem(cartItemId: string): Promise<void> {
   await api.delete(`/api/cart/items/${cartItemId}`);
 }
