@@ -2,7 +2,7 @@ name: Jarvis Frontend CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:   # Actions 탭에서 수동 실행 가능
 
 # 워크플로 동시 실행 방지 — 두 개가 겹치면 여러 서버가 동시에 대상그룹에서 빠질 수 있음
@@ -41,10 +41,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max   # 레이어 캐시로 빌드 가속
 
-  # 2단계: 무중단 배포 (CD)
+  # 2단계: 무중단 배포 (CD) — main 브랜치 전용
   #   프론트 컨테이너가 곧 nginx라 교체 중에는 그 서버의 80포트 전체가 죽는다.
   #   SSR 전환으로 기동 시간이 1초에서 수십 초로 늘어 대상그룹 분리가 필수가 되었다.
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -207,3 +208,78 @@ jobs:
           aws elbv2 register-targets \
             --target-group-arn "$TG_ARN" \
             --targets Id=${{ matrix.instance }}
+
+  # 3단계: dev 서버 배포 — dev 브랜치 전용
+  #   1대뿐이라 대상그룹 조작을 하지 않는다(무중단이 성립하지 않음).
+  #   SITE_URL 만 운영과 다르다 — 프론트는 공유 자원이 없어 분리할 것이 없다.
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - name: dev 프론트 배포 및 기동 검증
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST_DEV }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 15m
+          command_timeout: 15m
+          script: |
+            set -e
+
+            LAST_GOOD=/home/ubuntu/jarvis-frontend.last-good
+            PREV_IMAGE=$(docker inspect -f '{{.Config.Image}}' jarvis-frontend 2>/dev/null || true)
+
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.IMAGE }}:${{ github.sha }}
+
+            docker stop jarvis-frontend || true
+            docker rm -f jarvis-frontend || true
+            docker run -d \
+              --name jarvis-frontend \
+              --restart always \
+              --network host \
+              --init \
+              --log-opt max-size=10m \
+              --log-opt max-file=3 \
+              -e API_PROXY_TARGET="http://localhost:8080" \
+              -e SITE_URL="https://dev.narvis.shop" \
+              ${{ env.IMAGE }}:${{ github.sha }} || true
+
+            OK=0
+            for i in $(seq 1 60); do
+              if curl -fs http://localhost/healthz > /dev/null; then OK=1; break; fi
+              sleep 2
+            done
+
+            if [ "$OK" != "1" ]; then
+              docker logs --tail 100 jarvis-frontend || true
+              docker rm -f jarvis-frontend || true
+
+              ROLLBACK_IMAGE="$PREV_IMAGE"
+              if [ -z "$ROLLBACK_IMAGE" ] && [ -f "$LAST_GOOD" ]; then
+                ROLLBACK_IMAGE=$(cat "$LAST_GOOD")
+              fi
+              if [ -z "$ROLLBACK_IMAGE" ]; then
+                docker images ${{ env.IMAGE }} --format '{{.Tag}} {{.CreatedSince}}' | head -10
+                exit 1
+              fi
+
+              docker run -d \
+                --name jarvis-frontend \
+                --restart always \
+                --network host \
+                --init \
+                --log-opt max-size=10m \
+                --log-opt max-file=3 \
+                -e API_PROXY_TARGET="http://localhost:8080" \
+                -e SITE_URL="https://dev.narvis.shop" \
+                "$ROLLBACK_IMAGE" || true
+              exit 1
+            fi
+
+            docker inspect -f '{{.Config.Image}}' jarvis-frontend > "$LAST_GOOD"
+            docker image prune -af --filter "until=48h"
