@@ -8,7 +8,7 @@ import { useAuthStore } from "@/shared/stores/authStore";
 import { useRevealOnce } from "../hooks/useRevealOnce";
 import type { RecommendationResult } from "../types";
 import { useRecommendedProducts } from "../useHomeData";
-import { ProductCard, ProductCardSkeleton } from "./ProductCard";
+import { ProductCard, ProductCardSkeleton } from "@/shared/ui/ProductCard";
 import { SectionHeading } from "./SectionHeading";
 
 export function RecommendedProducts() {

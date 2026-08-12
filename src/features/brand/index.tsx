@@ -7,8 +7,8 @@ import { ErrorState } from "@/features/mypage/components/PageState";
 import { ApiError } from "@/shared/api/client";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
+import { ProductCard } from "@/shared/ui/ProductCard";
 import { BrandHeader } from "./components/BrandHeader";
-import { BrandProductCard } from "./components/BrandProductCard";
 import { BrandSkeleton } from "./components/BrandSkeleton";
 import { CategoryFilter } from "./components/CategoryFilter";
 import { SortSelect } from "./components/SortSelect";
@@ -89,11 +89,14 @@ export default function BrandPage({
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      {/* max-w-6xl + px-5(모바일 20px) — 브랜드 헤더·필터·툴바·상품 grid 가
+          전부 이 하나의 컨테이너 안에 들어가 같은 좌우 정렬선을 쓴다.
+          종전에는 py-12(48px)로 위아래가 과했다 — 헤더 아래 40px 로 줄인다. */}
+      <main className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-6 sm:py-12">
         {isPending ? (
           <BrandSkeleton />
         ) : notFound ? (
-          <div className="flex flex-col items-center gap-4 rounded-sm bg-muted/30 px-6 py-20 text-center">
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
             <p className="text-sm text-muted-foreground">
               존재하지 않는 브랜드예요.
             </p>
@@ -101,7 +104,7 @@ export default function BrandPage({
               href="/home"
               className={cn(
                 buttonVariants({ variant: "outline" }),
-                "h-11 rounded-full px-6 transition-transform active:scale-[0.98]",
+                "h-11 rounded-lg px-6 transition-transform active:scale-[0.98]",
               )}
             >
               홈으로
@@ -113,51 +116,76 @@ export default function BrandPage({
             onRetry={() => refetch()}
           />
         ) : (
-          <div className="flex flex-col gap-8 sm:gap-10">
+          /* 간격 체계: 브랜드 소개 → 필터 40px, 필터 → 툴바 32px,
+             툴바 → grid 20px. 아래로 갈수록 좁아져 "묶음 안으로 들어간다"가
+             형태로 읽힌다(§16 근접성 = 관계). */
+          <div className="flex flex-col">
             <BrandHeader
               brand={data.brand}
               productCount={data.products.totalElements}
             />
 
-            <div className="flex flex-col gap-5 border-t pt-8">
+            {/* divider 를 두지 않는다 — 종전에는 긴 선 + pt-8 이 브랜드 소개와
+                상품 목록을 두 개의 다른 화면으로 갈라놓았다. 간격만으로 충분히
+                구분되고, 하나의 흐름으로 이어진다. */}
+            <div className="mt-10">
               <CategoryFilter
                 categories={data.brand.categories}
                 selected={category}
                 onSelect={changeCategory}
               />
+            </div>
 
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-sm text-muted-foreground">
-                  {data.products.totalElements.toLocaleString("ko-KR")}개 상품
-                </p>
+            {/* 툴바 — 상품 수와 정렬을 한 줄로 묶는다. grid 와 같은 컨테이너 안에
+                있어 양 끝이 카드의 시작선·끝선과 정확히 맞는다.
+                320px 에서도 겹치지 않게 정렬 쪽에 shrink-0 을 준다. */}
+            <div className="mt-8 flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground tabular-nums">
+                상품 {data.products.totalElements.toLocaleString("ko-KR")}개
+              </p>
+              <div className="shrink-0">
                 <SortSelect value={sort} onChange={changeSort} />
               </div>
+            </div>
 
+            <div className="mt-5">
               {data.products.content.length === 0 ? (
-                <div className="rounded-sm bg-muted/30 px-6 py-20 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    해당 카테고리에 상품이 없어요.
-                  </p>
-                </div>
+                // 빈 상태 — 회색 카드를 걷어내고 문구만. 면을 깔면 "상품이 없다"가
+                // 아니라 "무언가 담긴 영역"으로 보인다.
+                <p className="py-20 text-center text-sm text-muted-foreground">
+                  해당 카테고리에 상품이 없어요.
+                </p>
               ) : (
                 <div
-                  // 필터·정렬 재조회 중에는 살짝 흐리게 — 이전 결과를 유지하되 갱신 중임을 알린다
+                  // 필터·정렬 재조회 중에는 살짝 흐리게 — 이전 결과를 유지하되 갱신 중임을 알린다.
+                  //
+                  // 상품이 적어도 카드가 커지지 않는다: grid-cols 는 그대로 두고,
+                  // 열 수보다 상품이 적으면 남는 칸은 비워 둔다(justify-start 기본).
+                  // 1개일 때 카드를 늘리면 다른 화면의 같은 카드와 크기가 달라진다.
+                  // 대신 gap 을 홈(gap-x-5)과 맞춰 카드가 고립돼 보이지 않게 한다.
                   className={cn(
-                    "grid grid-cols-2 gap-x-4 gap-y-8 transition-opacity sm:grid-cols-3 lg:grid-cols-4",
+                    "grid grid-cols-2 gap-x-3 gap-y-6 transition-opacity duration-150 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-4",
                     isFetching && "opacity-60",
                   )}
                 >
                   {data.products.content.map((product) => (
-                    <BrandProductCard
+                    // 브랜드명을 감추지 않는다(hideBrandName 미사용) — 평점이
+                    // 우측 정렬이라 왼쪽 이름을 지우면 그 줄에 평점만 덩그러니
+                    // 남아 제목 위가 비어 보인다. 반복이 소음이긴 해도, 카드
+                    // 안에서 균형을 잡아주는 쪽이 낫다.
+                    <ProductCard
                       key={product.productId}
                       product={product}
+                      wishlist
+                      purchaseState={product.purchaseState}
                     />
                   ))}
                 </div>
               )}
+            </div>
 
-              {data.products.totalPages > 1 && (
-                <nav className="flex items-center justify-center gap-3 pt-2">
+            {data.products.totalPages > 1 && (
+              <nav className="mt-12 flex items-center justify-center gap-3">
                   <button
                     type="button"
                     // 서버가 응답한 page를 기준으로 이동한다 — 요청 page와 다를 수 있어
@@ -192,9 +220,8 @@ export default function BrandPage({
                   >
                     다음
                   </button>
-                </nav>
-              )}
-            </div>
+              </nav>
+            )}
           </div>
         )}
       </main>

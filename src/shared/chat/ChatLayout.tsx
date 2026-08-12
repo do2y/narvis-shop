@@ -13,6 +13,7 @@ interface ChatLayoutProps {
   onRetry: () => void;
   isStreaming: boolean;
   placeholder?: string;
+  showUserAvatar?: boolean;
   /** 화면 최상단 헤더 — 채널별 주입(쇼핑=AppHeader, 판매자=SellerHeader) */
   header: React.ReactNode;
   /** 대화 컬럼 상단 바 — "새 대화" 버튼 위치가 화면마다 달라 부모가 정한다 */
@@ -35,6 +36,7 @@ export function ChatLayout({
   onRetry,
   isStreaming,
   placeholder,
+  showUserAvatar = true,
   header,
   conversationHeader,
   notice,
@@ -85,6 +87,7 @@ export function ChatLayout({
             }}
             isStreaming={isStreaming}
             placeholder={placeholder}
+            showUserAvatar={showUserAvatar}
             headerSlot={conversationHeader}
             noticeSlot={notice}
             aboveInput={aboveInput}

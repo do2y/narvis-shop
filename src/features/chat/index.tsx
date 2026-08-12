@@ -143,6 +143,7 @@ export default function ChatPage() {
       onSend={send}
       onRetry={retry}
       isStreaming={isStreaming}
+      showUserAvatar={false}
       /* "새 대화"는 헤더 로고 옆에 — 대화 영역을 차지하지 않게(기존 배치 유지).
          판매자 챗(/seller/chat)도 같은 컴포넌트를 같은 자리에 쓴다 */
       header={<AppHeader leftSlot={<NewChatButton onClick={startNewChat} />} />}
