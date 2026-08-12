@@ -4,13 +4,13 @@ import { createElement } from "react";
 import { HeartOff } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import {
   addWishlistItem,
   fetchWishlist,
   removeWishlistItem,
 } from "@/shared/api/wishlist";
 import { ApiError } from "@/shared/api/client";
+import { useRequireLogin } from "@/shared/hooks/useRequireLogin";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import type { WishlistProduct } from "@/shared/types/wishlist";
 
@@ -96,11 +96,12 @@ export function toWishlistMessage(error: unknown): string | null {
 }
 
 // 찜 추가·해제 토글.
-// 게스트가 누르면 로그인으로 보낸다(returnUrl로 복귀).
+// 게스트가 누르면 로그인 유도 모달을 띄운다 — 이동은 사용자가 [로그인하기]를 고른
+// 뒤에만 일어난다(returnUrl로 복귀).
 // 낙관적 업데이트 — 하트가 즉시 반응해야 하므로. 실패 시 롤백.
 export function useToggleWishlist() {
   const queryClient = useQueryClient();
-  const router = useRouter();
+  const requireLogin = useRequireLogin();
   // 여기선 "로그인 화면으로 보낼지"를 판단하므로 user 기준이다.
   // AT(=isAuthReady)로 보면 복원 중인 로그인 사용자를 게스트로 오인해 로그인으로 보낸다.
   const isAuthed = useAuthStore((s) => s.user !== null);
@@ -182,10 +183,13 @@ export function useToggleWishlist() {
     seed?: WishlistSeed,
   ) => {
     if (!isAuthed) {
-      const returnUrl = encodeURIComponent(
-        window.location.pathname + window.location.search,
+      // 복귀 경로는 생략 — 찜 버튼은 상세·챗 카드·브랜드 카드 여러 곳에 있어
+      // 지금 보고 있는 화면(기본값)이 곧 돌아올 자리다.
+      requireLogin(
+        undefined,
+        "찜하려면 로그인이 필요해요.",
+        "로그인하면 이 화면으로 돌아와요. 찜은 다시 눌러주세요.",
       );
-      router.push(`/login?returnUrl=${returnUrl}`);
       return;
     }
     mutation.mutate({ productId, wished, seed });

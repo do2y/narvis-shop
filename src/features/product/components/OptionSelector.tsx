@@ -74,7 +74,9 @@ export function OptionSelector({
   }, [selected, quantity, selectedSoldOut, onChange]);
 
   return (
-    <div className="flex flex-col gap-5">
+    // gap-4: 옵션·수량·선택단가가 하나의 "고르는 구역"으로 묶여 보이도록
+    // 섹션 간격(gap-6 이상)보다 좁게 유지한다(§16 근접성 = 관계).
+    <div className="flex flex-col gap-4">
       {options.length > 0 && (
         <Field label="옵션">
           {/* 네이티브 select 를 쓰지 않는다 — <option> 안에는 요소를 넣을 수 없어
@@ -153,17 +155,30 @@ export function OptionSelector({
       )}
 
       <Field label="수량">
-        <div className="flex w-fit items-center rounded-full border">
+        {/* rounded-sm(6px) — 종전 rounded-full 은 이 자리에서 알약 하나가 통째로
+            떠 있는 것처럼 보여 옆의 옵션 select(각진 사각)와 언어가 어긋났다.
+            CLAUDE.md 의 "입력은 rounded-sm" 을 따른다 — 이건 버튼이 아니라
+            수량 입력 컨트롤이다.
+
+            h-11 로 select 와 높이를 맞춘다. divide-x 로 세 칸을 나눠 각 버튼의
+            누를 수 있는 범위가 눈에 보이게 한다(종전에는 경계가 없어 어디까지가
+            버튼인지 알 수 없었다). */}
+        <div className="flex h-11 w-fit items-center divide-x rounded-sm border">
           <button
             type="button"
             // 표시값(클램프된 quantity) 기준으로 증감 — qty가 상한보다 커도 자연스럽게 이어진다.
             onClick={() => setQty(Math.max(1, quantity - 1))}
+            disabled={quantity <= 1}
             aria-label="수량 감소"
-            className="flex size-10 items-center justify-center text-muted-foreground hover:text-foreground"
+            // size-11(44px) — 터치 타겟 최소치(CLAUDE.md). 아이콘은 작게 두되
+            // 누를 수 있는 면적은 유지한다.
+            className="flex size-11 items-center justify-center rounded-l-sm text-muted-foreground transition-colors duration-150 ease-out-strong hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <Minus className="size-4" />
+            <Minus className="size-3.5" />
           </button>
-          <span className="w-10 text-center text-sm font-medium">
+          {/* tabular-nums: 1→2 처럼 자릿수가 같아도 글자 폭이 달라 숫자가 미세하게
+              흔들린다. 고정폭 숫자로 두면 증감 중에도 좌우 버튼이 제자리에 있다. */}
+          <span className="flex h-11 w-12 items-center justify-center text-sm font-medium tabular-nums">
             {quantity}
           </span>
           <button
@@ -171,9 +186,9 @@ export function OptionSelector({
             onClick={() => setQty(quantity + 1)}
             disabled={atMax}
             aria-label="수량 증가"
-            className="flex size-10 items-center justify-center text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+            className="flex size-11 items-center justify-center rounded-r-sm text-muted-foreground transition-colors duration-150 ease-out-strong hover:text-foreground disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <Plus className="size-4" />
+            <Plus className="size-3.5" />
           </button>
         </div>
         {/* 재고 상한에 도달했을 때만 안내. 남은 재고 수량은 노출하지 않는다. */}
@@ -184,14 +199,16 @@ export function OptionSelector({
         )}
       </Field>
 
-      {/* 옵션 추가금이 붙으면 최종 단가가 달라지므로 합계를 명시 */}
+      {/* 옵션 추가금이 붙으면 최종 단가가 달라지므로 합계를 명시.
+          라벨은 보조로 낮추고 금액만 본문 색으로 올린다 — 상단 가격과 중복되는
+          정보라 같은 무게로 두면 "가격이 두 개"로 읽힌다. */}
       {selected && selected.extraPrice > 0 && (
-        <p className="text-sm text-muted-foreground">
-          선택 단가{" "}
-          <span className="font-semibold text-foreground">
+        <div className="flex items-baseline justify-between border-t pt-4">
+          <span className="text-xs text-muted-foreground">선택 단가</span>
+          <span className="text-sm font-semibold tabular-nums">
             {(basePrice + selected.extraPrice).toLocaleString("ko-KR")}원
           </span>
-        </p>
+        </div>
       )}
     </div>
   );
@@ -206,7 +223,9 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium">{label}</p>
+      {/* 라벨은 보조 정보다 — 값(선택된 옵션·수량)보다 강하면 안 된다.
+          text-xs + muted 로 낮추고, 값 쪽이 본문 크기를 갖는다. */}
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
       {children}
     </div>
   );

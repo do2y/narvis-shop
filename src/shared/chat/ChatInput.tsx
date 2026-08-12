@@ -23,7 +23,6 @@ interface ChatInputProps {
   onFocus?: () => void;
 }
 
-
 /** 업로드 실패 줄 — retryFile 이 있을 때만 재시도를 권한다(형식 오류는 재시도해도 같다) */
 function UploadFailed({
   message,
@@ -248,7 +247,7 @@ export function ChatInput({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onFocus={onFocus}
-          placeholder={placeholder ?? "특별히 바꾸고 싶은 점이 있으신가요?"}
+          placeholder={placeholder ?? "어떤 상품을 찾고 계신가요?"}
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
 

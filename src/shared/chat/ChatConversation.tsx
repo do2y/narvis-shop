@@ -25,6 +25,7 @@ interface ChatConversationProps {
    * 채널별로 필요 여부가 달라 부모가 주입한다.
    */
   noticeSlot?: React.ReactNode;
+  showUserAvatar?: boolean;
   className?: string;
   scrollAreaClassName?: string;
   inputAreaClassName?: string;
@@ -46,6 +47,7 @@ export function ChatConversation({
   aboveInput,
   headerSlot,
   noticeSlot,
+  showUserAvatar = true,
   className,
   scrollAreaClassName,
   inputAreaClassName,
@@ -82,6 +84,7 @@ export function ChatConversation({
             messages={messages}
             isStreaming={isStreaming}
             progress={progress}
+            showUserAvatar={showUserAvatar}
             onRetry={onRetry}
           />
         </div>

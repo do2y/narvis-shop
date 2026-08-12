@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { Button } from "@/shared/ui/button";
+import { Section } from "./Section";
 
 /**
  * 상세 설명 이미지 — 위에서 아래로 이어 붙이는 세로 나열.
@@ -48,15 +48,16 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
   const rendered = collapsed ? valid.slice(0, COLLAPSED_VISIBLE) : valid;
 
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-lg font-bold">상세 설명</h2>
-
+    <Section title="상세 설명">
       {/* 본문(max-w-5xl)보다 좁게 가운데 정렬한다 — 상세 이미지는 대개 700~860px 로
           제작돼, 본문 폭을 꽉 채우면 원본보다 확대돼 흐려진다.
-          mx-auto 는 여기(경계)에만 준다. 안쪽 이미지는 w-full 로 이 폭을 따른다. */}
+          mx-auto 는 여기(경계)에만 준다. 안쪽 이미지는 w-full 로 이 폭을 따른다.
+
+          rounded-xl + overflow-hidden: 상단 갤러리와 같은 모서리를 줘 두 이미지
+          블록이 같은 언어로 읽히게 한다. 종전엔 각진 채라 갤러리와 따로 놀았다. */}
       <div className="relative mx-auto w-full max-w-2xl">
         <div
-          className="overflow-hidden"
+          className="overflow-hidden rounded-xl"
           style={collapsed ? { maxHeight: COLLAPSED_HEIGHT } : undefined}
         >
           {/* ProductImage(공용 카드용)를 쓰지 않는다 — 실패 대체 화면이 size-full 이라
@@ -90,33 +91,47 @@ export function DetailImages({ images, alt }: { images: string[]; alt: string })
         </div>
 
         {/* 접힌 상태에서 아래가 잘렸음을 알리는 그라데이션.
-            없으면 이미지가 원래 거기서 끝나는 것처럼 보인다. */}
+            없으면 이미지가 원래 거기서 끝나는 것처럼 보인다.
+
+            더보기 버튼을 이 그라데이션 안에 겹쳐 놓는다 — 종전에는 이미지 아래
+            별도 줄에 전체 폭 outline 버튼으로 떠 있어서, 입력창처럼 보이는 데다
+            이미지와 버튼이 서로 다른 두 요소로 끊겼다. 페이드 위에 얹으면
+            "이 콘텐츠를 펼치는 손잡이"라는 관계가 형태로 읽힌다. */}
         {collapsed && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/85 to-transparent"
           />
         )}
-      </div>
 
-      {collapsible && (
-        <Button
-          variant="outline"
-          onClick={() => setExpanded((v) => !v)}
-          // 이미지가 아니라 위아래 형제 섹션(상품 정보 표·리뷰)의 폭에 맞춘다.
-          // 이미지는 원본 해상도 때문에 max-w-2xl로 좁혀 둔 예외라, 거기 맞추면
-          // 버튼만 안쪽으로 들어가 세로 정렬선이 끊긴다.
-          className="h-11 w-full gap-1.5"
-        >
-          {expanded ? "상세 설명 접기" : "상세 설명 더보기"}
-          {/* 펼치면 화살표를 뒤집어 접힌다는 것을 보인다. 아이콘 2개를 번갈아 쓰지 않고
-              회전시키는 건 AppHeader와 같은 방식 — 상태 전환이 이어져 보인다. */}
-          <ChevronDown
-            aria-hidden
-            className={`size-4 transition-transform ${expanded ? "rotate-180" : ""}`}
-          />
-        </Button>
-      )}
-    </section>
+        {collapsible && (
+          <div
+            className={
+              collapsed
+                ? "absolute inset-x-0 bottom-0 flex justify-center pb-1"
+                : "mt-5 flex justify-center"
+            }
+          >
+            {/* CTA 가 아니라 콘텐츠 확장 control 이다 — 채운 버튼도, 전체 폭도 아니다.
+                내용 폭만큼만 차지하는 조용한 텍스트 버튼으로 두되, 페이드 위에
+                떠 있어도 읽히도록 배경과 얇은 테두리를 준다. */}
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full border bg-background px-5 text-sm font-medium text-muted-foreground transition-colors duration-150 ease-out-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {expanded ? "상세 설명 접기" : "상세 설명 더보기"}
+              {/* 펼치면 화살표를 뒤집어 접힌다는 것을 보인다. 아이콘 2개를 번갈아 쓰지 않고
+                  회전시키는 건 AppHeader와 같은 방식 — 상태 전환이 이어져 보인다. */}
+              <ChevronDown
+                aria-hidden
+                className={`size-4 transition-transform duration-200 ease-out-strong ${expanded ? "rotate-180" : ""}`}
+              />
+            </button>
+          </div>
+        )}
+      </div>
+    </Section>
   );
 }
