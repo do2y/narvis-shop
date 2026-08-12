@@ -17,7 +17,12 @@ export function toPageType(pathname: string): PageType | null {
   if (pathname.startsWith("/seller")) return "seller_dashboard";
 
   // 구매자
-  if (pathname === "/") return "home";
+  // 쇼핑몰 홈은 /home 이다(2026-08-12 루트를 랜딩에 내주면서 이동).
+  // ⚠️ 여기를 "/" 로 두면 랜딩이 home 으로 잡히고 정작 쇼핑몰 홈은 null 이 되어,
+  // 에러 없이 집계만 뒤바뀐다. 루트(랜딩)는 아래 null 로 떨어진다 —
+  // PageType 은 E-1 계약 어휘 14종이라 landing 항목이 없고, FE 가 임의로
+  // 만들면 서버 화이트리스트 밖 값이 되어 그 건만 드롭된다.
+  if (pathname === "/home" || pathname.startsWith("/home/")) return "home";
   if (pathname.startsWith("/products/")) return "product_detail";
   // 브랜드 홈은 카테고리 필터가 달린 목록 화면이라 category 로 본다(전용 어휘가 없다)
   if (pathname.startsWith("/brands/")) return "category";

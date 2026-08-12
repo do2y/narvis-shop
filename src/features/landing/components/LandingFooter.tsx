@@ -69,7 +69,7 @@ export function LandingFooter({
             </FooterGroup>
 
             <FooterGroup title="바로가기">
-              <FooterLink href="/">쇼핑몰 홈</FooterLink>
+              <FooterLink href="/home">쇼핑몰 홈</FooterLink>
               <FooterLink href="/chat">AI 쇼핑 채팅</FooterLink>
             </FooterGroup>
 
@@ -154,7 +154,7 @@ function FooterTab({
   return (
     <li>
       <a
-        href={`/landing?tab=${tab}`}
+        href={`/?tab=${tab}`}
         aria-current={active ? "page" : undefined}
         onClick={(e) => {
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;

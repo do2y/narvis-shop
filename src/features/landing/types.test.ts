@@ -4,7 +4,7 @@ import { parseTab } from "./types";
 /**
  * `?tab=` 해석 규칙.
  *
- * 이 함수는 서버(app/landing/page.tsx의 searchParams)와 클라이언트(주소창 구독)
+ * 이 함수는 서버(app/page.tsx의 searchParams)와 클라이언트(주소창 구독)
  * **양쪽에서 호출된다.** 둘이 다른 값을 내면 hydration이 어긋나 첫 프레임에
  * 화면이 바뀌므로, 입력 형태별 결과를 고정해 둔다.
  */

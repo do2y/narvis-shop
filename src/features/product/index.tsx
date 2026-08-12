@@ -129,7 +129,7 @@ export default function ProductPage({
           <p className="text-sm text-muted-foreground">
             상품을 찾을 수 없어요.
           </p>
-          <Button variant="outline" onClick={() => router.push("/")}>
+          <Button variant="outline" onClick={() => router.push("/home")}>
             홈으로
           </Button>
         </main>

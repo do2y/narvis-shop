@@ -167,7 +167,7 @@ export default function CartPage() {
               마음에 드는 상품을 담아보세요.
             </p>
             <Link
-              href="/"
+              href="/home"
               className={cn(buttonVariants(), "mt-1 h-11 rounded-full px-6")}
             >
               쇼핑하러 가기

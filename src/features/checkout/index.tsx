@@ -146,7 +146,7 @@ export default function CheckoutPage() {
             상품 상세 페이지에서 &lsquo;바로 구매&rsquo;를 눌러 주문을 시작해주세요.
           </p>
           <Link
-            href="/"
+            href="/home"
             className={cn(buttonVariants(), "mt-2 h-11 rounded-full px-6")}
           >
             홈으로
