@@ -21,7 +21,8 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
-  const { mutate, isPending, errorMessage } = useLogin();
+  const { mutate, isPending, errorMessage, rateLimited, retryAfterSeconds } =
+    useLogin();
 
   return (
     <form
@@ -69,10 +70,14 @@ export function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
       <Button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || rateLimited}
         className="h-12 rounded-full text-base"
       >
-        {isPending ? "로그인 중…" : "이메일로 로그인"}
+        {isPending
+          ? "로그인 중…"
+          : rateLimited
+            ? `${retryAfterSeconds}초 후 다시 시도`
+            : "이메일로 로그인"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">

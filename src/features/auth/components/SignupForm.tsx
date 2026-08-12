@@ -39,7 +39,8 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
       agreePrivacy: false,
     },
   });
-  const { mutate, isPending, errorMessage } = useSignup();
+  const { mutate, isPending, errorMessage, rateLimited, retryAfterSeconds } =
+    useSignup();
 
   const onSubmit = handleSubmit((v) =>
     mutate({
@@ -210,10 +211,14 @@ export function SignupForm({ onSwitchToLogin }: SignupFormProps) {
 
       <Button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || rateLimited}
         className="h-12 rounded-full text-base"
       >
-        {isPending ? "가입 중…" : "가입하기"}
+        {isPending
+          ? "가입 중…"
+          : rateLimited
+            ? `${retryAfterSeconds}초 후 다시 시도`
+            : "가입하기"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
