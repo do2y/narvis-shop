@@ -19,13 +19,15 @@ export function useOrders(page = 0, size = 10) {
 }
 
 // 주문 상세 — 단건. 목록과 별개 키로 두어 배송지·결제 정보까지 캐시.
-export function useOrder(orderId: number) {
+export function useOrder(orderId: string) {
   const isAuthReady = useAuthStore(selectIsAuthReady);
 
   return useQuery({
     queryKey: ["orders", orderId],
     queryFn: () => fetchOrder(orderId),
     staleTime: 0,
-    enabled: isAuthReady && Number.isFinite(orderId),
+    // id 가 문자열이 되면서 유효성 판정도 바뀐다 — 라우트 파라미터가 비어 있는
+    // 구간에 요청이 나가면 404 가 뜨므로 빈 문자열을 걸러낸다.
+    enabled: isAuthReady && orderId.length > 0,
   });
 }

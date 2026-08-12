@@ -8,7 +8,8 @@ import type {
 // 브랜드가 판매 중인 상품의 소분류 — 카테고리 필터 축(07-17 확정).
 // 필터 쿼리는 name이 아니라 id로 보낸다.
 export interface BrandCategory {
-  id: number;
+  // 응답 id 는 문자열(2026-08-06 공통 규약) — 아래 Brand.id 와 같은 이유
+  id: string;
   name: string;
 }
 
@@ -56,7 +57,8 @@ export const BRAND_SORTS: { value: BrandSort; label: string }[] = [
 ];
 
 export interface BrandQuery {
-  category?: number; // 카테고리 ID. 미지정 = 전체
+  // 카테고리 ID. 미지정 = 전체. 문자열이다 — 64비트라 number 로 두면 끝자리가 바뀐다
+  category?: string;
   sort?: BrandSort; // 기본 popular
   page?: number; // 기본 0
   size?: number; // 기본 20

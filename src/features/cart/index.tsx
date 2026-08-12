@@ -47,12 +47,12 @@ export default function CartPage() {
 
   // 선택 상태는 클라이언트 UI 상태(어떤 라인을 주문할지). 목록 로드 후 기본 전체 선택.
   // 해제한 항목만 기억해 새 항목은 자동 선택되게 한다(제외 집합 방식).
-  const [deselected, setDeselected] = useState<Set<number>>(new Set());
+  const [deselected, setDeselected] = useState<Set<string>>(new Set());
 
   // 구매 불가(품절·판매종료) 상품은 서버 합계에서도 빠지므로 선택 대상에서 제외한다.
   const isSelected = (item: CartItem) =>
     isPurchasable(item.purchaseState) && !deselected.has(item.cartItemId);
-  const toggle = (id: number) =>
+  const toggle = (id: string) =>
     setDeselected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);

@@ -19,10 +19,17 @@ export interface RecommendationContext {
 
 // 장바구니 항목. 결제 이동을 위해 카드 수준 데이터를 포함.
 export interface CartItem {
-  cartItemId: number; // 장바구니 라인 식별(같은 상품 다른 옵션 구분)
+  /**
+   * 장바구니 라인 식별(같은 상품 다른 옵션 구분).
+   *
+   * 응답 id 는 전부 문자열이다(2026-08-06 공통 규약) — JS 안전 정수를 넘는 BIGINT 가
+   * number 로 파싱되면 끝자리가 조용히 바뀐다. 절대 number 로 되돌리지 말 것.
+   * 요청은 숫자·문자열 둘 다 받으므로 받은 문자열을 그대로 실어 보내면 된다.
+   */
+  cartItemId: string;
   productId: string;
   name: string;
-  brandId: number;
+  brandId: string;
   brandName: string;
   imageUrl: string;
   // 옵션 없는 상품은 null. 문자열인 이유는 ProductOption 주석 참조(64비트 ID)

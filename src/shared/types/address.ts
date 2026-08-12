@@ -1,7 +1,8 @@
 // 배송지 — 백엔드 /api/addresses 계약과 1:1 (M-8).
 // 결제(주문서)와 마이페이지(배송지 관리)가 함께 쓰므로 shared에 둔다.
 export interface Address {
-  addressId: number;
+  // 응답 id 는 문자열(2026-08-06 공통 규약) — number 로 되돌리지 말 것
+  addressId: string;
   label: string; // "집", "회사" 등 표시명
   recipient: string;
   phone: string;

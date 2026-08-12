@@ -25,9 +25,11 @@ export interface DirectOrderItem {
 }
 
 export interface CreateOrderRequest {
-  cartItemIds?: number[];
+  // 요청 id 는 숫자·문자열 모두 수용된다(2026-08-06 공통 규약) — 응답에서 받은
+  // 문자열을 변환 없이 그대로 실어 보낸다. 숫자로 만들면 그 과정에서 끝자리가 바뀐다.
+  cartItemIds?: string[];
   items?: DirectOrderItem[];
-  addressId?: number;
+  addressId?: string;
   address?: OrderAddressInput;
   deliveryRequest?: string;
   paymentMethod: PaymentMethod;
@@ -47,7 +49,8 @@ export type PaymentFailureReason = "MOCK_DECLINED" | "OUT_OF_STOCK";
 
 // 결제 성공·실패 모두 HTTP 200. 결과는 status로 구분한다.
 export interface CreateOrderResponse {
-  orderId: number;
+  // 응답 id 는 문자열(2026-08-06 공통 규약)
+  orderId: string;
   orderNo: string;
   status: "PAID" | "PAYMENT_FAILED";
   // O-2 재결제도 같은 모양으로 온다. 구버전 응답 대비로 optional.
@@ -59,7 +62,7 @@ export interface CreateOrderResponse {
 // 결제 완료 후 완료 화면으로 넘기는 주문 결과.
 // orderId·orderNo는 서버가 발급한 값. 금액은 화면 표시용(정본은 주문 상세 API).
 export interface OrderResult {
-  orderId: number;
+  orderId: string;
   orderNo: string;
   items: CheckoutItem[];
   address: Address;

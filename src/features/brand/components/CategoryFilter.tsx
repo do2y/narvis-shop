@@ -11,8 +11,8 @@ export function CategoryFilter({
   onSelect,
 }: {
   categories: BrandCategory[];
-  selected: number | null;
-  onSelect: (categoryId: number | null) => void;
+  selected: string | null;
+  onSelect: (categoryId: string | null) => void;
 }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">

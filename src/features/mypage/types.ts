@@ -46,7 +46,9 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 
 // 주문 항목 — 상세 캐시 시딩을 위해 카드 수준 데이터를 포함(이미지/가격).
 export interface OrderItem {
-  orderItemId: number;
+  // 응답 id 는 전부 문자열이다(2026-08-06 공통 규약). BIGINT 가 number 로 파싱되면
+  // 끝자리가 조용히 바뀌고, === 비교·Map 키에서 엉뚱한 줄이 잡힌다.
+  orderItemId: string;
   productId: string;
   productName: string;
   imageUrl: string;
@@ -57,7 +59,7 @@ export interface OrderItem {
 }
 
 export interface Order {
-  orderId: number;
+  orderId: string;
   orderNo: string; // "ORD-20260713-1001" — 파생값(저장 안 함)
   orderedAt: string; // ISO 일시
   representativeStatus: OrderStatus; // 아이템 상태들에서 도출한 대표 상태
@@ -274,14 +276,14 @@ export type ClaimStatus =
 // 취소·반품 내역 항목 — GET /api/claims 계약.
 // 상품 식별은 orderItemId(주문 줄)이며 productId는 내려오지 않는다.
 export interface Claim {
-  claimId: number;
+  claimId: string;
   orderNo: string; // 원 주문번호 "ORD-20260713-1001"
   type: ClaimType;
   status: ClaimStatus;
   reason: string; // 사유 표시값 "단순 변심"
   requestedAt: string; // ISO 일시(+09:00) — 최신순 정렬 기준
   processedAt: string | null; // 미처리 시 null
-  orderItemId: number;
+  orderItemId: string;
   productName: string;
   optionName: string | null;
   quantity: number;
@@ -305,10 +307,10 @@ export interface CreateClaimRequest {
   reason?: string;
 }
 
-// 신청 접수 응답 — 목록의 Claim과 달리 id가 number다(백엔드 PK).
+// 신청 접수 응답 — 목록의 Claim과 같은 축이라 id 타입도 같다(문자열).
 export interface CreateClaimResponse {
-  claimId: number;
-  orderItemId: number;
+  claimId: string;
+  orderItemId: string;
   type: ClaimType;
   status: ClaimStatus;
   requestedAt: string; // ISO 일시(+09:00)
@@ -317,7 +319,8 @@ export interface CreateClaimResponse {
 // 후기 작성 요청 — POST /api/reviews 계약. 대상은 주문 줄(orderItemId) 기준.
 // 등록만 지원하며 수정·삭제 API는 없다(02 D29). 사진은 백엔드 붙을 때 필드 추가.
 export interface CreateReviewRequest {
-  orderItemId: number;
+  // 요청 id 는 숫자·문자열 모두 수용된다 — 받은 문자열을 그대로 보낸다
+  orderItemId: string;
   rating: number; // 1~5 정수
   // 최대 2000자. 별점만 남기는 경우 빈 문자열로 나간다 — 필드를 빼지 않는 이유는
   // 계약이 필수로 정의돼 있어서다. 서버가 빈 값을 거부하면 계약부터 고쳐야 한다.
@@ -326,8 +329,8 @@ export interface CreateReviewRequest {
 
 // 후기 등록 응답 — 작성 후 상품 리뷰 캐시 무효화에 productId가 필요하다.
 export interface CreateReviewResponse {
-  reviewId: number;
-  orderItemId: number;
+  reviewId: string;
+  orderItemId: string;
   productId: string;
   rating: number;
   content: string;

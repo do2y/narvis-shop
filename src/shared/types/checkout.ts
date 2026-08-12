@@ -17,7 +17,8 @@ export interface CheckoutItem {
   // 문자열이다 — 64비트 ID(ProductOption 주석 참조).
   optionId?: string | null;
   // 장바구니 경유 주문이면 이 값으로 cartItemIds[]를 만든다(바로 구매는 없음).
-  cartItemId?: number;
+  // 문자열이다 — CartItem.cartItemId 를 그대로 옮겨 담는 값이라 축이 같아야 한다.
+  cartItemId?: string;
   quantity: number;
 }
 

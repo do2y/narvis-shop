@@ -18,7 +18,7 @@ export async function createOrder(
 // 새 주문을 만들면 실패 주문이 쌓이므로, 결제만 실패한 경우 이 경로를 쓴다.
 // PENDING/PAYMENT_FAILED 주문만 가능하고, 성공·실패 모두 200이라 status로 구분한다.
 export async function retryPayment(
-  orderId: number,
+  orderId: string,
   paymentMethod: string,
 ): Promise<CreateOrderResponse> {
   const { data } = await api.post<CreateOrderResponse>(
