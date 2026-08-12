@@ -64,7 +64,7 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
         <div className="flex min-w-0 items-center gap-4">
           {/* 로고 → 쇼핑몰 홈(판매자도 구매자 화면으로 돌아갈 수 있어야 함) */}
           <Link
-            href="/"
+            href="/home"
             aria-label="Narvis 홈"
             className="flex shrink-0 items-center gap-2.5"
           >

@@ -43,7 +43,7 @@ export default function WishlistPage() {
             title="아직 찜한 상품이 없어요"
             description="마음에 드는 상품에 하트를 눌러 모아보세요."
             actionLabel="쇼핑하러 가기"
-            actionTo="/"
+            actionTo="/home"
           />
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">

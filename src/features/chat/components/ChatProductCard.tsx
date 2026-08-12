@@ -109,21 +109,30 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           disabled={isPending}
           aria-label={optimisticWished ? "찜 해제" : "찜하기"}
           aria-pressed={optimisticWished}
-          className="absolute right-2.5 top-2.5 flex size-9 items-center justify-center rounded-full bg-white/88 text-muted-foreground shadow-[0_1px_8px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-all duration-150 ease-out hover:bg-white active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wordmark/20 disabled:opacity-60 sm:right-3 sm:top-3 sm:size-10"
+          className="group/wish absolute right-1.5 top-1.5 flex size-9 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 ease-out active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wordmark/20 disabled:opacity-60 sm:right-2 sm:top-2"
         >
-          <Heart
-            className={cn(
-              "size-4 transition-all duration-200 sm:size-[18px]",
-              optimisticWished
-                ? "scale-110 fill-red-500 text-red-500"
-                : "text-muted-foreground",
-            )}
-          />
+          {/* 버튼(size-9)은 터치 타겟이고, 눈에 보이는 원은 그 안의 span(size-7)이다 —
+              시각적 크기만 줄이고 누를 수 있는 영역은 유지한다. */}
+          <span className="flex size-7 items-center justify-center rounded-full bg-white/88 shadow-[0_1px_6px_rgba(15,23,42,0.07)] backdrop-blur-sm transition-colors duration-150 group-hover/wish:bg-white">
+            <Heart
+              strokeWidth={1.75}
+              className={cn(
+                "size-[15px] transition-all duration-200",
+                optimisticWished
+                  ? "scale-110 fill-red-500 text-red-500"
+                  : "text-muted-foreground",
+              )}
+            />
+          </span>
         </button>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col px-0.5 pt-3 sm:pt-4">
-        <div className="flex flex-col gap-2 sm:gap-2.5">
+      <div className="flex min-w-0 flex-1 flex-col px-0.5 pt-2.5 sm:pt-3">
+        {/* 브랜드·평점 / 상품명 / 추천 이유를 한 묶음으로 둔다 — 이유는 독립 정보가
+            아니라 상품명을 보조하는 설명이라, 그룹 내부는 좁게(gap-1.5) 두고 그룹
+            바깥(가격)과는 넓게 띄워 시선이 "무엇인가 → 왜 추천인가 → 얼마인가"
+            순으로 흐르게 한다. 근접성이 곧 관계다(§16 Grouping). */}
+        <div className="flex flex-col gap-1.5 sm:gap-2">
           <div className="flex min-w-0 items-center justify-between gap-2 sm:min-h-[1.125rem]">
             <span className="min-w-0 truncate text-[11px] leading-4 text-muted-foreground/90 sm:text-[12px]">
               {product.brandName}
@@ -156,24 +165,36 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
               {displayName}
             </a>
           </h3>
+
+          {/* AI 추천 이유(CH-5 reason) — 면색·테두리·라벨 없이 본문 흐름 안의 텍스트다.
+              카드에서 먼저 읽혀야 하는 건 상품(이미지·이름·가격)이고 이유는 그걸 거드는
+              설명이라, 배경으로 띄우면 위계가 뒤집힌다(df3a9e4 이전 표기).
+              위계는 색·면이 아니라 크기와 색조로만 만든다(§15).
+
+              muted-foreground 를 그대로 쓴다 — /70 처럼 더 흐리면 본문 대비가 무너져
+              읽기 어려워진다. 본문(상품명)보다 한 단계 작은 크기로 충분히 구분된다.
+
+              2줄 클램프 + 말줄임. 여기서는 min-height 를 주지 않는다 — 이유가 짧은
+              카드에 빈 줄이 생기기 때문이고, 카드 간 가격 정렬은 아래 mt-auto 가 맡는다. */}
+          {reason && (
+            <p
+              className="line-clamp-2 text-[12px] leading-[1.45] text-muted-foreground sm:text-[13px]"
+              title={reason}
+            >
+              {reason}
+            </p>
+          )}
         </div>
 
-        {/* AI 추천 이유(CH-5 reason) — 카드의 부속이 아니라 답변의 일부라
-            brand 톤 면색으로 한 번 더 구분한다. 가격·담기 줄은 mt-auto 로
-            아래에 고정되므로 이유 길이가 달라도 그리드 행이 어긋나지 않는다 */}
-        {reason && (
-          <p
-            className="product-card-two-line mt-2.5 rounded-sm bg-brand/10 px-2 py-1.5 text-[12px] text-brand [--product-card-two-line-lh:1.45] [--product-card-two-line-py:0.375rem] sm:mt-3 sm:text-[13px]"
-            title={reason}
-          >
-            {reason}
-          </p>
-        )}
-
-        <div className="mt-auto pt-4 sm:pt-[18px]">
+        {/* 가격은 카드 최하단 고정 — 이유 길이가 달라도 그리드에서 가격 줄이 맞는다.
+            mt-auto 는 이 블록에만 걸어, 위 그룹이 늘어나지 않게 한다.
+            pt 는 그룹 내부 간격(gap-1.5)보다 확실히 크게 잡아 "다른 묶음"으로 읽히게 한다. */}
+        <div className="mt-auto pt-3 sm:pt-3.5">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="min-h-[1.6rem] sm:min-h-[1.75rem]">
+              {/* 구 min-h-[1.6rem] 제거 — 할인 없는 카드에 빈 높이가 남아 이유 아래
+                  공간이 부풀었다. 줄 높이는 가격 텍스트가 자연히 만든다. */}
+              <div>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:gap-x-2.5">
                   <span className="text-[17px] font-bold tracking-tight text-foreground sm:text-[18px]">
                     {formatPrice(product.price)}
@@ -201,9 +222,14 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
               }}
               disabled={addCart.isPending}
               aria-label="장바구니에 담기"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-muted-foreground transition-all duration-150 ease-out hover:bg-black/[0.03] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wordmark/20 disabled:opacity-50 sm:size-10"
+              className="group/cart -m-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-150 ease-out active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wordmark/20 disabled:opacity-50"
             >
-              <ShoppingCart className="size-4" />
+              {/* 찜 버튼과 같은 규격 — 보이는 원 size-7, 아이콘 15px, 선 굵기 1.75.
+                  둘이 달라 보이면 같은 층의 컨트롤로 읽히지 않는다(§16 Familiarity).
+                  음수 마진으로 터치 타겟만 가격 줄 밖으로 넓힌다. */}
+              <span className="flex size-7 items-center justify-center rounded-full border border-black/[0.08] transition-colors duration-150 group-hover/cart:bg-black/[0.03]">
+                <ShoppingCart strokeWidth={1.75} className="size-[15px]" />
+              </span>
             </button>
           </div>
         </div>

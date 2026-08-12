@@ -30,7 +30,7 @@ export function CrossLink({
     <div className={cn(SHELL, "pb-4")}>
       <Reveal>
         <a
-          href={`/landing?tab=${to}`}
+          href={`/?tab=${to}`}
           onClick={(e) => {
             // 수식키 클릭은 새 탭으로 여는 기본 동작을 유지한다
             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
