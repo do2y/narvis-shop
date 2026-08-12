@@ -107,12 +107,14 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
   const cartCount = useCartItemCount();
 
   // 채팅 진입점이 이미 있는 곳에선 헤더 채팅 버튼을 숨김:
-  //  - 홈(/): 히어로에 채팅 입력창이 있음
+  //  - 쇼핑몰 홈(/home): 히어로에 채팅 입력창이 있음
   //  - 채팅(/chat): 이미 그 페이지임
   // 그 외 페이지에선 상시 채팅 진입점으로 유지.
+  // (루트 "/" 는 랜딩이고 LandingHeader 를 쓰므로 여기 조건에 넣지 않는다 —
+  //  넣으면 정작 홈에서 히어로 입력창과 헤더 버튼이 겹쳐 두 개가 된다)
   const pathname = usePathname();
   const isChatPage = pathname.startsWith("/chat");
-  const hasChatEntry = pathname === "/" || pathname.startsWith("/chat");
+  const hasChatEntry = pathname === "/home" || pathname.startsWith("/chat");
 
   const handleLogout = useLogout();
 
@@ -137,7 +139,7 @@ export function AppHeader({ showMenu = true, leftSlot }: AppHeaderProps) {
           )}
         >
           <Link
-            href="/"
+            href="/home"
             aria-label="Narvis 홈"
             className={cn(
               "flex items-center rounded-full sm:gap-2.5",

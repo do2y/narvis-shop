@@ -36,7 +36,7 @@ export default function OrderCompletePage() {
             주문 내역은 마이페이지에서 확인하실 수 있어요.
           </p>
           <Link
-            href="/"
+            href="/home"
             className={cn(buttonVariants(), "mt-2 h-11 rounded-full px-6")}
           >
             홈으로
@@ -123,7 +123,7 @@ export default function OrderCompletePage() {
               주문 내역 보기
             </Link>
             <Link
-              href="/"
+              href="/home"
               className={cn(
                 buttonVariants({ variant: "outline" }),
                 "h-12 flex-1 rounded-sm text-base",

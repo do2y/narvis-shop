@@ -42,7 +42,7 @@ export default function RecentProductsPage() {
             title="아직 본 상품이 없어요"
             description="관심 있는 상품을 둘러보면 여기에 모아드려요."
             actionLabel="쇼핑하러 가기"
-            actionTo="/"
+            actionTo="/home"
           />
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">

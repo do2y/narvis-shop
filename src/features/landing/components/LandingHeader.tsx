@@ -102,9 +102,9 @@ export function LandingHeader({
           scrolled ? "h-14" : "h-16 sm:h-[72px]",
         )}
       >
-        {/* 로고 — 서비스 홈으로. 랜딩이 아니라 실제 쇼핑몰 진입점이 홈이다 */}
+        {/* 로고 — 쇼핑몰 홈(/home)으로. 여기(랜딩)가 루트라 "/" 로 두면 제자리 링크가 된다 */}
         <Link
-          href="/"
+          href="/home"
           aria-label="Narvis 홈"
           className="flex shrink-0 items-center gap-2.5 rounded-full"
         >
@@ -151,7 +151,7 @@ export function LandingHeader({
           {/* 이미 로그인했으면 "로그인"은 쓸모가 없다 — 서비스로 들어가는 링크로 바꾼다 */}
           {user ? (
             <Link
-              href={user.role === "SELLER" ? "/seller" : "/"}
+              href={user.role === "SELLER" ? "/seller" : "/home"}
               className="hidden h-10 items-center rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors duration-150 ease-out-strong hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground sm:inline-flex"
             >
               {user.role === "SELLER" ? "판매자 홈" : "쇼핑하러 가기"}
@@ -231,7 +231,9 @@ export function LandingHeader({
           ))}
 
           <a
-            href={user ? (user.role === "SELLER" ? "/seller" : "/") : "/login"}
+            href={
+              user ? (user.role === "SELLER" ? "/seller" : "/home") : "/login"
+            }
             className="flex h-11 items-center rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors duration-150 ease-out-strong hover:[@media(hover:hover)]:bg-muted sm:hidden"
           >
             {user
@@ -276,7 +278,7 @@ function TabLinks({
         return (
           <a
             key={item.id}
-            href={`/landing?tab=${item.id}`}
+            href={`/?tab=${item.id}`}
             aria-current={active ? "page" : undefined}
             onClick={(e) => {
               // 좌클릭·수식키 없음일 때만 가로챈다 — Ctrl/⌘+클릭·가운데 클릭으로

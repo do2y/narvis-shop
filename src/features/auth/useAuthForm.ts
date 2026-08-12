@@ -17,9 +17,11 @@ import {
 import { formatRetryAfter, useRateLimit } from "./useRateLimit";
 
 // returnUrl은 앱 내부 경로만 허용 (오픈 리다이렉트 방지)
+// 기본 목적지는 쇼핑몰 홈(/home)이다 — 방금 로그인한 사람을 루트(랜딩=서비스 소개)로
+// 보내면 "이미 아는 서비스"를 다시 설명받게 된다. 루트 전환(2026-08-12) 때 정한 것.
 function safeReturnUrl(raw: string | null): string {
-  if (!raw) return "/";
-  return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+  if (!raw) return "/home";
+  return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/home";
 }
 
 // 로그인 후 목적지. 판매자는 쇼핑몰 라우트에서 격리되므로(가드 BlockSeller),

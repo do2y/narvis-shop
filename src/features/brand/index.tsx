@@ -98,7 +98,7 @@ export default function BrandPage({
               존재하지 않는 브랜드예요.
             </p>
             <Link
-              href="/"
+              href="/home"
               className={cn(
                 buttonVariants({ variant: "outline" }),
                 "h-11 rounded-full px-6 transition-transform active:scale-[0.98]",

@@ -44,7 +44,8 @@ function getTabSnapshot(): LandingTab {
  * ## 왜 한 라우트인가
  * `/seller`는 이미 판매자 대시보드가 쓰고 있고(RequireRole 가드), 거기에 공개
  * 랜딩을 얹으려면 대시보드 URL을 옮기고 로그인 후 이동·격리 가드를 전부 고쳐야
- * 한다. 기존 서비스 동선을 건드리지 않으려고 `/landing` 한 곳에 둔다.
+ * 한다. 기존 서비스 동선을 건드리지 않으려고 루트(`/`) 한 곳에 둔다
+ * (2026-08-12 이전에는 `/landing` 이었다).
  *
  * ## 탭 상태를 URL에 남기는 방법
  * `useSearchParams`를 쓰지 않는다 — 그 훅을 쓰는 컴포넌트는 Suspense 경계에
@@ -73,7 +74,7 @@ export default function LandingPage({
    * 프레임 동안 소비자 탭이 스치고(연쇄 렌더), 뒤로가기 때 둘을 따로 갱신해야
    * 한다. `useSyncExternalStore`로 주소창을 직접 읽으면 그 두 문제가 함께 없어진다.
    *
-   * 서버 스냅샷은 라우트가 `searchParams`에서 읽어 넘긴 값이다(app/landing/page.tsx).
+   * 서버 스냅샷은 라우트가 `searchParams`에서 읽어 넘긴 값이다(app/page.tsx).
    * 그래서 `?tab=seller` 링크도 판매자 내용이 담긴 HTML로 나가고, hydration 시
    * 클라이언트가 읽는 주소창 값과 일치해 불일치 경고가 없다.
    */
@@ -89,7 +90,7 @@ export default function LandingPage({
       if (next === tab) return;
       // 화면 내 쿼리 갱신은 pushState (CLAUDE.md 라우팅 규칙).
       // router.push는 페이지 이동이라 주소창 반영이 늦고 스크롤이 초기화된다.
-      window.history.pushState(null, "", `/landing?tab=${next}`);
+      window.history.pushState(null, "", `/?tab=${next}`);
       // pushState는 popstate를 발화하지 않는다 — 구독자에게 직접 알린다
       notifyUrlChange();
     },

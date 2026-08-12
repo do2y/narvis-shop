@@ -77,7 +77,9 @@ export function RequireRole({
       return;
     }
     // role은 /api/auth/me로 덮어쓴 서버 값 — persist된 localStorage 값이 아니다.
-    if (user.role !== role) router.replace("/");
+    // 역할이 안 맞으면 쇼핑몰 홈으로 보낸다 — 이미 로그인해 서비스를 쓰던 사람이라
+    // 루트(랜딩=서비스 소개)로 되돌리면 "처음 온 사람" 취급이 된다.
+    if (user.role !== role) router.replace("/home");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRestoring, user, role]);
 

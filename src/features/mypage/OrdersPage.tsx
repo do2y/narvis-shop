@@ -53,7 +53,7 @@ export default function OrdersPage() {
             title="아직 주문 내역이 없어요"
             description="마음에 드는 상품을 찾아 첫 주문을 시작해보세요."
             actionLabel="쇼핑하러 가기"
-            actionTo="/"
+            actionTo="/home"
           />
         ) : (
           <div className="flex flex-col gap-5">
