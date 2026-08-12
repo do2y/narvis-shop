@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, Heart, Star } from "lucide-react";
 import { track } from "@/shared/analytics/track";
 import { useWishlistToggleWithToast } from "@/shared/hooks/useWishlist";
+import { useRequireLogin } from "@/shared/hooks/useRequireLogin";
 import { cn } from "@/lib/utils";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { Button } from "@/shared/ui/button";
@@ -49,6 +50,7 @@ export default function ProductPage({
   initialDetail?: ProductDetail;
 }) {
   const router = useRouter();
+  const requireLogin = useRequireLogin();
   const {
     wished,
     isPending: wishlistPending,
@@ -200,13 +202,19 @@ export default function ProductPage({
 
   const buyNow = () => {
     if (!purchasable || selectionRef.current.soldOut) return;
-    // 구매는 로그인 필요(CLAUDE.md). 게스트면 현재 상세로 복귀하도록 returnUrl 걸어 로그인 유도.
-    // (state는 리다이렉트로 유실되므로 로그인 후 상세에서 다시 "바로 구매"하게 한다.)
+    // 구매는 로그인 필요(CLAUDE.md). 게스트면 물어보고, 가겠다고 하면 현재 상세로
+    // 복귀하도록 returnUrl 을 건다.
+    // (state는 리다이렉트로 유실되므로 로그인 후 상세에서 다시 "바로 구매"하게 한다.
+    //  그래서 "옵션·수량은 다시 골라야 한다"를 안내 문구에 함께 담는다 — 안 그러면
+    //  로그인만 하면 결제로 이어질 줄 알고 기다리게 된다.)
     // 클릭 시점 값이면 충분해 구독 없이 getState로 읽는다(렌더 중 비구독 읽기 방지).
     const { user } = useAuthStore.getState();
     if (!user) {
-      const returnUrl = encodeURIComponent(`/products/${id}`);
-      router.push(`/login?returnUrl=${returnUrl}`);
+      requireLogin(
+        `/products/${id}`,
+        "구매하려면 로그인이 필요해요.",
+        "로그인하면 이 상품으로 돌아와요. 선택한 옵션과 수량은 다시 골라주세요.",
+      );
       return;
     }
     const { option, quantity } = selectionRef.current;
