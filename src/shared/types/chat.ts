@@ -3,8 +3,14 @@ import type { RecommendationContext } from "@/shared/types/cart";
 // 화면 어휘 정본은 E-1(analytics)이고 CH-2 는 참조만 한다 — 같은 이름을 두 벌 두지 않는다.
 import type { PageType } from "@/shared/analytics/types";
 
-/** 채팅 API 계약 타입 — 백엔드/LLM 스키마와 1:1. 변경 시 계약 문서와 함께 갱신 */
-export type ChatChannel = "SHOPPING" | "CS" | "SELLER";
+/**
+ * 채팅 API 계약 타입 — 백엔드/LLM 스키마와 1:1. 변경 시 계약 문서와 함께 갱신.
+ *
+ * "CS" 는 2026-08-11 CH-1 개정으로 폐기됐다 — 문의 챗봇(CH-3)이 폐기되면서
+ * 붙을 챗봇이 없어졌고, BE enum 에서도 빠져(PR #171) 보내면 400 이다.
+ * 남겨두면 openChatSession 이 타입상 허용해 400 을 부르는 경로가 열린다.
+ */
+export type ChatChannel = "SHOPPING" | "SELLER";
 
 /**
  * 사용자가 지금 보고 있는 화면(계약 CH-2 §screen, 2026-07-28 확정).
@@ -31,8 +37,12 @@ export interface ChatScreenContext {
    * 서버가 모르는 목록만 싣는다 — 기준은 "화면에 보이나"가 아니라 "서버가 이미 아나"다.
    * 추천 카드(CH-5)는 listId 로 서버가 알고 있어 싣지 않는다(되돌려주면 위조 경로가 된다).
    * 상한 20건, 초과분은 화면 순서대로 자른다.
+   *
+   * 용도는 채널마다 다르다 — 구매자는 담기 대상, 판매자(S-4)는 **수정 대상 확정용**이다
+   * ("1번 상품 가격 내려줘"의 "1번"이 화면 순번이라 이게 없으면 draft 대상을 못 정한다).
+   * 판매자 쪽 소유권은 Spring 하드게이트(brandId)가 막으므로 FE 가 거르지 않는다.
    */
-  products?: { productId: string; name: string }[]; // Visible buyer-side product candidates unknown to the server.
+  products?: { productId: string; name: string }[];
   /**
    * 전송 시점 그리드 열 수 — 반응형이라 서버가 알 수 없다. 목록형은 1.
    * "3번째 줄 2번째" 같은 좌표 지시를 index = (row-1) × columns + (col-1) 로 푼다.
@@ -485,18 +495,20 @@ export type ActionFailReason =
  *  404 WISHLIST_NOT_FOUND → WISHLIST_REMOVED)
  */
 export type ChatAction =
-  // ── SHOPPING/CS : 장바구니 ──
-  | { type: "CART_ADDED"; message: string; cartItemId: number }
+  // ── SHOPPING : 장바구니 ──
+  // cartItemId 는 문자열이다(2026-08-06 공통 규약) — BIGINT 라 number 로 파싱하면
+  // 끝자리가 조용히 바뀐다. CartItem.cartItemId 와 같은 축이라 타입도 같아야 한다.
+  | { type: "CART_ADDED"; message: string; cartItemId: string }
   | { type: "CART_ADD_FAILED"; message: string; reason: ActionFailReason }
-  // CART_REMOVED 도 담기와 같은 필드·같은 number 타입으로 항목 id 를 싣는다(§2.6 BIGINT).
-  | { type: "CART_REMOVED"; message: string; cartItemId: number }
+  // CART_REMOVED 도 담기와 같은 필드로 항목 id 를 싣는다(§2.6).
+  | { type: "CART_REMOVED"; message: string; cartItemId: string }
   | { type: "CART_REMOVE_FAILED"; message: string; reason: ActionFailReason }
   // 수량 변경 2종은 계약에만 있고 AI 가 아직 발행하지 않는다(I-25 미구현, 대응 이슈 없음).
   // 계약이 확정이라 수신부를 미리 둔다 — 켜질 때 FE 배포를 기다리지 않게.
   | {
       type: "CART_QUANTITY_CHANGED";
       message: string;
-      cartItemId: number;
+      cartItemId: string;
       quantity: number;
     }
   | {
@@ -504,7 +516,7 @@ export type ChatAction =
       message: string;
       reason: ActionFailReason;
     }
-  // ── SHOPPING/CS : 찜 ──
+  // ── SHOPPING : 찜 ──
   // 찜 이벤트는 식별자를 싣지 않는다 — 구매자 SSE 가 상품 id 를 싣지 않는 경로 B를 지킨다(§2.6).
   // FE 는 type 만 보고 찜 목록을 재조회한다.
   // 게스트 찜 발화는 action 이 아예 오지 않는다 — 회원 전용(M-4)이라 token 로그인 안내로 degrade.

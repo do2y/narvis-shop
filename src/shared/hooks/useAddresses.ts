@@ -76,14 +76,14 @@ export function useAddressMutations() {
   const update = useMutation<
     Address,
     unknown,
-    { addressId: number; input: AddressPatch }
+    { addressId: string; input: AddressPatch }
   >({
     mutationFn: (args) => updateAddress(args.addressId, args.input),
     retry: false,
     onSuccess: invalidate,
   });
 
-  const remove = useMutation<void, unknown, number>({
+  const remove = useMutation<void, unknown, string>({
     mutationFn: (addressId) => deleteAddress(addressId),
     retry: false,
     onSuccess: invalidate,
@@ -91,7 +91,7 @@ export function useAddressMutations() {
 
   // 기본 배송지 지정은 별도 API가 없다 — 수정 API에 isDefault만 부분 전송한다.
   // 기존 기본은 서버가 같은 트랜잭션에서 해제.
-  const setDefault = useMutation<Address, unknown, number>({
+  const setDefault = useMutation<Address, unknown, string>({
     mutationFn: (addressId) => updateAddress(addressId, { isDefault: true }),
     retry: false,
     onSuccess: invalidate,

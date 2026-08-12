@@ -14,7 +14,14 @@ import { cn } from "@/lib/utils";
 import type { SellerPanel } from "@/shared/types/chat";
 import { SellerHeader } from "./components/SellerHeader";
 import { SellerWorkspace } from "./components/SellerWorkspace";
-import type { SellerWorkspaceTab } from "./types";
+import { useSellerScreenContext } from "./useSellerScreenContext";
+import type {
+  SellerOrderTab,
+  SellerProductPage,
+  SellerProductSort,
+  SellerProductTab,
+  SellerWorkspaceTab,
+} from "./types";
 
 // 주문·상품 관리 관련 추천 질문 — 첫 진입 시 사용법 안내 역할
 const SELLER_QUESTIONS = [
@@ -39,8 +46,38 @@ export default function SellerChatPage() {
   const [showResultsState, setShowResults] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("chat");
 
+  // 목록 필터·페이지 — 워크스페이스가 아니라 여기서 들고 있다. 전송 시점에
+  // "무엇이 어떤 필터로 떠 있는지"를 screen 으로 실어야 하기 때문이다(S-4).
+  const [orderTab, setOrderTab] = useState<SellerOrderTab>("ALL");
+  const [orderPage, setOrderPage] = useState(0);
+  const [productTab, setProductTab] = useState<SellerProductTab>("ALL");
+  const [productSort, setProductSort] = useState<SellerProductSort>("latest");
+  const [productPage, setProductPage] = useState(0);
+
+  // 화면에 그려진 상품 줄 — "1번 상품"의 근거. ProductList 와 같은 쿼리 키를 읽어
+  // 재조회 없이 캐시에서 꺼낸다(키가 어긋나면 조용히 빈 배열이 되므로 주의).
+  const visibleProducts = queryClient.getQueryData<SellerProductPage>([
+    "seller",
+    "products",
+    { tab: productTab, sort: productSort, page: productPage },
+  ]);
+
+  const getScreenContext = useSellerScreenContext({
+    tab: workspaceTab,
+    orderTab,
+    orderPage,
+    productTab,
+    productSort,
+    productPage,
+    products: (visibleProducts?.content ?? []).map((p) => ({
+      productId: p.productId,
+      name: p.name,
+    })),
+  });
+
   const { send, confirm, retry, startNewChat, isStreaming } = useChat({
     channel: "SELLER",
+    getScreenContext,
     onDone: (panel: SellerPanel | undefined) => {
       // refresh: 쓰기 반영 → 목록 재조회 후 목록으로 복귀
       if (panel === "refresh") {
@@ -208,6 +245,29 @@ export default function SellerChatPage() {
     <SellerWorkspace
       tab={workspaceTab}
       onTabChange={setWorkspaceTab}
+      filters={{
+        orderTab,
+        orderPage,
+        productTab,
+        productSort,
+        productPage,
+        // 탭·정렬을 바꾸면 첫 페이지로 되돌린다 — 2페이지에서 필터를 바꾸면
+        // 빈 목록이 될 수 있다(워크스페이스에 있던 동작 그대로).
+        onOrderTabChange: (t) => {
+          setOrderTab(t);
+          setOrderPage(0);
+        },
+        onOrderPageChange: setOrderPage,
+        onProductTabChange: (t) => {
+          setProductTab(t);
+          setProductPage(0);
+        },
+        onProductSortChange: (s) => {
+          setProductSort(s);
+          setProductPage(0);
+        },
+        onProductPageChange: setProductPage,
+      }}
       results={results}
       showResults={showResults}
       isStreaming={isStreaming}

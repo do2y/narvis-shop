@@ -11,7 +11,7 @@ import {
 // 상태만 의미 있는 테스트라 나머지 필드는 고정값으로 채운다
 function items(...statuses: OrderStatus[]): OrderItem[] {
   return statuses.map((status, i) => ({
-    orderItemId: i + 1,
+    orderItemId: String(i + 1),
     productId: `p${i + 1}`,
     productName: `상품 ${i + 1}`,
     imageUrl: "",
@@ -44,7 +44,7 @@ describe("countClaimedItems", () => {
 // representativeStatus 와 항목 상태가 어긋나는 상황을 만들기 위한 최소 주문
 function order(representativeStatus: OrderStatus, ...statuses: OrderStatus[]) {
   return {
-    orderId: 1,
+    orderId: "1",
     orderNo: "ORD-20260806-1",
     orderedAt: "2026-08-06T00:00:00",
     representativeStatus,

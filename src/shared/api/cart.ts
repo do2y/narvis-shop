@@ -22,9 +22,9 @@ export async function addCartItem(body: {
   // 주문 시 order_item 스냅샷으로 복사하므로, 이게 빠지면 추천 전환이 집계에서 사라진다.
   // 지면·순위는 서버가 listId로 조회해 붙이므로 FE는 이 2개만 보낸다.
   recommendationContext?: RecommendationContext;
-}): Promise<{ cartItemId: number; quantity: number }> {
+}): Promise<{ cartItemId: string; quantity: number }> {
   const { productId, optionId, quantity, recommendationContext } = body;
-  const { data } = await api.post<{ cartItemId: number; quantity: number }>(
+  const { data } = await api.post<{ cartItemId: string; quantity: number }>(
     "/api/cart/items",
     {
       productId,

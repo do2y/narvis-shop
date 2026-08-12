@@ -3,13 +3,14 @@
 // 백엔드 GET /api/categories 계약 — 2단 트리(대분류 + children 소분류).
 // emoji는 백엔드에 없어 프론트 매핑(categoryEmoji.ts)으로 표시 시점에 붙인다.
 export interface Category {
-  id: number;
+  // 응답 id 는 문자열(2026-08-06 공통 규약 — category.id 포함)
+  id: string;
   name: string; // 표시명 (칩은 #{name} 형태로 렌더)
   children: CategoryChild[]; // 소분류. 현재 화면 미사용, 계약 보존용
 }
 
 export interface CategoryChild {
-  id: number;
+  id: string;
   name: string;
 }
 

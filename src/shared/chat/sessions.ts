@@ -20,8 +20,9 @@ export async function openSellerSession(): Promise<ChatSession> {
 
 /**
  * 구매자 챗 세션·티켓 발급 — POST /api/chat/sessions.
- * channel(SHOPPING|CS) 선택, 생략 시 SHOPPING. 게스트는 guest_id 쿠키로 식별(AT 없어도 됨).
- * (셀러 흐름 우선 구현 — 구매자 연결은 후속. 시그니처만 맞춰 둔다)
+ * 유효한 channel 은 SHOPPING 뿐이다(2026-08-11 CS 폐기). 생략 시 SHOPPING 이며
+ * SELLER 는 이 입구로 발급할 수 없다 — brandId 를 서버가 도출해야 해서 CH-6 이 유일한 입구다.
+ * 게스트는 guest_id 쿠키로 식별(AT 없어도 됨).
  */
 export async function openChatSession(
   channel: Exclude<ChatChannel, "SELLER"> = "SHOPPING",

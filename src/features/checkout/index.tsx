@@ -49,7 +49,7 @@ export default function CheckoutPage() {
 
   // 선택된 배송지. null이면 기본 배송지(없으면 첫 항목)를 따른다 —
   // 목록 로딩 전에는 값을 정할 수 없어 사용자가 고르기 전까지 파생값을 쓴다.
-  const [pickedId, setPickedId] = useState<number | null>(null);
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const addressId =
     pickedId ??
     addresses.find((a) => a.isDefault)?.addressId ??
@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   const [addressError, setAddressError] = useState<string | null>(null);
   // 결제만 실패한 주문(PAYMENT_FAILED)의 id. 주문 자체는 서버에 남아 있으므로
   // 다시 시도할 때는 새 주문을 만들지 않고 이 주문의 결제만 재시도한다.
-  const [failedOrderId, setFailedOrderId] = useState<number | null>(null);
+  const [failedOrderId, setFailedOrderId] = useState<string | null>(null);
   const createOrder = useCreateOrder();
   const retryPayment = useRetryPayment();
 
@@ -238,7 +238,7 @@ export default function CheckoutPage() {
     // 장바구니에서 넘어온 항목은 cartItemId를 갖고, 상세 "바로 구매"는 없다.
     const cartItemIds = items
       .map((it) => it.cartItemId)
-      .filter((id): id is number => id != null);
+      .filter((id): id is string => id != null);
     const fromCart = cartItemIds.length === items.length && items.length > 0;
 
     const body: CreateOrderRequest = {

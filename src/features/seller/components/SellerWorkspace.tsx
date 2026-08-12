@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisReportView } from "@/shared/chat/store";
@@ -21,6 +20,14 @@ import { ProductCreateCard } from "./ProductCreateCard";
 interface SellerWorkspaceProps {
   tab: SellerWorkspaceTab;
   onTabChange: (tab: SellerWorkspaceTab) => void;
+  /**
+   * 목록 필터·페이지 — 부모(챗 페이지)가 들고 있다.
+   *
+   * 워크스페이스 로컬 상태였으나 S-4 screen 전송을 위해 끌어올렸다. 전송 시점에
+   * "지금 무엇이 어떤 필터로 떠 있는지"를 읽어야 하는데, 여기 갇혀 있으면
+   * 채팅 입력부가 볼 수 없다. URL 과는 여전히 분리한다(채팅 화면은 딥링크 대상 아님).
+   */
+  filters: SellerWorkspaceFilters;
   /** AI 결과(diff) — 있고 showResults가 true면 목록 대신 결과를 보여준다 */
   results: ChatResult[];
   showResults: boolean;
@@ -40,6 +47,20 @@ interface SellerWorkspaceProps {
   onRetry?: () => void;
 }
 
+/** 목록 필터·페이지 상태 + 변경 핸들러. 소유자는 부모다(S-4 screen 전송 때문). */
+export interface SellerWorkspaceFilters {
+  orderTab: SellerOrderTab;
+  orderPage: number;
+  productTab: SellerProductTab;
+  productSort: SellerProductSort;
+  productPage: number;
+  onOrderTabChange: (tab: SellerOrderTab) => void;
+  onOrderPageChange: (page: number) => void;
+  onProductTabChange: (tab: SellerProductTab) => void;
+  onProductSortChange: (sort: SellerProductSort) => void;
+  onProductPageChange: (page: number) => void;
+}
+
 const WORKSPACE_TABS: { key: SellerWorkspaceTab; label: string }[] = [
   { key: "orders", label: "주문 관리" },
   { key: "products", label: "상품 관리" },
@@ -52,6 +73,7 @@ const WORKSPACE_TABS: { key: SellerWorkspaceTab; label: string }[] = [
 export function SellerWorkspace({
   tab,
   onTabChange,
+  filters,
   results,
   showResults,
   isStreaming,
@@ -63,12 +85,18 @@ export function SellerWorkspace({
   streamError,
   onRetry,
 }: SellerWorkspaceProps) {
-  // 목록 필터·페이지는 워크스페이스 로컬 상태(URL과 분리 — 채팅 화면은 딥링크 대상이 아님)
-  const [orderTab, setOrderTab] = useState<SellerOrderTab>("ALL");
-  const [orderPage, setOrderPage] = useState(0);
-  const [productTab, setProductTab] = useState<SellerProductTab>("ALL");
-  const [productSort, setProductSort] = useState<SellerProductSort>("latest");
-  const [productPage, setProductPage] = useState(0);
+  const {
+    orderTab,
+    orderPage,
+    productTab,
+    productSort,
+    productPage,
+    onOrderTabChange,
+    onOrderPageChange,
+    onProductTabChange,
+    onProductSortChange,
+    onProductPageChange,
+  } = filters;
 
   const draftResults = results.filter((r) => r.kind === "draft");
 
@@ -170,26 +198,17 @@ export function SellerWorkspace({
           <OrderList
             tab={orderTab}
             page={orderPage}
-            onTabChange={(t) => {
-              setOrderTab(t);
-              setOrderPage(0);
-            }}
-            onPageChange={setOrderPage}
+            onTabChange={onOrderTabChange}
+            onPageChange={onOrderPageChange}
           />
         ) : (
           <ProductList
             tab={productTab}
             sort={productSort}
             page={productPage}
-            onTabChange={(t) => {
-              setProductTab(t);
-              setProductPage(0);
-            }}
-            onSortChange={(s) => {
-              setProductSort(s);
-              setProductPage(0);
-            }}
-            onPageChange={setProductPage}
+            onTabChange={onProductTabChange}
+            onSortChange={onProductSortChange}
+            onPageChange={onProductPageChange}
           />
         )}
       </div>

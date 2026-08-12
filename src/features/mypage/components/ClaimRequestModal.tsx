@@ -60,7 +60,7 @@ export function ClaimRequestModal({
    * 모달에서 고르게 하지 않는 이유는 상품명만 나열되면 이미지·옵션·가격 같은
    * 식별 단서가 사라져서다. 선택은 주문 상세의 줄별 버튼이 담당한다.
    */
-  orderItemId: number;
+  orderItemId: string;
 }) {
   const router = useRouter();
   const {
@@ -80,8 +80,8 @@ export function ClaimRequestModal({
     reset,
     formState: { errors },
   } = useForm<ClaimRequestFormInput, unknown, ClaimRequestFormValues>({
-    // 폼 필드는 문자열(input) → coerce 후 orderItemId: number(output)로 검증.
-    // 3번째 제네릭(output)으로 handleSubmit 콜백이 변환된 값을 받게 한다.
+    // orderItemId 는 입력·출력 모두 문자열이다(BIGINT 라 number 로 coerce 하지 않는다).
+    // 3번째 제네릭(output)으로 handleSubmit 콜백이 검증을 마친 값을 받게 한다.
     resolver: zodResolver(claimRequestSchema),
     defaultValues: { orderItemId, reason: "", detail: "" },
   });
@@ -103,7 +103,7 @@ export function ClaimRequestModal({
     reset({ orderItemId, reason: "", detail: "" });
   }, [open, orderItemId, reset, resetMutation]);
 
-  // zodResolver가 input→output 변환을 마친 값을 넘겨준다(orderItemId: number).
+  // zodResolver가 검증을 마친 값을 넘겨준다(orderItemId 는 문자열 그대로).
   const submit = (values: ClaimRequestFormValues) => {
     // API body는 type·reason만 받는다. 상세 설명은 별도 필드가 없어 사유에 덧붙인다.
     const reason = values.detail

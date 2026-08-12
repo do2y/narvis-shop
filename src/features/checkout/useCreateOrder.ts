@@ -123,7 +123,7 @@ export function useRetryPayment() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (args: { orderId: number; paymentMethod: string }) =>
+    mutationFn: (args: { orderId: string; paymentMethod: string }) =>
       retryPayment(args.orderId, args.paymentMethod),
     retry: false,
     onSuccess: (result) => {

@@ -18,9 +18,10 @@ import { StarRatingInput } from "./components/StarRatingInput";
 export default function ReviewWritePage() {
   const params = useSearchParams();
   // 후기 대상은 주문 줄(orderItemId). productId는 상품 요약 표시·캐시 조회용.
-  const orderItemId = Number(params.get("orderItemId"));
-  // Number()로 감싸지 않는다 — 64비트 id라 끝자리가 바뀌고,
-  // 그러면 아래 ['products', productId] 캐시 조회가 조용히 빗나가 상품 요약이 안 뜬다.
+  // 둘 다 Number()로 감싸지 않는다 — 64비트 id라 끝자리가 바뀐다.
+  // orderItemId 는 그대로 서버로 나가고(엉뚱한 줄에 후기가 달린다),
+  // productId 는 아래 ['products', productId] 캐시 조회가 조용히 빗나가 상품 요약이 안 뜬다.
+  const orderItemId = params.get("orderItemId") ?? "";
   const productId = params.get("productId") ?? "";
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -45,7 +46,9 @@ export default function ReviewWritePage() {
 
   // 필수 파라미터 없이 직접 진입 → 주문 내역으로.
   // Next에서는 렌더 중 내비게이션이 경고를 내므로 이펙트에서 replace한다.
-  const missingTarget = !Number.isFinite(orderItemId);
+  // 문자열 id 라 빈 값만 걸러낸다. Number.isFinite 로 판정하면 정상 링크가
+  // 전부(64비트 id는 유한수로 파싱되지 않으므로) 주문 내역으로 튕긴다.
+  const missingTarget = orderItemId.length === 0;
   useEffect(() => {
     if (missingTarget) router.replace("/mypage/orders");
   }, [missingTarget, router]);

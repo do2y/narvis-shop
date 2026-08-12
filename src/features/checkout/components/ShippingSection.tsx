@@ -17,8 +17,8 @@ export function ShippingSection({
   onDeliveryRequestChange,
 }: {
   addresses: Address[];
-  selectedId: number | null;
-  onSelect: (id: number) => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
   onAddClick: () => void;
   onEditClick: (address: Address) => void;
   // 주문 1회성 지시 — 배송지에 저장되지 않고 주문에만 붙는다.
