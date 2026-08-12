@@ -4,7 +4,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Clock } from "lucide-react";
 import { useRecentProducts } from "./useRecentProducts";
 import { RecentProductCard } from "./components/RecentProductCard";
-import { PageTitle, ErrorState, EmptyState } from "./components/PageState";
+import { PageTitle, ErrorState, EmptyState } from "@/shared/ui/PageState";
 
 function RecentProductsSkeleton() {
   return (

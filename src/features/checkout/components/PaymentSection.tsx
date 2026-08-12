@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { PAYMENT_METHODS } from "../placeholder";
+import { PAYMENT_METHODS } from "../paymentMethods";
 import type { PaymentMethod } from "../types";
 
 // 결제 수단 선택 — 실제 PG 미연동(모의 결제)이라 카드 정보는 받지 않는다.

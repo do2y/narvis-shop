@@ -1,12 +1,23 @@
 import { api } from "@/shared/api/client";
 import type { ChatListResponse, ProductGroup } from "@/shared/types/chat";
 
-/** BUY_ALL 묶음의 기본 제목. label("알뜰"·"균형")이 오면 그걸 붙여 구분한다 */
-function groupTitle(data: ChatListResponse): string {
+/** BUY_ALL 묶음은 제안형 문구를 유지하고, 일반 추천은 label 이 있으면 그 자체를 제목으로 쓴다. */
+function groupTitle(
+  data: ChatListResponse,
+): Pick<ProductGroup, "title" | "titleKind"> {
   if (data.listType === "BUY_ALL") {
-    return data.label ? `이렇게 사면 어때요 · ${data.label}` : "이렇게 사면 어때요";
+    return {
+      title: data.label ? `이렇게 사면 어때요 · ${data.label}` : "이렇게 사면 어때요",
+      titleKind: "default",
+    };
   }
-  return data.label ? `추천 상품 · ${data.label}` : "추천 상품";
+  if (data.label) {
+    return { title: data.label, titleKind: "label" };
+  }
+  return {
+    title: "조건에 맞는 상품을 골라봤어요",
+    titleKind: "default",
+  };
 }
 
 /**
@@ -29,12 +40,13 @@ export async function fetchChatListGroup(
   const { data } = await api.get<ChatListResponse>(
     `/api/chat/lists/${listId}`,
   );
+  const title = groupTitle(data);
   const recommendationContext = {
     recommendationRequestId: data.recommendationRequestId,
     listId: data.listId,
   };
   return {
-    title: groupTitle(data),
+    ...title,
     items: data.items.map((item) => ({
       productId: item.productId,
       name: item.name,

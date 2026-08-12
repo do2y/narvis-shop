@@ -116,6 +116,7 @@ export type RecommendationListType = "PICK_ONE" | "BUY_ALL";
 
 export interface ProductGroup {
   title: string;
+  titleKind?: "default" | "label";
   items: ProductCard[];
   /**
    * 추천 목록에서 온 묶음의 부가 정보(CH-5). 인기상품·경로 A 카드에는 없다.

@@ -5,7 +5,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { RefreshCcw } from "lucide-react";
 import { useClaims } from "./useClaims";
 import { ClaimCard } from "./components/ClaimCard";
-import { PageTitle, ErrorState, EmptyState } from "./components/PageState";
+import { PageTitle, ErrorState, EmptyState } from "@/shared/ui/PageState";
 
 function ClaimsSkeleton() {
   return (
