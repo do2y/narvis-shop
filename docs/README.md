@@ -12,6 +12,8 @@
 | 챗봇을 건드린다 | [architecture-chat.md](architecture-chat.md) |
 | 로그인·권한·401 을 건드린다 | [architecture-auth.md](architecture-auth.md) |
 | 쿼리 키·캐시·SSR 을 건드린다 | [architecture-data.md](architecture-data.md) |
+| 상태를 어디에 둘지 정한다 | [architecture-state.md](architecture-state.md) |
+| 발표를 준비한다 | [presentation-talking-points.md](presentation-talking-points.md) |
 | 판매자 챗 계약을 확인한다 | [FE-CONTRACT-SELLER-CHAT.md](FE-CONTRACT-SELLER-CHAT.md) |
 | 배포를 만진다 | [deploy-handoff-nextjs.md](deploy-handoff-nextjs.md) |
 
@@ -26,6 +28,7 @@
 | [architecture-chat.md](architecture-chat.md) | 세 갈래 통신 경로 · SSE 11종 · 경로 B(카드) · 세션/티켓/멀티탭 · 승계(CH-7) · 판매자 draft/report |
 | [architecture-auth.md](architecture-auth.md) | httpOnly 쿠키 전환 후의 구조 · 부팅 복원 · 401 2종 규약 · `selectIsAuthReady` · 가드 |
 | [architecture-data.md](architecture-data.md) | 쿼리 키 목록 · staleTime 근거 · **SSR `initialData` 함정** · 무효화 · SSR 경계 |
+| [architecture-state.md](architecture-state.md) | 상태 관리 전반 — 4축 분리(RQ·Zustand·수동 저장·폼) · 스토어 2개 실태 · **저장소 선택 기준** |
 
 ## 2. 명세 — 무엇을 만들기로 했나
 
@@ -50,6 +53,11 @@
 | 문서 | 한 줄 |
 |---|---|
 | [tech-talk-candidates.md](tech-talk-candidates.md) | 기술 발표 후보 5선과 상위 3개 상세 (코드·커밋 근거만) |
+| [presentation-frontend-draft.md](presentation-frontend-draft.md) | 프론트 발표 초안 전체 (슬라이드 15장 · 평가지표 6항목 대응) |
+| [presentation-chat-session-design.md](presentation-chat-session-design.md) | 채팅 세션 설계 통합본 — 게스트/회원 승계 · 멀티탭 (초안 2·2-1⑤ 재구성) |
+| [presentation-talking-points.md](presentation-talking-points.md) | **발표 소재 등급표 · 프레이밍 · 말하면 안 되는 것** — 프론트 기여도 기준 |
+| [presentation-script-chat.md](presentation-script-chat.md) | **발화 대본** — 채팅 3블록(스트림·탭·대화). 입으로 말할 문장 + 대사별 코드 근거 |
+| [presentation-script-state.md](presentation-script-state.md) | **발화 대본** — 상태 3블록(소유권·즉시성·합류). AI 행동이 사용자 조작과 같은 갱신 경로로 합류 |
 
 ## 4. 이전·배포
 
