@@ -342,19 +342,6 @@ export function isServerFault(status: number | undefined): boolean {
  */
 export const GROUP_DISPLAY_LIMIT = 12;
 
-/**
- * `더 보기`를 한 번 누를 때 늘어나는 개수.
- *
- * **전량을 한 번에 펼치지 않는다.** 82개(많게는 200개)가 통째로 쏟아지면 그
- * 아래 관계 4개가 화면 밖으로 밀려나, 다른 취향을 보러 가려면 긴 목록을
- * 계속 스크롤해야 한다. 목록의 목적은 "필요한 것을 찾아 고치기"지 전부를
- * 한 화면에 늘어놓는 게 아니다.
- *
- * 24개인 이유: 2열이라 12줄이고, 한 번 누르면 화면 한 판이 대략 채워진다.
- * 더 작으면 여러 번 눌러야 하고, 더 크면 한 번에 펼치는 것과 다를 바 없다.
- */
-export const GROUP_EXPAND_STEP = 24;
-
 /** 관계별로 묶은 그룹 — 빈 그룹도 자리를 지켜야 해서 항상 5개가 나온다 */
 export interface PreferenceGroupData {
   predicate: PreferencePredicate;

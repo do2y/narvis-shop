@@ -16,10 +16,10 @@ import { useAuthStore } from "@/shared/stores/authStore";
  * 있는 것처럼 안내하면 사용자가 막다른 길에 도달한다.
  */
 
-export const BUYER_CHAT_PATH = "/chat";
-export const SELLER_CHAT_PATH = "/seller/chat";
+const BUYER_CHAT_PATH = "/chat";
+const SELLER_CHAT_PATH = "/seller/chat";
 
-export type SellerCtaMode =
+type SellerCtaMode =
   /** 바로 판매자 채팅으로 (SELLER 계정) */
   | "go"
   /** 로그인 필요 — returnUrl 로 판매자 채팅을 지정 */
