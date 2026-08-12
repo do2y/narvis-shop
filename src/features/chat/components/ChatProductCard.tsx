@@ -34,6 +34,8 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
     : 0;
   const detailHref = `/products/${product.productId}`;
   const displayName = normalizeProductDisplayName(product.name);
+  // 인기상품 등 LLM 추천이 아닌 카드는 reason 이 ""(chat/api.ts) — 그때는 영역 자체를 없앤다
+  const reason = product.reason.trim();
 
   const cardRef = useVisibleOnce<HTMLDivElement>(
     () => {
@@ -156,7 +158,19 @@ export function ChatProductCard({ product }: { product: ProductCard }) {
           </h3>
         </div>
 
-        <div className="pt-4 sm:pt-[18px]">
+        {/* AI 추천 이유(CH-5 reason) — 카드의 부속이 아니라 답변의 일부라
+            brand 톤 면색으로 한 번 더 구분한다. 가격·담기 줄은 mt-auto 로
+            아래에 고정되므로 이유 길이가 달라도 그리드 행이 어긋나지 않는다 */}
+        {reason && (
+          <p
+            className="mt-2.5 line-clamp-3 rounded-sm bg-brand/10 px-2 py-1.5 text-[12px] leading-[1.45] text-brand sm:mt-3 sm:text-[13px]"
+            title={reason}
+          >
+            {reason}
+          </p>
+        )}
+
+        <div className="mt-auto pt-4 sm:pt-[18px]">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="min-h-[1.6rem] sm:min-h-[1.75rem]">
