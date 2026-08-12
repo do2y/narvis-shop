@@ -315,10 +315,10 @@ function DemoCard({
         <span className="text-[10px] font-medium text-muted-foreground">
           {product.brandName}
         </span>
-        <h4 className="line-clamp-2 text-[11px] font-semibold leading-snug">
+        <h4 className="product-card-two-line text-[11px] font-semibold [--product-card-two-line-lh:1.375]">
           {product.name}
         </h4>
-        <p className="line-clamp-2 text-[11px] leading-snug text-brand">
+        <p className="product-card-two-line text-[11px] text-brand [--product-card-two-line-lh:1.375]">
           {product.reason}
         </p>
         <div className="mt-auto flex flex-wrap items-baseline gap-x-1.5 pt-1">

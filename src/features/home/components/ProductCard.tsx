@@ -99,7 +99,7 @@ export function ProductCard({ product, recommendation }: ProductCardProps) {
 
           <h3
             title={product.name}
-            className="line-clamp-2 min-h-[2.45rem] text-[14px] font-medium leading-[1.4] text-foreground sm:min-h-[2.7rem] sm:text-[15px] sm:leading-[1.45]"
+            className="product-card-two-line text-[14px] font-medium text-foreground [--product-card-two-line-lh:1.4] sm:text-[15px] sm:[--product-card-two-line-lh:1.45]"
           >
             {displayName}
           </h3>

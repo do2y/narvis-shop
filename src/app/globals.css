@@ -255,6 +255,23 @@
   }
 }
 
+@layer components {
+  .product-card-two-line {
+    --product-card-two-line-lh: 1.4;
+    --product-card-two-line-py: 0rem;
+    display: -webkit-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: var(--product-card-two-line-lh);
+    min-height: calc(
+      2 * var(--product-card-two-line-lh) * 1em +
+        (var(--product-card-two-line-py) * 2)
+    );
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
