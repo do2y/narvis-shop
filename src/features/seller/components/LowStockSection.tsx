@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -103,19 +102,9 @@ export function LowStockSection({
         })}
       </ul>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <Link
-          href="/seller/products?tab=SOLD_OUT"
-          className={cn(
-            "text-sm text-muted-foreground underline-offset-4",
-            "hover:[@media(hover:hover)]:text-foreground hover:[@media(hover:hover)]:underline",
-          )}
-        >
-          상품 관리에서 수정
-        </Link>
-        {/* totalPages <= 1 이면 Pagination 이 스스로 null 을 반환한다 */}
-        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
-      </div>
+      {/* totalPages <= 1 이면 Pagination 이 스스로 null 을 반환한다 —
+          그때는 목록 아래에 빈 줄이 남지 않는다(바깥 flex 의 gap 도 함께 사라진다). */}
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     </div>
   );
 }

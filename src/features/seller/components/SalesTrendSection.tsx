@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { numeric } from "../interaction";
 import type { SellerAiAttribution, SellerSummary } from "../types";
 import { AnalysisChart } from "./AnalysisChart";
+import { SectionHeading } from "./SectionHeading";
 
 /** "2026-07-15" → "7/15" — 추이 차트 x축은 좁아서 연도를 뺀다 */
 function shortDate(iso: string): string {
@@ -34,18 +35,18 @@ export function SalesTrendSection({
   const allZero = points.length === 0 || points.every((p) => p.sales === 0);
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-semibold text-muted-foreground">
-          최근 {trendDays}일 매출
-        </h2>
-        <p className={cn("text-lg font-bold tracking-tight", numeric)}>
-          {salesTrend.total.toLocaleString("ko-KR")}
-          <span className="ml-0.5 text-sm font-medium text-muted-foreground">
-            원
-          </span>
-        </p>
-      </div>
+    <section className="flex flex-col gap-5">
+      <SectionHeading
+        title={`최근 ${trendDays}일 매출`}
+        // 합계는 제목에 딸린 요약이다 — 종전엔 text-lg font-bold 라 제목보다
+        // 강해서 눈이 숫자에 먼저 멈췄다. 제목과 같은 크기·한 단 낮은 굵기로 맞춘다.
+        action={
+          <p className={cn("text-base font-medium", numeric)}>
+            {salesTrend.total.toLocaleString("ko-KR")}
+            <span className="ml-0.5 text-sm text-muted-foreground">원</span>
+          </p>
+        }
+      />
 
       {allZero ? (
         <div className="flex flex-col items-center gap-1 rounded-sm border border-dashed py-12 text-center">

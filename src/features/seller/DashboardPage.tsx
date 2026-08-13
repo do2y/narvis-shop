@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { cn } from "@/lib/utils";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerSummary } from "./api";
@@ -13,7 +12,8 @@ import { MetricCards } from "./components/MetricCards";
 import { SalesTrendSection } from "./components/SalesTrendSection";
 import { TodoSection } from "./components/TodoSection";
 import { LowStockSection } from "./components/LowStockSection";
-import { SellerAssistantBar } from "./components/SellerAssistantBar";
+import { SectionBadge, SectionHeading } from "./components/SectionHeading";
+import { SellerHero } from "./components/SellerHero";
 
 // 매출 추이 차트가 쓰는 서버 기본값(trendDays=7)과 같은 창을 aiAttribution 에도 준다.
 // 어긋나면 "전체 매출의 N%"의 분모만 다른 기간이 되는데, 판매자는 그걸 알 방법이 없다.
@@ -78,13 +78,9 @@ function trendRange(): { from: string; to: string } {
 /**
  * 판매자 대시보드.
  *
- * 읽는 순서를 업무 흐름에 맞춘다:
+ * 맨 위에 AI 진입 히어로를 두고, 그 아래를 업무 흐름 순서로 읽게 한다:
  *   ① 핵심 운영 현황(오늘 얼마 벌었나) → ② 매출 추이(흐름은 어떤가)
  *   → ③ 오늘 처리할 일(무엇을 해야 하나) → ④ 재고 부족(무엇이 급한가)
- *   → ⑤ AI 도우미(맡길 일이 있나)
- *
- * AI 진입을 맨 아래 둔 이유: 매일 여는 화면의 첫 자리는 오늘의 숫자여야 한다.
- * 종전에는 "무엇을 도와드릴까요?" 히어로가 첫 화면을 차지해 챗봇 랜딩처럼 보였다.
  */
 export default function DashboardPage() {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
@@ -104,8 +100,15 @@ export default function DashboardPage() {
   return (
     // max-w-5xl: 종전에는 셸의 6xl 을 그대로 써 지표 사이가 과하게 벌어졌다.
     // 폭을 좁히면 같은 값이 더 촘촘히 읽힌다.
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 pb-16 pt-6">
+    // pt 를 따로 두지 않는다 — 히어로가 자체 py-7/9 를 갖고 있어 두 겹이 된다.
+    // 섹션 사이 리듬은 gap-8(모바일 gap-10 은 과하다)과 각 섹션의 border-t pt-8 이
+    // 함께 만든다. pb 는 마지막 블록이 화면 밑단에 붙지 않을 만큼만.
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 pb-20 sm:pb-24">
       <h1 className="sr-only">판매자 대시보드</h1>
+
+      {/* AI 진입 히어로 — 데이터를 기다리지 않는다. 조회가 실패해도 질문은 할 수 있어야 하고,
+          로딩 중 이 자리가 비면 아래 블록이 도착하면서 화면이 통째로 밀린다. */}
+      <SellerHero />
 
       {isPending && <DashboardSkeleton />}
 
@@ -120,10 +123,8 @@ export default function DashboardPage() {
       {data && (
         <>
           {/* ① 핵심 운영 현황 — 오늘 하루의 요약. 기간 집계보다 먼저 온다 */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-sm font-semibold text-muted-foreground">
-              오늘의 현황
-            </h2>
+          <section className="flex flex-col gap-5 border-t pt-8">
+            <SectionHeading title="오늘의 현황" />
             <MetricCards items={toMetrics(data.today)} />
           </section>
 
@@ -141,38 +142,27 @@ export default function DashboardPage() {
             <TodoSection orderStatus={data.orderStatus} />
           </div>
 
-          {/* ④ 재고 부족 — 조치가 필요한 항목. 제목에만 경고색을 쓴다 */}
-          <section className="flex flex-col gap-4 border-t pt-8">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <div className="flex items-baseline gap-2">
-                <h2
-                  className={cn(
-                    "text-sm font-semibold",
-                    data.lowStock.items.length > 0
-                      ? "text-destructive"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  재고 부족 상품
-                </h2>
-                {data.lowStock.count > 0 && (
-                  <span className="text-sm text-muted-foreground tabular-nums">
+          {/* ④ 재고 부족 — 조치가 필요한 항목 */}
+          <section className="flex flex-col gap-5 border-t pt-8">
+            <SectionHeading
+              title="재고 부족 상품"
+              trailing={
+                data.lowStock.count > 0 ? (
+                  <SectionBadge>
                     {/* count 는 상품 수가 아니라 재고 부족인 "옵션 수"다(2026-08-09) */}
-                    {data.lowStock.count}개 옵션
-                  </span>
-                )}
-              </div>
-            </div>
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {data.lowStock.count}
+                    </span>
+                    개 옵션
+                  </SectionBadge>
+                ) : undefined
+              }
+            />
             <LowStockSection
               items={data.lowStock.items}
               threshold={data.lowStock.threshold}
             />
           </section>
-
-          {/* ⑤ AI 도우미 — 맡길 일이 있을 때 */}
-          <div className="border-t pt-8">
-            <SellerAssistantBar />
-          </div>
         </>
       )}
     </div>
@@ -183,7 +173,9 @@ function DashboardSkeleton() {
   return (
     // 구조·간격을 실제 화면과 같게 둔다 — 다르면 데이터가 도착하는 순간 블록이 뛴다.
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      {/* 상단 AI 도우미는 데이터와 무관하게 이미 그려져 있다 —
+          스켈레톤은 그 아래(오늘의 현황)부터 시작한다 */}
+      <section className="flex flex-col gap-4 border-t pt-8">
         <Skeleton className="h-4 w-24 rounded-full" />
         <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
           <div className="flex flex-col gap-2 lg:w-[280px] lg:shrink-0">
