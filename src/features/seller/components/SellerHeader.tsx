@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ChevronDown, LogOut, Store } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import {
   DropdownMenu,
@@ -75,7 +75,7 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
         <div className="flex min-w-0 items-center gap-4">
           {/* 로고 → 판매자 홈(대시보드). 메뉴의 "대시보드"와 같은 목적지이며 여기는
               보조 진입로다 — 판매자 화면에서 로고를 누르면 쇼핑몰이 아니라 자기
-              업무 홈으로 오는 편이 자연스럽다. 쇼핑몰로 나가는 길은 계정 메뉴에 있다. */}
+              업무 홈으로 오는 편이 자연스럽다. */}
           <Link
             href="/seller"
             aria-label="판매자 대시보드"
@@ -169,15 +169,6 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
                 </div>
               </div>
               <DropdownMenuSeparator />
-              {/* 로고가 판매자 홈을 가리키게 되면서 쇼핑몰로 나가는 길이 없어졌다.
-                  자주 쓰는 동선은 아니므로 계정 메뉴 안에 둔다. */}
-              <DropdownMenuItem
-                render={<Link href="/home" />}
-                className="rounded-lg py-2"
-              >
-                <Store />
-                쇼핑몰로 가기
-              </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
                 onClick={handleLogout}
