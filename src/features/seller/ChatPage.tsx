@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { SellerPanel } from "@/shared/types/chat";
 import { SellerHeader } from "./components/SellerHeader";
 import { SellerWorkspace } from "./components/SellerWorkspace";
+import { SELLER_SUGGESTED_QUESTIONS } from "./suggestedQuestions";
 import { useSellerScreenContext } from "./useSellerScreenContext";
 import type {
   SellerOrderTab,
@@ -23,13 +24,8 @@ import type {
   SellerWorkspaceTab,
 } from "./types";
 
-// 주문·상품 관리 관련 추천 질문 — 첫 진입 시 사용법 안내 역할
-const SELLER_QUESTIONS = [
-  "이번주 판매 전략 알려줘",
-  "전환율 낮은 상품 진단해줘",
-  "재고 부족 상품 정리해줘",
-  "오늘 주문 요약해줘",
-];
+// 추천 질문은 대시보드 히어로와 같은 정본을 쓴다(suggestedQuestions) —
+// 화면마다 다른 예시를 보여주면 무엇이 되는 기능인지 판단할 수 없다.
 
 // 모바일 3분할 대신 탭 전환(요청: 좁은 화면에서 세 영역 동시 표시 금지)
 type MobileView = "chat" | SellerWorkspaceTab;
@@ -230,7 +226,9 @@ export default function SellerChatPage() {
   };
 
   const conversation = (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // min-w-0: 안쪽 추천 질문 줄이 가로 스크롤되려면 이 칸이 패널 폭으로 줄어들 수
+    // 있어야 한다. 기본 min-width:auto 면 내용 폭만큼 벌어져 넘칠 것이 없어진다.
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <ChatConversation
         // 입력창은 (message, imageUrls) 로 주지만 send 의 2번째 자리는 조건 칩이다 —
         // 구매자 전용이라 판매자 챗에서는 넘길 값이 없다
@@ -259,9 +257,9 @@ export default function SellerChatPage() {
             </p>
           ) : !started ? (
             // 대화 시작 전에만 추천 질문 노출
-            <SuggestedQuestions
-              questions={SELLER_QUESTIONS}
+            <SuggestedQuestions         
               onSelect={sendFromInput}
+              questions={SELLER_SUGGESTED_QUESTIONS}
               disabled={isStreaming}
             />
           ) : null

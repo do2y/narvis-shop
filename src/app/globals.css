@@ -270,6 +270,18 @@
         (var(--product-card-two-line-py) * 2)
     );
   }
+
+  /* 가로 스크롤 영역의 스크롤바를 감춘다 — 휠·트랙패드·터치 드래그는 그대로 된다.
+     칩 줄처럼 높이가 낮은 띠에서는 스크롤바가 콘텐츠만큼 두꺼워 자리를 먹고,
+     OS 마다 굵기가 달라 여백 계산도 어긋난다. 스크롤 가능하다는 신호는
+     잘린 다음 칩이 대신 준다(끝에 닿기 전에는 항상 일부가 보인다). */
+  .scrollbar-none {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* 구 Edge */
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer base {

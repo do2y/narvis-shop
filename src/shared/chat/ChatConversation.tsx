@@ -67,7 +67,7 @@ export function ChatConversation({
 
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+    <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col", className)}>
       {headerSlot}
 
       {/* 대화 영역과 그 위에 떠 있는 안내를 겹치기 위한 기준면 —
@@ -76,7 +76,9 @@ export function ChatConversation({
         <div
           ref={scrollRef}
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto p-4 sm:p-6",
+            // pb 를 키운다 — 마지막 말풍선이 입력창 경계에 딱 붙으면 잘린 것처럼
+            // 보이고, 스트리밍으로 줄이 늘 때 읽을 여유가 없다.
+            "min-h-0 flex-1 overflow-y-auto p-4 pb-8 sm:p-6 sm:pb-10",
             scrollAreaClassName,
           )}
         >
@@ -97,13 +99,24 @@ export function ChatConversation({
 
       <div
         className={cn(
-          "shrink-0 flex flex-col gap-3 border-t p-4",
+          "shrink-0 flex min-w-0 flex-col gap-3 border-t p-4",
+          // iOS 홈 인디케이터 영역만큼 아래를 더 띄운다 — 없으면 전송 버튼이
+          // 제스처 바에 닿아 눌리지 않는다. 지원하지 않는 브라우저에선 0 이다.
+          "pb-[max(1rem,env(safe-area-inset-bottom))]",
           inputAreaClassName,
         )}
         onPointerDown={onInputAreaPointerDown}
       >
+        {/* 입력창과의 간격은 여기서 준다(바깥 gap-3 보다 넓게) — 붙어 있으면
+            추천 질문과 입력창이 하나의 큰 버튼 묶음처럼 읽힌다.
+            aboveInputClassName 을 준 화면(구매자)은 그쪽 값이 이긴다. */}
+        {/* min-w-0 이 없으면 flex 자식의 기본 min-width:auto 때문에 이 칸이 내용
+            (칩 4개)의 고유 너비만큼 벌어진다. 그러면 안쪽 overflow-x-auto 가
+            넘칠 것이 없어 스크롤이 아예 생기지 않는다. */}
         {aboveInput ? (
-          <div className={aboveInputClassName}>{aboveInput}</div>
+          <div className={cn("min-w-0", aboveInputClassName ?? "mb-1")}>
+            {aboveInput}
+          </div>
         ) : null}
         <ChatInput
           onSend={onSend}

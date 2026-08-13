@@ -11,6 +11,13 @@ import type { SellerOrder, SellerOrderTab } from "../types";
 import { StatusTabs } from "./StatusTabs";
 import { Pagination } from "./Pagination";
 import { SellerErrorState } from "./SellerErrorState";
+import {
+  DataTable,
+  columnHiddenClass,
+  dataTableCell,
+  dataTableRow,
+  type DataTableColumn,
+} from "./DataTable";
 
 // 목록 탭 4종 + 전체 (취소·반품은 CLAIM 한 탭으로 접음)
 const TABS: { key: SellerOrderTab; label: string; alert?: boolean }[] = [
@@ -54,6 +61,21 @@ function formatOrderedAt(iso: string): string {
   const m = iso.match(/^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   return m ? `${m[1]}-${m[2]} ${m[3]}:${m[4]}` : iso;
 }
+
+/**
+ * 열 너비 — 상품명만 남은 공간을 먹고(auto) 나머지는 내용에 맞춰 고정한다.
+ * 주문번호(13자)·결제금액·주문일시는 자릿수가 정해져 있어 고정폭이 안전하다.
+ * 결제수단은 보조 정보라 좁은 화면에서 먼저 접는다.
+ */
+const ORDER_COLUMNS: DataTableColumn[] = [
+  { key: "orderNo", header: "주문번호", width: "130px" },
+  { key: "product", header: "상품" },
+  { key: "recipient", header: "주문자", width: "96px" },
+  { key: "amount", header: "결제금액", width: "116px", align: "right" },
+  { key: "payment", header: "결제수단", width: "104px", hideBelow: "lg" },
+  { key: "orderedAt", header: "주문일시", width: "116px" },
+  { key: "status", header: "상태", width: "96px" },
+];
 
 interface OrderListProps {
   tab: SellerOrderTab;
@@ -110,110 +132,95 @@ export function OrderList({
 
       {data && data.content.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-sm border bg-background">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead>
-                {/* 헤더는 고정하지 않는다.
-                    표가 가로 스크롤을 위해 overflow-x-auto 안에 있는데, overflow 가
-                    auto/hidden/clip 중 무엇이든 그 div 가 sticky 의 스크롤 컨테이너가
-                    된다. 그러면 th 는 뷰포트가 아니라 그 상자 기준으로 top 만큼
-                    내려간 자리에 박혀 첫 행을 덮는다(실측: thead y=211, th y=275).
-                    가로 스크롤을 포기하지 않는 한 이 조합으로는 sticky 를 쓸 수 없고,
-                    한 페이지 10건 남짓이라 고정의 이득도 크지 않다. */}
-                <tr
-                  className={cn(
-                    "text-xs text-muted-foreground",
-                    "[&>th]:border-b [&>th]:bg-muted [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
-                  )}
-                >
-                  <th className="text-left">주문번호</th>
-                  <th className="text-left">상품</th>
-                  <th className="text-left">주문자</th>
-                  <th className="text-right">결제금액</th>
-                  <th className="text-left">결제수단</th>
-                  <th className="text-left">주문일시</th>
-                  <th className="text-left">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.content.map((o) => {
-                  const badge = badgeOf(o);
-                  const extra = o.myItemCount - 1;
-                  return (
-                    <tr
-                      key={o.orderId}
-                      // 행 hover — 넓은 표에서 눈이 가로로 이동할 때 줄을 놓치지 않게.
-                      // 터치에는 잔상이 남으므로 게이팅한다.
-                      className="border-b transition-colors duration-150 ease-out-strong last:border-0 hover:[@media(hover:hover)]:bg-muted/40"
+          {/* min-w 하한 근거는 ProductList 와 같다 — lg 미만에서 결제수단(104px)이
+              빠져 고정폭 합이 554px 이고, 여기에 상품명 200px 을 더한 값이다. */}
+          <DataTable columns={ORDER_COLUMNS} minWidth="min-w-[754px]">
+            <tbody>
+              {data.content.map((o) => {
+                const badge = badgeOf(o);
+                const extra = o.myItemCount - 1;
+                return (
+                  <tr key={o.orderId} className={dataTableRow}>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "whitespace-nowrap font-medium",
+                        numeric,
+                      )}
                     >
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-4 py-3 font-medium",
-                          numeric,
-                        )}
-                      >
-                        {displayOrderNo(o.orderNo)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <ProductImage
-                            src={o.representativeProduct.imageUrl}
-                            alt=""
-                            className="size-9 shrink-0 rounded-sm bg-muted object-cover"
-                          />
-                          <div className="flex min-w-0 flex-col">
-                            <span className="truncate font-medium">
-                              {o.representativeProduct.name}
-                              {extra > 0 && (
-                                <span className="ml-1 font-normal text-muted-foreground">
-                                  외 {extra}건
-                                </span>
-                              )}
-                            </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                              {o.representativeProduct.optionName}
-                            </span>
-                          </div>
+                      {displayOrderNo(o.orderNo)}
+                    </td>
+                    <td className={dataTableCell}>
+                      <div className="flex items-center gap-3">
+                        <ProductImage
+                          src={o.representativeProduct.imageUrl}
+                          alt=""
+                          className="size-9 shrink-0 rounded-sm bg-muted object-cover"
+                        />
+                        <div className="flex min-w-0 flex-col">
+                          {/* title: 잘린 이름을 hover 로 확인할 수 있게 한다 */}
+                          <span
+                            className="truncate font-medium"
+                            title={o.representativeProduct.name}
+                          >
+                            {o.representativeProduct.name}
+                            {extra > 0 && (
+                              <span className="ml-1 font-normal text-muted-foreground">
+                                외 {extra}건
+                              </span>
+                            )}
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {o.representativeProduct.optionName}
+                          </span>
                         </div>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {o.recipientName}
-                      </td>
-                      <td
+                      </div>
+                    </td>
+                    <td className={cn(dataTableCell, "truncate")}>
+                      {o.recipientName}
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "whitespace-nowrap text-right font-semibold",
+                        numeric,
+                      )}
+                    >
+                      {o.myItemsAmount.toLocaleString("ko-KR")}원
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "truncate text-muted-foreground",
+                        columnHiddenClass(ORDER_COLUMNS[4]),
+                      )}
+                    >
+                      {o.paymentMethod}
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "whitespace-nowrap text-muted-foreground",
+                        numeric,
+                      )}
+                    >
+                      {formatOrderedAt(o.orderedAt)}
+                    </td>
+                    <td className={dataTableCell}>
+                      <span
                         className={cn(
-                          "whitespace-nowrap px-4 py-3 text-right font-semibold",
-                          numeric,
+                          "inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
+                          badge.className,
                         )}
                       >
-                        {o.myItemsAmount.toLocaleString("ko-KR")}원
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {o.paymentMethod}
-                      </td>
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-4 py-3 text-muted-foreground",
-                          numeric,
-                        )}
-                      >
-                        {formatOrderedAt(o.orderedAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            "inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
-                            badge.className,
-                          )}
-                        >
-                          {badge.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        {badge.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </DataTable>
 
           <Pagination
             page={data.page + 1} // API 0-base → UI 1-base

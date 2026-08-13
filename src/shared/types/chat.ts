@@ -94,7 +94,16 @@ export interface ChatSession {
   ttlSeconds: number; // 세션 TTL(초)
   streamTicket: string; // 단명 JWT(RS256, TTL 30~60s) — SSE Authorization 에 사용
   ticketTtlSeconds: number; // 티켓 TTL(초)
-  llmSseUrl: string; // FE 가 SSE POST 할 엔드포인트(BE 설정값)
+  /**
+   * FE 가 SSE POST 할 엔드포인트(BE 설정값 LLM_SSE_URL 유래).
+   *
+   * streamChat 은 여기에 아무것도 덧붙이지 않고 그대로 POST 한다.
+   * **FE 가 AI 서버 주소를 아는 유일한 경로이기도 하다** — LLM_SSE_URL 은 Spring 쪽
+   * 환경변수라 FE 번들에 들어오지 않는다(주소는 런타임에 서버가 주는 값이지 프론트가
+   * 설정으로 갖는 값이 아니다). R-1/R-2(AI 서버 직행 REST)는 이 필드의 **origin 만**
+   * 취해 base 로 쓴다 — features/seller/reportsApi.ts의 reportsBaseUrl.
+   */
+  llmSseUrl: string;
 }
 
 // 시딩 계약(SeededProductCard)에 AI 추천 이유만 더한 형태 — 상세 캐시 승계 호환 유지
@@ -292,6 +301,14 @@ export interface SellerReportRecommendation {
     | "product_visibility"
     | "promotion";
   productId: number;
+  /**
+   * 추천 생애주기 — R-2 에만 실려 온다(S-4 report 이벤트에는 없다).
+   * 저장 보고서는 나중에 다시 열 수 있어 "이미 적용한 추천"이라는 상태가 생긴다.
+   * 선택 필드라 챗 패널(S-4)은 undefined 로 두고 그대로 동작한다.
+   */
+  status?: "proposed" | "applied" | "superseded";
+  /** 적용 시각 — R-2 에만. 미적용이면 null */
+  appliedAt?: string | null;
 }
 
 /**
@@ -344,6 +361,104 @@ export interface SellerReport {
   chartUnavailable?: { reason: string; message: string }[];
   recommendations: SellerReportRecommendation[];
   applyGuide: string; // 추천 없으면 ""
+}
+
+// ── SELLER 저장 보고서 (계약 R-1·R-2, 2026-08-12 신설 · 이슈 #599) ──
+// 무인 파이프라인이 저장한 분석 보고서의 조회 경로. 결정 6 에 따라 이 보고서들은
+// report SSE 이벤트로 방출되지 않으므로 R-1/R-2 가 유일한 소비 경로다.
+// (S-4 report 이벤트는 사용자가 대화로 요청한 즉석 분석 전용으로 그대로 남는다.)
+//
+// ⚠️ 시각 표기가 S-4 와 다르다 — R-1/R-2 는 전부 UTC "Z", S-4 는 KST(+09:00) 고정이다.
+// 이 파일의 타입에 실리는 값은 **서버 원본(UTC)** 이고, 화면에 넘기기 전
+// reportsApi 의 매핑이 KST 로 옮긴다. 자세한 근거는 shared/utils/kstTime.ts.
+
+/** 보고서가 만들어진 계기 — R-1·R-2 공용 어휘 4종 */
+export type SellerReportTriggerType =
+  | "scheduled_daily"
+  | "scheduled_weekly"
+  | "event"
+  | "manual";
+
+/**
+ * 목록이 빌 때만 실리는 사유 (R-1). 5종 + null.
+ *
+ * ⚠️ null 을 no_trigger("이상 없음")로 추정하지 않는다 — "판정 보류 ≠ 이상 없음" 이
+ * 계약의 불변 규약이다. null 은 판정 불가이므로 일반 빈 상태로 표시한다.
+ */
+export type NoReportReason =
+  | "not_registered" // targets 에 행 없음
+  | "inactive" // last_seen_at > TTL(14일)
+  | "no_trigger" // last_skip_reason
+  | "no_baseline" // last_skip_reason
+  | "pending_first_run"; // last_run_at IS NULL — 신규 판매자가 반드시 겪는 정상 대기
+
+/** R-1 목록 한 줄 */
+export interface SellerReportListItem {
+  /** UUID 문자열 — 상품·주문 id(BIGINT) 규약과 무관하다 */
+  reportId: string;
+  triggerType: SellerReportTriggerType;
+  /** 분석 기간 YYYY-MM-DD (타임존 없음) */
+  periodFrom: string;
+  periodTo: string;
+  title: string;
+  summary: string;
+  recommendationCount: number;
+  /** 판정 보류 존재 — 목록 배지용. 상세는 R-2 holds[] */
+  hasHolds: boolean;
+  createdAt: string;
+  /** null = 미읽음 */
+  readAt: string | null;
+}
+
+export interface SellerReportListResponse {
+  /** unreadOnly 필터 적용 **후** 건수 — 페이징 기준 */
+  total: number;
+  /**
+   * 필터 무관 **항상 전량 기준** — 배지용.
+   * S-2 tabCounts 와 같은 원칙이라 필터를 켜도 배지가 흔들리지 않는다.
+   * total 과 기준이 다르므로 페이지 수 계산에 쓰지 말 것.
+   */
+  unreadCount: number;
+  /** 목록이 빌 때만 값이 실린다 */
+  noReportReason: NoReportReason | null;
+  items: SellerReportListItem[];
+}
+
+/** R-2 세그먼트 표 재료 — centroidStats 는 지표명이 열려 있어 좁히지 않는다 */
+export interface SellerReportSegment {
+  segmentId: number;
+  size: number;
+  llmLabel: string;
+  llmDesc: string;
+  centroidStats: Record<string, number>;
+}
+
+/**
+ * R-2 상세 — S-4 report 페이로드 13필드 + 보고서 전용 11필드.
+ *
+ * 앞 13개는 **같은 조립기(_report_payload)** 가 만들어 스키마가 동일하다.
+ * 그래서 AnalysisReport 컴포넌트가 무수정으로 이 타입도 받는다(계약 확정 6:
+ * 채팅 패널과 보고서 페이지가 구조적으로 어긋날 수 없게 한 설계).
+ *
+ * 평면 별칭(periodFrom/To·comparedFrom/To)과 reportMd 는 **의도적으로 뺐다** —
+ * 각각 period.{from,to}·comparedPeriod·body 와 값이 같은 중복 필드라, 타입에 올리면
+ * "어느 쪽을 읽어야 하나"가 생긴다. reportMd 는 원본 컬럼이 아니라 마스킹된 body 의
+ * 복사본이므로 body 를 읽는 것이 항상 안전하다.
+ */
+export interface SellerReportDetail extends SellerReport {
+  reportId: string;
+  triggerType: SellerReportTriggerType;
+  /** 비교 기간 — 없을 수 있다 */
+  comparedPeriod: { from: string; to: string } | null;
+  segments: SellerReportSegment[];
+  /** {step, reason} 판정 보류 원본. limitations[] 에도 문자열로 합류돼 온다 */
+  holds: { step: string; reason: string }[];
+  /**
+   * **이번 조회로 각인되기 "직전" 값** — 첫 조회는 null.
+   * R-2 조회가 곧 읽음 처리(멱등)이며, 방금 바뀐 값을 실으면
+   * "안 읽음→읽음" 전환을 감지할 수 없어 서버가 직전 값을 준다.
+   */
+  readAt: string | null;
 }
 
 /**
