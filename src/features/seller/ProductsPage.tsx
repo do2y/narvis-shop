@@ -35,7 +35,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5 pb-16 pt-8">
+    <div className="flex flex-col gap-5 pb-20 pt-8 sm:pb-24">
       <h1 className="text-2xl font-bold tracking-tight">상품 목록</h1>
       <ProductList
         tab={tab}

@@ -45,7 +45,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5 pb-16 pt-8">
+    <div className="flex flex-col gap-5 pb-20 pt-8 sm:pb-24">
       <h1 className="text-2xl font-bold tracking-tight">주문 목록</h1>
       <OrderList
         tab={tab}

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { MessageMarkdown } from "./MessageMarkdown";
 import type { ChatMessage } from "./store";
 
@@ -35,11 +36,14 @@ export function MessageList({
   onRetry,
 }: MessageListProps) {
   return (
-    <div className="flex flex-col gap-4">
+    // 메시지 간 간격(gap-6)은 말풍선 내부(gap-1.5)·같은 응답의 요소 간격보다 넓다 —
+    // 셋이 같은 값이면 "누가 말한 덩어리"가 어디서 끊기는지 읽히지 않는다.
+    // 단계: 섹션 내부(1.5) < 섹션 간(3) < 메시지 간(6).
+    <div className="flex flex-col gap-6">
       {/* 비휴지 안내는 대화 시작 전에만 — 대화가 시작되면 공간을 비워 대화에 집중 */}
       {messages.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          · 이 대화는 이 탭에서만 유지돼요 · 탭을 닫으면 사라집니다
+          · 이 대화는 이 탭에서만 유지돼요
         </p>
       )}
 
@@ -65,9 +69,23 @@ export function MessageList({
               showUserAvatar ? "gap-2" : "gap-0",
             )}
           >
-            <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm leading-relaxed tracking-tight text-primary-foreground">
-              {msg.text}
-            </span>
+            <div className="flex max-w-[80%] flex-col items-end gap-1.5">
+              {/* 보낸 사진은 말풍선 위에 남긴다 — 입력창에서만 지우고 대화에는 보존한다.
+                  서버가 어떤 이벤트로도 되돌려주지 않으므로 여기가 유일한 기록이다. */}
+              {msg.imageUrls?.map((url) => (
+                <ProductImage
+                  key={url}
+                  src={url}
+                  alt="보낸 이미지"
+                  className="max-h-56 w-auto max-w-full rounded-2xl rounded-tr-sm border object-cover"
+                />
+              ))}
+              {msg.text && (
+                <span className="rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm leading-relaxed tracking-tight text-primary-foreground">
+                  {msg.text}
+                </span>
+              )}
+            </div>
             {showUserAvatar && <UserAvatar />}
           </div>
         ) : (
@@ -101,6 +119,8 @@ export function MessageList({
                 )}
               </div>
             ) : (
+              // 같은 응답에 속한 것들(본문 + 진행 표시)은 가깝게 둔다 —
+              // 메시지 간 간격(gap-6)보다 훨씬 좁아야 한 덩어리로 읽힌다
               <div className="flex min-w-0 max-w-[80%] flex-col items-start gap-1.5">
                 <span
                   className={cn(

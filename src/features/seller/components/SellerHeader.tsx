@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, Store } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import {
   DropdownMenu,
@@ -16,15 +16,26 @@ import { cn } from "@/lib/utils";
 import { useLogout } from "@/shared/hooks/useLogout";
 import { useAuthStore } from "@/shared/stores/authStore";
 
+/**
+ * 대시보드 + 판매자가 하루에 도는 순서 — 들어온 주문을 처리하고(주문), 그 결과로
+ * 재고·상세를 손보고(상품), 성과를 확인한 뒤(보고서), 필요하면 AI에게 맡긴다.
+ *
+ * 대시보드를 메뉴에 남기는 이유: 로고도 같은 곳을 가리키지만 로고는 활성 표시를
+ * 받지 못하고 "홈이 대시보드인지 쇼핑몰인지"도 화면에서 알 수 없다. 다른 화면에서
+ * 돌아오는 길이 눈에 보이는 편이 낫다(로고는 보조 진입로로 함께 둔다).
+ *
+ * end:true 는 정확 일치용 — 없으면 /seller/orders 에서도 대시보드가 활성이 된다.
+ */
 const MENU = [
   { to: "/seller", label: "대시보드", end: true },
   { to: "/seller/orders", label: "주문" },
   { to: "/seller/products", label: "상품" },
-  { to: "/seller/chat", label: "AI 어시스턴트" },
+  { to: "/seller/reports", label: "보고서" },
+  { to: "/seller/chat", label: "AI 에이전트" },
 ];
 
 // 원본 NavLink의 isActive 판정을 그대로 옮긴다(계획서 3장 스니펫).
-// end:true(대시보드)는 정확 일치 — 없으면 /seller/orders에서도 대시보드가 활성이 된다.
+// end:true 는 정확 일치용 — 하위 경로를 갖지 않는 항목에 쓴다.
 function isMenuActive(
   pathname: string,
   item: { to: string; end?: boolean },
@@ -62,11 +73,16 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
       <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
         {/* 로고 + 화면별 동작 슬롯 — AppHeader 와 같은 묶음·같은 gap-4 */}
         <div className="flex min-w-0 items-center gap-4">
-          {/* 로고 → 쇼핑몰 홈(판매자도 구매자 화면으로 돌아갈 수 있어야 함) */}
+          {/* 로고 → 판매자 홈(대시보드). 메뉴의 "대시보드"와 같은 목적지이며 여기는
+              보조 진입로다 — 판매자 화면에서 로고를 누르면 쇼핑몰이 아니라 자기
+              업무 홈으로 오는 편이 자연스럽다. 쇼핑몰로 나가는 길은 계정 메뉴에 있다. */}
           <Link
-            href="/home"
-            aria-label="Narvis 홈"
-            className="flex shrink-0 items-center gap-2.5"
+            href="/seller"
+            aria-label="판매자 대시보드"
+            className={cn(
+              "flex shrink-0 items-center gap-2.5 rounded-sm",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            )}
           >
             {/* 구매자 헤더와 같은 심볼 — 두 화면이 같은 로고로 읽혀야 한다 */}
             {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size local logo mark shared with buyer header */}
@@ -91,24 +107,33 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
         </div>
 
         {/* 데스크탑: 헤더 안 네비 / 모바일: 아래 줄로 분리 */}
-        <nav className={cn("hidden", showNav && "md:block")}>
+        <nav
+          aria-label="판매자 메뉴"
+          className={cn("hidden", showNav && "md:block")}
+        >
           <ul className="flex items-center gap-1">
-            {MENU.map((item) => (
-              <li key={item.to}>
-                <Link
-                  href={item.to}
-                  className={cn(
-                    "flex h-11 items-center whitespace-nowrap rounded-full px-3.5 text-sm",
-                    "transition-[color,background-color] duration-150 ease-out-strong",
-                    isMenuActive(pathname, item)
-                      ? "bg-muted font-bold text-foreground"
-                      : "font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {MENU.map((item) => {
+              const active = isMenuActive(pathname, item);
+              return (
+                <li key={item.to}>
+                  <Link
+                    href={item.to}
+                    // 활성 표시를 색·굵기로만 주면 스크린리더는 알 수 없다.
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex h-11 items-center whitespace-nowrap rounded-full px-3.5 text-sm",
+                      "transition-[color,background-color] duration-150 ease-out-strong",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active
+                        ? "bg-muted font-bold text-foreground"
+                        : "font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
@@ -144,6 +169,15 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
                 </div>
               </div>
               <DropdownMenuSeparator />
+              {/* 로고가 판매자 홈을 가리키게 되면서 쇼핑몰로 나가는 길이 없어졌다.
+                  자주 쓰는 동선은 아니므로 계정 메뉴 안에 둔다. */}
+              <DropdownMenuItem
+                render={<Link href="/home" />}
+                className="rounded-lg py-2"
+              >
+                <Store />
+                쇼핑몰로 가기
+              </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
                 onClick={handleLogout}
@@ -158,26 +192,35 @@ export function SellerHeader({ showNav = true, leftSlot }: SellerHeaderProps) {
         </div>
       </div>
 
-      {/* 모바일 네비 — 헤더에 다 넣으면 좁아서 아래 줄로 */}
+      {/* 모바일 네비 — 헤더에 다 넣으면 좁아서 아래 줄로.
+          5개라 360px 에서는 "AI 에이전트"가 넘친다 — overflow-x-auto 로 그 줄만
+          가로 스크롤한다(페이지 본문은 넘치지 않으므로 CLAUDE.md 의 가로 스크롤
+          금지에 걸리지 않는다). 활성 항목은 진입 시 보이는 자리에 오도록 왼쪽부터
+          업무 순서대로 둔다. */}
       {showNav && (
-      <nav className="md:hidden">
+      <nav aria-label="판매자 메뉴" className="md:hidden">
         <ul className="flex gap-1 overflow-x-auto border-t px-4 sm:px-6">
-          {MENU.map((item) => (
-            <li key={item.to} className="shrink-0">
-              <Link
-                href={item.to}
-                className={cn(
-                  "flex h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm",
-                  "transition-[color,border-color] duration-150 ease-out-strong",
-                  isMenuActive(pathname, item)
-                    ? "border-foreground font-bold text-foreground"
-                    : "border-transparent font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
+          {MENU.map((item) => {
+            const active = isMenuActive(pathname, item);
+            return (
+              <li key={item.to} className="shrink-0">
+                <Link
+                  href={item.to}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm",
+                    "transition-[color,border-color] duration-150 ease-out-strong",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    active
+                      ? "border-foreground font-bold text-foreground"
+                      : "border-transparent font-medium text-muted-foreground hover:[@media(hover:hover)]:text-foreground",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
       )}

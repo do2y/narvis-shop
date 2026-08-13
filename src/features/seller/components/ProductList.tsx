@@ -15,6 +15,13 @@ import type {
 import { StatusTabs } from "./StatusTabs";
 import { Pagination } from "./Pagination";
 import { SellerErrorState } from "./SellerErrorState";
+import {
+  DataTable,
+  columnHiddenClass,
+  dataTableCell,
+  dataTableRow,
+  type DataTableColumn,
+} from "./DataTable";
 
 const TABS: { key: SellerProductTab; label: string; alert?: boolean }[] = [
   { key: "ALL", label: "전체" },
@@ -50,6 +57,21 @@ const LOW_STOCK_THRESHOLD = 10;
 function formatDate(iso: string): string {
   return iso.slice(0, 10);
 }
+
+/**
+ * 열 너비 — 상품명만 남은 공간을 먹고(auto) 나머지는 내용에 맞춰 고정한다.
+ * 고정폭 합이 약 600px 이라 1024px 화면에서도 상품명이 400px 이상을 갖는다.
+ * 숫자 열은 자릿수 상한(재고 6자리·판매량 6자리)에 맞춰 잡았다.
+ */
+const PRODUCT_COLUMNS: DataTableColumn[] = [
+  { key: "name", header: "상품" },
+  { key: "category", header: "카테고리", width: "150px", hideBelow: "lg" },
+  { key: "price", header: "판매가", width: "120px", align: "right" },
+  { key: "stock", header: "재고", width: "84px", align: "right" },
+  { key: "sales", header: "판매량", width: "84px", align: "right" },
+  { key: "createdAt", header: "등록일", width: "112px" },
+  { key: "status", header: "상태", width: "92px" },
+];
 
 interface ProductListProps {
   tab: SellerProductTab;
@@ -130,108 +152,102 @@ export function ProductList({
 
       {data && data.content.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-sm border bg-background">
-            <table className="w-full min-w-[760px] border-collapse text-sm">
-              <thead>
-                {/* 헤더는 고정하지 않는다 — OrderList 와 같은 이유(가로 스크롤용
-                    overflow 컨테이너가 sticky 기준을 가로챈다). */}
-                <tr
-                  className={cn(
-                    "text-xs text-muted-foreground",
-                    "[&>th]:border-b [&>th]:bg-muted [&>th]:px-4 [&>th]:py-3 [&>th]:font-semibold",
-                  )}
-                >
-                  <th className="text-left">상품</th>
-                  <th className="text-left">카테고리</th>
-                  <th className="text-right">판매가</th>
-                  <th className="text-right">재고</th>
-                  <th className="text-right">판매량</th>
-                  <th className="text-left">등록일</th>
-                  <th className="text-left">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.content.map((p) => {
-                  const discounted = p.originalPrice > p.price;
-                  return (
-                    <tr
-                      key={p.productId}
-                      // 행 hover — 넓은 표에서 눈이 가로로 이동할 때 줄을 놓치지 않게.
-                      // 터치에는 잔상이 남으므로 게이팅한다.
-                      className="border-b transition-colors duration-150 ease-out-strong last:border-0 hover:[@media(hover:hover)]:bg-muted/40"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <ProductImage
-                            src={p.imageUrl}
-                            alt=""
-                            className="size-10 shrink-0 rounded-sm bg-muted object-cover"
-                          />
-                          <span className="min-w-0 truncate font-medium">
-                            {p.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {p.category}
-                      </td>
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-4 py-3 text-right",
-                          numeric,
-                        )}
-                      >
-                        <span className="font-semibold">
-                          {p.price.toLocaleString("ko-KR")}원
-                        </span>
-                        {discounted && (
-                          <span className="block text-xs text-muted-foreground line-through">
-                            {p.originalPrice.toLocaleString("ko-KR")}원
-                          </span>
-                        )}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-4 py-3 text-right font-semibold",
-                          numeric,
-                          p.stockQuantity <= LOW_STOCK_THRESHOLD &&
-                            "text-destructive",
-                        )}
-                      >
-                        {p.stockQuantity.toLocaleString("ko-KR")}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-4 py-3 text-right text-muted-foreground",
-                          numeric,
-                        )}
-                      >
-                        {p.displayedSalesCount.toLocaleString("ko-KR")}
-                      </td>
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-4 py-3 text-muted-foreground",
-                          numeric,
-                        )}
-                      >
-                        {formatDate(p.createdAt)}
-                      </td>
-                      <td className="px-4 py-3">
+          {/* min-w 는 "이 아래로는 상품명이 못 읽힐 만큼 좁아진다"는 하한이다.
+              lg 미만에서 카테고리(150px)가 빠지므로 고정폭 합은 492px 이고,
+              여기에 상품명 240px 을 더한 값을 하한으로 잡는다. */}
+          <DataTable columns={PRODUCT_COLUMNS} minWidth="min-w-[732px]">
+            <tbody>
+              {data.content.map((p) => {
+                const discounted = p.originalPrice > p.price;
+                return (
+                  <tr key={p.productId} className={dataTableRow}>
+                    <td className={dataTableCell}>
+                      <div className="flex items-center gap-3">
+                        <ProductImage
+                          src={p.imageUrl}
+                          alt=""
+                          className="size-10 shrink-0 rounded-sm bg-muted object-cover"
+                        />
+                        {/* title: 잘린 이름을 hover 로 확인할 수 있게 한다.
+                            말줄임은 셀 안에서만 일어나고 표는 넓어지지 않는다. */}
                         <span
-                          className={cn(
-                            "inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
-                            STATUS_CLASS[p.displayStatus],
-                          )}
+                          className="min-w-0 truncate font-medium"
+                          title={p.name}
                         >
-                          {STATUS_LABEL[p.displayStatus]}
+                          {p.name}
                         </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "truncate text-muted-foreground",
+                        columnHiddenClass(PRODUCT_COLUMNS[1]),
+                      )}
+                      title={p.category}
+                    >
+                      {p.category}
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "whitespace-nowrap text-right",
+                        numeric,
+                      )}
+                    >
+                      <span className="font-semibold">
+                        {p.price.toLocaleString("ko-KR")}원
+                      </span>
+                      {discounted && (
+                        <span className="block text-xs text-muted-foreground line-through">
+                          {p.originalPrice.toLocaleString("ko-KR")}원
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "whitespace-nowrap text-right font-semibold",
+                        numeric,
+                        p.stockQuantity <= LOW_STOCK_THRESHOLD &&
+                          "text-destructive",
+                      )}
+                    >
+                      {p.stockQuantity.toLocaleString("ko-KR")}
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "whitespace-nowrap text-right text-muted-foreground",
+                        numeric,
+                      )}
+                    >
+                      {p.displayedSalesCount.toLocaleString("ko-KR")}
+                    </td>
+                    <td
+                      className={cn(
+                        dataTableCell,
+                        "whitespace-nowrap text-muted-foreground",
+                        numeric,
+                      )}
+                    >
+                      {formatDate(p.createdAt)}
+                    </td>
+                    <td className={dataTableCell}>
+                      <span
+                        className={cn(
+                          "inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
+                          STATUS_CLASS[p.displayStatus],
+                        )}
+                      >
+                        {STATUS_LABEL[p.displayStatus]}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </DataTable>
 
           <Pagination
             page={data.page + 1} // API 0-base → UI 1-base

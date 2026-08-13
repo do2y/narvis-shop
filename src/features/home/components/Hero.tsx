@@ -179,7 +179,7 @@ export function Hero() {
                   onChange={(event) => setMessage(event.target.value)}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
-                  className="min-w-0 flex-1 overflow-hidden bg-transparent text-[15px] leading-5 text-ellipsis whitespace-nowrap outline-none placeholder:text-muted-foreground sm:text-base sm:leading-6"
+                  className="min-w-0 flex-1 overflow-hidden bg-transparent pl-1.5 text-[15px] leading-5 text-ellipsis whitespace-nowrap outline-none placeholder:text-muted-foreground sm:pl-2 sm:text-base sm:leading-6"
                 />
                 <button
                   type="submit"
