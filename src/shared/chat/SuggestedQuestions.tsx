@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface SuggestedQuestionsProps {
@@ -24,6 +25,8 @@ export function SuggestedQuestions({
   onSelect,
   disabled,
 }: SuggestedQuestionsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   if (questions.length === 0) return null;
 
   return (
@@ -40,7 +43,26 @@ export function SuggestedQuestions({
       {/* -mx-4 + px-4: 부모(p-4) 밖으로 흘려 화면 끝까지 스크롤되게 하되,
           첫 칩과 마지막 칩은 입력창 정렬선 안에서 시작·끝난다. */}
       <div className="-mx-4">
-        <div className={cn("flex gap-1.5 overflow-x-auto px-4", "scrollbar-none")}>
+        <div
+          ref={scrollRef}
+          // 마우스 휠은 세로(deltaY)만 준다 — 가로 스크롤러는 기본적으로 반응하지 않아
+          // "스크롤이 안 된다"가 된다(트랙패드 좌우 스와이프·드래그는 원래 동작).
+          // 세로 델타를 가로 이동으로 옮겨 휠만 있는 마우스에서도 넘길 수 있게 한다.
+          onWheel={(e) => {
+            const el = scrollRef.current;
+            if (!el) return;
+            // 이미 가로 성분이 있으면(트랙패드) 브라우저 기본 동작에 맡긴다
+            if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+            const max = el.scrollWidth - el.clientWidth;
+            if (max <= 0) return;
+            const next = Math.min(max, Math.max(0, el.scrollLeft + e.deltaY));
+            // 끝에 닿았으면 페이지 세로 스크롤을 막지 않는다 — 가두면 대화가 안 내려간다
+            if (next === el.scrollLeft) return;
+            e.preventDefault();
+            el.scrollLeft = next;
+          }}
+          className={cn("flex gap-1.5 overflow-x-auto px-4", "scrollbar-none")}
+        >
           {questions.map((q) => (
             <button
               key={q}
