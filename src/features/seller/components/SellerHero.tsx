@@ -25,7 +25,9 @@ export function SellerHero() {
   // gap 으로 붙어 있으면 셋이 한 덩어리로 읽혀 무엇이 핵심 액션인지 알 수 없다.
   // gap 을 없애고 각 요소가 자기 위쪽 여백을 갖게 해 단계를 나눈다.
   return (
-    <section className="flex flex-col py-7 sm:py-9">
+    // pt 를 pb 보다 크게 준다 — 위는 헤더(sticky)와의 간격이라 더 필요하고,
+    // 아래는 이어지는 섹션의 border-t pt-8 이 이미 여백을 갖고 있다.
+    <section className="flex flex-col pb-7 pt-10 sm:pb-9 sm:pt-14">
       {/* 큰 글자는 자간을 좁힌다 — 크기가 커질수록 글자 사이가 벌어져 보인다 */}
       <h1 className="text-center text-2xl font-bold tracking-tight sm:text-3xl sm:tracking-[-0.02em]">
         무엇을 도와드릴까요?

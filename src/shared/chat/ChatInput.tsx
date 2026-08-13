@@ -239,7 +239,10 @@ export function ChatInput({
               disabled={disabled}
               aria-label="사진 첨부"
               className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground",
+                // -ml-2: 폼의 px-4 안쪽으로 당겨 왼쪽 여백을 줄인다. 버튼 크기(size-8)와
+                // 터치 타겟은 그대로 두고 자리만 옮기는 것이라 누르기 어려워지지 않는다.
+                // -mr-0.5 로 입력 글자와의 간격도 한 단 좁힌다(폼 gap-2 를 일부 상쇄).
+                "-ml-2 -mr-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground",
                 "transition-colors duration-150 ease-out-strong",
                 "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
                 "disabled:pointer-events-none disabled:opacity-40",

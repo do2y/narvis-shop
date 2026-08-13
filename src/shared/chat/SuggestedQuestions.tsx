@@ -34,21 +34,13 @@ export function SuggestedQuestions({
         이런 질문을 해보세요
       </p>
 
-      {/* 바깥은 양 끝 fade 를 얹을 기준면.
-          mask-image 로 처리해 실제 요소를 덧대지 않는다 — 덧대면 그 위를 클릭할 때
-          칩이 안 눌린다. 아주 좁게(12px) 줘서 장식이 아니라 "잘렸다"는 신호로만 둔다. */}
-      <div
-        className={cn(
-          "-mx-4",
-          "[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]",
-        )}
-      >
-        <div
-          className={cn(
-            "flex gap-1.5 overflow-x-auto px-4",
-            "scrollbar-none",
-          )}
-        >
+      {/* fade(mask-image)는 쓰지 않는다 — 오른쪽 끝을 투명으로 깎으면 마지막 칩의
+          글자가 흐려져 "잘렸다"가 아니라 "글씨가 지워졌다"로 보인다. 스크롤 가능
+          신호는 잘린 다음 칩이 이미 충분히 준다(끝에 닿기 전에는 항상 일부가 보인다). */}
+      {/* -mx-4 + px-4: 부모(p-4) 밖으로 흘려 화면 끝까지 스크롤되게 하되,
+          첫 칩과 마지막 칩은 입력창 정렬선 안에서 시작·끝난다. */}
+      <div className="-mx-4">
+        <div className={cn("flex gap-1.5 overflow-x-auto px-4", "scrollbar-none")}>
           {questions.map((q) => (
             <button
               key={q}
