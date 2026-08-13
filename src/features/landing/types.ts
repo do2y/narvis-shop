@@ -7,8 +7,6 @@
  */
 export type LandingTab = "buyer" | "seller";
 
-export const LANDING_TABS: readonly LandingTab[] = ["buyer", "seller"] as const;
-
 /** 알 수 없는 값(?tab=xyz, 없음)은 소비자로 떨어뜨린다 */
 export function parseTab(raw: string | null | undefined): LandingTab {
   return raw === "seller" ? "seller" : "buyer";

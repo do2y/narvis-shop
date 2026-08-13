@@ -7,7 +7,7 @@ import { useAddresses, useAddressMutations } from "@/shared/hooks/useAddresses";
 import { AddressCard } from "./components/AddressCard";
 import { AddressFormModal } from "@/shared/address/AddressFormModal";
 import type { AddressValues } from "@/shared/address/addressSchema";
-import { PageTitle, ErrorState } from "./components/PageState";
+import { PageTitle, ErrorState } from "@/shared/ui/PageState";
 import type { Address } from "@/shared/types/address";
 
 function AddressesSkeleton() {

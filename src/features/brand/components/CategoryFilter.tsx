@@ -69,7 +69,7 @@ export function CategoryFilter({
  * 구분자가 없으면 그대로 leaf 로 둔다 — 1단 카테고리인 브랜드에서도 깨지지 않는다.
  * 3단 이상이면 마지막만 leaf, 앞은 전부 parent 로 묶는다.
  */
-export function splitCategoryPath(name: string): {
+function splitCategoryPath(name: string): {
   parent: string | null;
   leaf: string;
 } {

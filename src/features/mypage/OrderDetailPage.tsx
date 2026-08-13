@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useOrder } from "./useOrders";
 import { formatPrice } from "@/shared/utils/formatPrice";
 import { OrderStatusBadge } from "./components/OrderStatusBadge";
-import { PageTitle, ErrorState } from "./components/PageState";
+import { PageTitle, ErrorState } from "@/shared/ui/PageState";
 import { ClaimRequestModal } from "./components/ClaimRequestModal";
 import type { ClaimType, OrderDetailItem } from "./types";
 

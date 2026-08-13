@@ -17,7 +17,7 @@ import type {
   PaymentFailureReason,
   PaymentMethod,
 } from "./types";
-import { PAYMENT_METHODS } from "./placeholder";
+import { PAYMENT_METHODS } from "./paymentMethods";
 import { useCreateOrder, useRetryPayment } from "./useCreateOrder";
 import {
   useAddresses,
@@ -326,12 +326,27 @@ export default function CheckoutPage() {
 
             {/* 동의 */}
             <section className="rounded-sm border bg-background p-5 sm:p-6">
+              {/* 개인정보 제3자 제공 동의 — 법적 성격의 컨트롤이라 체크 상태가
+                  보조기술에도 그대로 전달돼야 한다. 모양은 커스텀이지만 역할은
+                  체크박스이므로 role·aria-checked 를 명시한다(그냥 button 이면
+                  스크린리더에 "동의함/안 함"이 아예 읽히지 않는다). */}
               <button
                 type="button"
+                role="checkbox"
+                aria-checked={agreed}
                 onClick={() => setAgreed((v) => !v)}
-                className="flex w-full items-start gap-3 text-left"
+                // role=checkbox 는 Space 로도 토글돼야 한다(ARIA 규약).
+                // button 기본 동작은 Enter 뿐이라 직접 처리한다.
+                onKeyDown={(e) => {
+                  if (e.key === " ") {
+                    e.preventDefault(); // 스페이스의 기본 스크롤을 막는다
+                    setAgreed((v) => !v);
+                  }
+                }}
+                className="flex w-full items-start gap-3 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <span
+                  aria-hidden
                   className={cn(
                     "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
                     agreed ? "border-primary bg-primary" : "border-input",

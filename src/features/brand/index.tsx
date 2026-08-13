@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/shared/ui/AppHeader";
-import { ErrorState } from "@/features/mypage/components/PageState";
+import { ErrorState } from "@/shared/ui/PageState";
 import { ApiError } from "@/shared/api/client";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";

@@ -68,7 +68,7 @@ function send(events: BehaviorEvent[]) {
   void sendWithAuthRetry(post);
 }
 
-export function flush() {
+function flush() {
   clearTimer();
   const batch = queue;
   queue = [];

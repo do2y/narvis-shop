@@ -6,6 +6,14 @@ import type { LucideIcon } from "lucide-react";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/lib/utils";
 
+/**
+ * 페이지 상태 표시 3종(제목·에러·빈 상태) — 도메인을 모르고 원시값만 받는다.
+ *
+ * 원래 features/mypage/components 에 있었다. 브랜드 홈이 같은 ErrorState 를
+ * 쓰면서 features 간 직접 import 가 생겼고, "2개 이상 페이지가 쓰는 것만
+ * 승격"(CLAUDE.md) 조건을 충족해 여기로 옮겼다 — 레포에 하나뿐이던
+ * feature 간 결합이 이 이동으로 사라진다.
+ */
 export function PageTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="text-xl font-bold tracking-[-0.02em] sm:text-2xl">

@@ -26,6 +26,20 @@ export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+  /**
+   * 이 발화와 함께 보낸 이미지(판매자 상품 등록, 최대 1장).
+   *
+   * **FE 전용 표시 필드다** — 서버는 요청 body 의 imageUrls 만 받고 어떤 SSE 이벤트로도
+   * 되돌려주지 않는다. 그래서 "무엇을 보냈는지"를 화면에 남기려면 FE 가 보관해야 한다.
+   * 없으면 전송하는 순간 사진이 흔적 없이 사라져, 판매자가 실제로 보내졌는지 알 수 없다.
+   *
+   * 값은 업로드가 돌려준 **canonical S3 URL** 이다(presigned 금지 — 계약 2.3).
+   * 서명·만료가 없어 시간이 지나도 살아 있으므로 말풍선에 그대로 걸어 둘 수 있다.
+   *
+   * 대화 자체는 sessionStorage 에 탭 단위로만 남으므로(chatPersistence) 이 URL 의 수명이
+   * 대화보다 길다 — 새로고침 후 대화가 남아 있으면 사진도 정상 표시된다.
+   */
+  imageUrls?: string[];
   error?: string; // 응답 실패 시 해당 말풍선에 표시할 에러 메시지
   /**
    * 재시도 버튼을 줄지. 서버가 retryable:false 를 주거나(계약 CH-2) 재시도해도
@@ -105,7 +119,11 @@ interface ChatState {
     message: string,
     opts?: { retryable?: boolean; requestId?: string },
   ) => void;
-  dropLastExchange: () => string | null; // 실패한 (user, assistant) 쌍 제거하고 user 텍스트 반환
+  /**
+   * 실패한 (user, assistant) 쌍을 제거하고 그 user 발화를 반환한다(재전송용).
+   * 이미지도 함께 돌려준다 — 실패한 턴은 서버에 닿지 않았으므로 재시도가 곧 그 턴이다.
+   */
+  dropLastExchange: () => { text: string; imageUrls?: string[] } | null;
   setResults: (results: ChatResult[]) => void;
   addResult: (result: ChatResult) => void;
   settleDraft: (draftId: string, action: ChatAction) => void;
@@ -180,15 +198,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }),
   dropLastExchange: () => {
     const messages = [...get().messages];
-    // 마지막이 실패한 assistant면 그것과 직전 user를 제거하고 user 텍스트 반환
+    // 마지막이 실패한 assistant면 그것과 직전 user를 제거하고 user 발화를 반환
     const last = messages[messages.length - 1];
     if (last?.role !== "assistant") return null;
     messages.pop();
     const prev = messages[messages.length - 1];
-    const userText = prev?.role === "user" ? prev.text : null;
+    const dropped = prev?.role === "user" ? prev : null;
     if (prev?.role === "user") messages.pop();
     set({ messages });
-    return userText;
+    if (!dropped) return null;
+    // 이미지도 함께 돌려준다 — 실패한 턴은 서버에 닿지 못했으므로 재전송이
+    // "새로 첨부한 턴"에 해당한다(계약: imageUrls 는 그 턴에만 싣는다).
+    // 텍스트만 돌려주면 재시도가 사진 없이 나가 초안이 이미지 없이 만들어진다.
+    return { text: dropped.text, imageUrls: dropped.imageUrls };
   },
   setResults: (results) => set({ results }),
   addResult: (result) => set((s) => ({ results: [...s.results, result] })),
