@@ -41,9 +41,18 @@ export default function SellerChatPage() {
 
   const [workspaceTab, setWorkspaceTab] =
     useState<SellerWorkspaceTab>("orders");
-  // 우측 패널: 목록 vs AI 결과(diff). done.panel 과 draft 도착으로 전환된다.
-  // 분석 로딩·리포트는 아래에서 파생으로 OR 하므로 여기엔 수동/draft 전환만 담는다.
-  const [showResultsState, setShowResults] = useState(false);
+  // 우측 패널: 목록 vs AI 결과(diff/리포트).
+  //
+  // 3-상태인 이유: 결과 노출은 "수동/draft 전환(state)"과 "분석 로딩·리포트(파생)"의
+  // OR 인데, 분석 리포트는 다음 분석 전까지 스토어에 남는다. state 를 boolean 으로 두면
+  // "목록으로"가 state 만 내리고 파생 항이 계속 true 라 화면이 그대로였다.
+  // 그래서 사용자가 목록을 고른 것을 "list" 로 명시해 파생을 이긴다.
+  //   "auto"    — 파생(분석 로딩·리포트)에 맡김
+  //   "results" — 결과 강제(draft 도착)
+  //   "list"    — 목록 강제(사용자가 "목록으로")
+  const [panelIntent, setPanelIntent] = useState<"auto" | "results" | "list">(
+    "auto",
+  );
   const [mobileView, setMobileView] = useState<MobileView>("chat");
 
   // 목록 필터·페이지 — 워크스페이스가 아니라 여기서 들고 있다. 전송 시점에
@@ -82,17 +91,20 @@ export default function SellerChatPage() {
       // refresh: 쓰기 반영 → 목록 재조회 후 목록으로 복귀
       if (panel === "refresh") {
         queryClient.invalidateQueries({ queryKey: ["seller"] });
-        setShowResults(false);
+        setPanelIntent("list");
         return;
       }
-      // keep: 되묻기·거절·일반대화 — 우측 산출물 없음 → 목록으로 복귀.
-      // 분석 되묻기(analysis+keep)면 리포트는 meta에서 이미 비워졌고, 남은 스켈레톤은
-      // isStreaming 종료로 사라진다. diff 카드가 있으면 파생값(showResults)이 유지한다.
+      // keep: 되묻기·거절·일반대화 — 이번 턴의 우측 산출물이 없으니 목록으로 복귀.
+      // 분석 되묻기(analysis+keep)면 리포트는 meta에서 이미 비워졌다. 남은 리포트가
+      // 있더라도 "list"가 파생을 이겨야 한다 — 이번 턴 결과가 아닌 옛 리포트를
+      // 산출물처럼 다시 띄우면 안 된다.
       if (panel === "keep") {
-        setShowResults(false);
+        setPanelIntent("list");
         return;
       }
-      // replace: diff는 draft 도착 시 이미 켜짐 / 분석 리포트는 analysisReport로 우측에 표시됨
+      // replace: diff는 draft 도착 시 "results"로 켜짐 / 분석 리포트는 파생("auto")으로 표시.
+      // 여기서 "auto"로 되돌려야 직전 턴의 "list"가 이번 리포트를 가리지 않는다.
+      setPanelIntent("auto");
     },
   });
 
@@ -120,15 +132,22 @@ export default function SellerChatPage() {
   const prevDraftCount = useRef(0);
   useEffect(() => {
     if (draftCount > prevDraftCount.current) {
-      setShowResults(true);
+      setPanelIntent("results");
       setMobileView("chat");
     }
     prevDraftCount.current = draftCount;
   }, [draftCount]);
 
-  // 우측 결과 영역 노출 여부 — showResults(수동/draft) OR 분석 로딩·리포트(파생).
-  // 분석은 meta 즉시 스켈레톤을 띄워야 해 effect 대신 렌더 중 파생으로 계산한다.
-  const showResults = showResultsState || analysisLoading || !!analysisReport;
+  // 우측 결과 영역 노출 여부 — "list"가 켜져 있으면 무조건 목록이다.
+  //
+  // analysisReport 는 다음 분석 전까지 스토어에 남으므로, 이걸 그냥 OR 하면
+  // "목록으로"를 눌러도 파생 항이 계속 true 라 화면이 그대로였다(이번 버그).
+  // 스트리밍 중에도 사용자의 선택을 이기지 않는다 — 분석 도중 목록을 보겠다는 것도
+  // 유효한 의사다. 대신 새 턴이 시작되면 onDone/draft 가 intent 를 다시 풀어준다.
+  const showResults =
+    panelIntent === "list"
+      ? false
+      : panelIntent === "results" || analysisLoading || !!analysisReport;
 
   // 진입 시 새 대화(새 방) — 스토어가 채널 공용이라 이전 쇼핑 대화가 화면에 남아있을 수 있음.
   // 세션(접속)은 채널별로 분리 보관되므로 여기서 끊기지 않는다 — 화면 상태만 비운다.
@@ -171,7 +190,7 @@ export default function SellerChatPage() {
     // 취소한 것이 검토 중이던 등록 초안이면 입력창도 평상시로 되돌린다
     if (activeDraft?.draftId === draftId) setActiveDraft(null);
     if (results.filter((r) => r.kind === "draft").length <= 1) {
-      setShowResults(false); // 마지막 카드였으면 목록으로 복귀
+      setPanelIntent("list"); // 마지막 카드였으면 목록으로 복귀
     }
   };
 
@@ -200,7 +219,14 @@ export default function SellerChatPage() {
   // 겹쳐 첫 줄을 가렸고, 구매자 챗(/chat)과 자리가 달라 같은 동작이 다른 곳에 있었다.
   const handleNewChat = () => {
     startNewChat();
-    setShowResults(false);
+    setPanelIntent("list");
+  };
+
+  // 새 질문을 보내면 직전 턴의 "목록으로"를 놓아준다. 이게 없으면 리포트를 닫아 둔 뒤
+  // 다시 분석시켰을 때 done 전까지 우측이 목록에 묶여 스켈레톤이 뜨지 않는다.
+  const sendFromInput: typeof send = (message, conditionActions, opts) => {
+    setPanelIntent("auto");
+    return send(message, conditionActions, opts);
   };
 
   const conversation = (
@@ -208,7 +234,9 @@ export default function SellerChatPage() {
       <ChatConversation
         // 입력창은 (message, imageUrls) 로 주지만 send 의 2번째 자리는 조건 칩이다 —
         // 구매자 전용이라 판매자 챗에서는 넘길 값이 없다
-        onSend={(message, imageUrls) => send(message, undefined, { imageUrls })}
+        onSend={(message, imageUrls) =>
+          sendFromInput(message, undefined, { imageUrls })
+        }
         onRetry={retry}
         isStreaming={isStreaming}
         showUserAvatar={false}
@@ -233,7 +261,7 @@ export default function SellerChatPage() {
             // 대화 시작 전에만 추천 질문 노출
             <SuggestedQuestions
               questions={SELLER_QUESTIONS}
-              onSelect={send}
+              onSelect={sendFromInput}
               disabled={isStreaming}
             />
           ) : null
@@ -274,7 +302,7 @@ export default function SellerChatPage() {
       isStreaming={isStreaming}
       analysisReport={analysisReport}
       analysisLoading={analysisLoading}
-      onBackToList={() => setShowResults(false)}
+      onBackToList={() => setPanelIntent("list")}
       onConfirmDraft={confirmDraft}
       onCancelDraft={cancelDraft}
       streamError={streamError}
@@ -312,7 +340,7 @@ export default function SellerChatPage() {
                 } else {
                   setMobileView(t.key);
                   setWorkspaceTab(t.key);
-                  setShowResults(false);
+                  setPanelIntent("list");
                 }
               }}
               className={cn(
