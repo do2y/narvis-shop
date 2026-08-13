@@ -66,19 +66,13 @@ export function TodoSection({
           const idle = count === 0;
 
           return (
-            // 실제 이동 경로가 있다(/seller/orders?status=… → OrdersPage 가
-            // normalizeTab 으로 받는 딥링크). 그래서 링크 역할과 포커스는 남긴다.
-            // 다만 채운 면·테두리 카드는 걷어낸다 — 지표 4칸이 버튼 4개처럼 보이면
-            // 현황을 읽는 자리가 조작 영역으로 읽힌다. 구분은 여백과 얇은 선이 맡는다.
-            <Link
+            // 카드 형태(테두리·면)는 유지하되 **누를 수 있는 신호는 전부 뺀다** —
+            // 링크·버튼이 아니라 div 라 커서도 포커스 링도 탭 순서도 없고,
+            // hover 반응과 눌림 애니메이션도 주지 않는다. 읽기 전용 현황 블록이다.
+            // 주문 목록으로 가는 길은 섹션 제목 옆 "주문 관리" 링크 하나로 모았다.
+            <div
               key={c.status}
-              href={`/seller/orders?status=${c.status}`}
-              className={cn(
-                "flex flex-col gap-0.5 rounded-sm px-3 py-2.5",
-                "transition-colors duration-150 ease-out-strong",
-                "hover:[@media(hover:hover)]:bg-muted/50",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              )}
+              className="flex flex-col gap-0.5 rounded-sm border bg-muted/30 px-3 py-2.5"
             >
               <span className="text-xs font-medium text-muted-foreground">
                 {c.label}
@@ -87,7 +81,7 @@ export function TodoSection({
                 className={cn(
                   "text-2xl font-bold tracking-tight",
                   numeric,
-                  // 강조는 색이 아니라 진하기로만 — 채운 면을 쓰면 카드가 된다
+                  // 0건이면 볼 것이 없다 — 숫자를 흐리게 내려 한눈에 읽히게 한다
                   idle ? "text-muted-foreground/40" : "text-foreground",
                 )}
               >
@@ -97,7 +91,7 @@ export function TodoSection({
               {/* 상태 이름만으로는 무엇을 해야 하는지 모른다 — 0건이어도 남겨
                   칸이 비어 보이지 않게 한다 */}
               <span className="text-xs text-muted-foreground/70">{c.hint}</span>
-            </Link>
+            </div>
           );
         })}
       </div>
