@@ -2,57 +2,24 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 
-import { AlertTriangle, Check } from "lucide-react";
-import { Skeleton } from "@/shared/ui/skeleton";
-import { ProductImage } from "@/shared/ui/ProductImage";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { fetchSellerSummary } from "./api";
-import { numeric, pressableCard } from "./interaction";
-import type { SellerOrderStatus, SellerSummary } from "./types";
-import { SellerHero } from "./components/SellerHero";
+import type { SellerMetric, SellerSummary } from "./types";
 import { SellerErrorState } from "./components/SellerErrorState";
 import { MetricCards } from "./components/MetricCards";
-import { AnalysisChart } from "./components/AnalysisChart";
-import { AiAttributionCard } from "./components/AiAttributionCard";
-import type { SellerMetric } from "./types";
+import { SalesTrendSection } from "./components/SalesTrendSection";
+import { TodoSection } from "./components/TodoSection";
+import { LowStockSection } from "./components/LowStockSection";
+import { SellerAssistantBar } from "./components/SellerAssistantBar";
 
 // 매출 추이 차트가 쓰는 서버 기본값(trendDays=7)과 같은 창을 aiAttribution 에도 준다.
-// 어긋나면 "전체 매출의 N%"의 분모만 다른 기간이 되는데, 카드에 기간 라벨이 없어
-// 판매자는 그걸 알 방법이 없다.
+// 어긋나면 "전체 매출의 N%"의 분모만 다른 기간이 되는데, 판매자는 그걸 알 방법이 없다.
 const TREND_DAYS = 7;
 
-// 오늘 할 일 4칸 — 처리해야 할 순서대로. CANCELLED·RETURNED는 활성 주문이 아니라 제외.
-// (구 "배송 준비" 카드는 order_item.status에 PREPARING이 없어 2026-07-21자로 삭제)
-const TODO_CARDS: {
-  status: SellerOrderStatus;
-  label: string;
-  primary?: boolean;
-}[] = [
-  { status: "ORDERED", label: "신규 주문", primary: true },
-  { status: "SHIPPING", label: "배송 중" },
-  { status: "DELIVERED", label: "배송 완료" },
-  { status: "CONFIRMED", label: "구매 확정" },
-];
-
-/**
- * 섹션 라벨 — 모든 섹션 제목의 유일한 크기.
- *
- * 원래 h2 가 text-xl font-bold 였는데, 그러면 제목이 그 아래 숫자만큼 굵어
- * "무엇을 먼저 볼지"를 제목이 가로챈다. 대시보드에서 시선이 멈춰야 할 곳은
- * 값이지 구획 이름이 아니라, 제목은 값을 찾아가는 이정표 크기로만 둔다.
- */
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">
-      {children}
-    </h2>
-  );
-}
-
-/** 응답의 today 블록 → 지표 카드 4장 */
+/** 응답의 today 블록 → 지표 4종 */
 function toMetrics(today: SellerSummary["today"]): SellerMetric[] {
   return [
     {
@@ -108,12 +75,17 @@ function trendRange(): { from: string; to: string } {
   return { from: ymd(from), to: ymd(to) };
 }
 
-/** "2026-07-15" → "7/15" — 추이 차트 x축은 좁아서 연도를 뺀다 */
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split("-");
-  return m && d ? `${Number(m)}/${Number(d)}` : iso;
-}
-
+/**
+ * 판매자 대시보드.
+ *
+ * 읽는 순서를 업무 흐름에 맞춘다:
+ *   ① 핵심 운영 현황(오늘 얼마 벌었나) → ② 매출 추이(흐름은 어떤가)
+ *   → ③ 오늘 처리할 일(무엇을 해야 하나) → ④ 재고 부족(무엇이 급한가)
+ *   → ⑤ AI 도우미(맡길 일이 있나)
+ *
+ * AI 진입을 맨 아래 둔 이유: 매일 여는 화면의 첫 자리는 오늘의 숫자여야 한다.
+ * 종전에는 "무엇을 도와드릴까요?" 히어로가 첫 화면을 차지해 챗봇 랜딩처럼 보였다.
+ */
 export default function DashboardPage() {
   // 복원 완료 전에 보내면 AT 없이 나가 401 → 로그인으로 튕긴다
   const isAuthReady = useAuthStore(selectIsAuthReady);
@@ -130,10 +102,10 @@ export default function DashboardPage() {
   });
 
   return (
-    // gap-8: 섹션 사이 간격은 각 섹션의 border-t pt-8 이 맡는다. 여기서 gap-10 을
-    // 더 주면 구분선과 제목 사이가 벌어져 선이 어느 쪽 것인지 모호해진다.
-    <div className="flex flex-col gap-8 pb-16">
-      <SellerHero />
+    // max-w-5xl: 종전에는 셸의 6xl 을 그대로 써 지표 사이가 과하게 벌어졌다.
+    // 폭을 좁히면 같은 값이 더 촘촘히 읽힌다.
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 pb-16 pt-6">
+      <h1 className="sr-only">판매자 대시보드</h1>
 
       {isPending && <DashboardSkeleton />}
 
@@ -147,197 +119,60 @@ export default function DashboardPage() {
 
       {data && (
         <>
-          {/* 오늘의 스토어 현황 — 오늘 하루의 요약 숫자라 기간 집계(AI 경유 매출·
-              매출 추이)보다 먼저 온다. "지금 무슨 일이 있었나"를 먼저 답하고,
-              추세는 그 다음이다.
-              제목을 라벨 크기로 낮춘 이유: 아래 매출 숫자가 이 화면의 주인공이라
-              제목이 그보다 크면 시선이 제목에서 먼저 멈춘다. */}
-          <section className="flex flex-col gap-5">
-            <SectionLabel>오늘의 스토어 현황</SectionLabel>
+          {/* ① 핵심 운영 현황 — 오늘 하루의 요약. 기간 집계보다 먼저 온다 */}
+          <section className="flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              오늘의 현황
+            </h2>
             <MetricCards items={toMetrics(data.today)} />
           </section>
 
-          {/* 매출 현황 — 기간 집계(AI 경유 매출 + 추이).
-              위 블록과 선으로 가른다 — 오늘(스냅샷)과 최근 7일(추세)은 성격이 다른
-              숫자라, 여백만으로는 같은 묶음으로 읽힌다.
-              높이는 grid 기본값(stretch)으로 둘을 맞춘다 — items-start 로 두면
-              짧은 카드 아래에 빈 공간이 남아 두 박스가 어긋나 보인다.
-              minmax(0,1fr): 차트 열이 콘텐츠 폭에 밀려 넘치지 않게. */}
-          <section className="flex flex-col gap-5 border-t pt-8">
-            <SectionLabel>최근 {TREND_DAYS}일 매출</SectionLabel>
+          {/* ② 매출 추이 — 오늘(스냅샷)과 최근 7일(추세)은 성격이 달라 선으로 가른다 */}
+          <div className="border-t pt-8">
+            <SalesTrendSection
+              salesTrend={data.salesTrend}
+              aiAttribution={data.aiAttribution}
+              trendDays={TREND_DAYS}
+            />
+          </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8">
-              {/* 이 가드 하나가 곧 실패 처리다 — 집계 실패로 블록이 null 이면 카드가 빠지고
-                  그리드 첫 칸이 사라지며 차트가 자동으로 전폭이 된다. 별도 에러 UI 불필요. */}
-              {data.aiAttribution && (
-                <AiAttributionCard data={data.aiAttribution} />
-              )}
+          {/* ③ 오늘 처리할 일 — 여기부터는 "읽는 숫자"가 아니라 "누르는 것" */}
+          <div className="border-t pt-8">
+            <TodoSection orderStatus={data.orderStatus} />
+          </div>
 
-              {/* bare: 바깥이 이미 섹션으로 갈려 있어 테두리를 또 두르면 상자 안의 상자가 된다 */}
-              <AnalysisChart
-                compact
-                bare
-                analysis={{
-                  title: `매출 추이 · 합계 ${data.salesTrend.total.toLocaleString("ko-KR")}원`,
-                  chartType: "line",
-                  unit: "KRW",
-                  series: [
-                    {
-                      label: "매출",
-                      points: data.salesTrend.points.map((p) => ({
-                        x: shortDate(p.date),
-                        y: p.sales,
-                      })),
-                    },
-                  ],
-                }}
-              />
-            </div>
-          </section>
-
-          {/* 오늘 할 일 — 유일하게 "눌러서 처리하는" 구역이라 위 두 섹션(읽는 숫자)과
-              선으로 가른다 */}
-          <section className="flex flex-col gap-5 border-t pt-8">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <SectionLabel>오늘 할 일</SectionLabel>
-                {/* 처리할 일이 있을 때만 배지가 눈에 띈다 — 0건에도 같은 톤이면
-                    "할 일 있음"으로 잘못 읽힌다 */}
-                <span
+          {/* ④ 재고 부족 — 조치가 필요한 항목. 제목에만 경고색을 쓴다 */}
+          <section className="flex flex-col gap-4 border-t pt-8">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div className="flex items-baseline gap-2">
+                <h2
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-xs font-semibold",
-                    numeric,
-                    data.orderStatus.activeTotal > 0
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground",
+                    "text-sm font-semibold",
+                    data.lowStock.items.length > 0
+                      ? "text-destructive"
+                      : "text-muted-foreground",
                   )}
                 >
-                  {data.orderStatus.activeTotal}건
-                </span>
+                  재고 부족 상품
+                </h2>
+                {data.lowStock.count > 0 && (
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {/* count 는 상품 수가 아니라 재고 부족인 "옵션 수"다(2026-08-09) */}
+                    {data.lowStock.count}개 옵션
+                  </span>
+                )}
               </div>
-              <span className="text-sm text-muted-foreground">
-                실시간 업데이트
-              </span>
             </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {TODO_CARDS.map((c) => {
-                const count = data.orderStatus.counts[c.status] ?? 0;
-                // 0건이면 눌러도 빈 목록이다 — 같은 무게로 두면 처리할 일이 있는
-                // 타일과 구분이 안 된다. 숫자를 흐리게 내려 "여긴 볼 것 없다"를
-                // 한눈에 읽히게 한다. 타일 자체는 남긴다 — 자리가 고정돼야 다음에 찾기 쉽다.
-                const idle = count === 0;
-                // 처리 대기(신규 주문)가 실제로 쌓였을 때만 강조한다
-                const urgent = c.primary && !idle;
-
-                return (
-                  <Link
-                    key={c.status}
-                    href={`/seller/orders?status=${c.status}`}
-                    className={cn(
-                      // 테두리 대신 배경톤 — 누를 수 있는 면이라는 것만 전하면 된다
-                      "flex items-baseline justify-between gap-3 rounded-sm p-4",
-                      pressableCard,
-                      // hover 는 두 갈래 모두에 준다 — 한쪽만 반응하면 같은 줄의
-                      // 타일인데 누를 수 있는지 여부가 달라 보인다
-                      urgent
-                        ? "bg-foreground text-background hover:[@media(hover:hover)]:bg-foreground/90"
-                        : "bg-muted/50 hover:[@media(hover:hover)]:bg-muted",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "text-sm font-medium",
-                        urgent ? "text-background/80" : "text-muted-foreground",
-                      )}
-                    >
-                      {c.label}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-2xl font-bold tracking-tight",
-                        numeric,
-                        idle && "text-muted-foreground/40",
-                      )}
-                    >
-                      {count}
-                      <span className="ml-0.5 text-sm font-medium">건</span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* 재고 부족 알림 — 이 화면에서 유일하게 "조치가 필요한" 항목이라
-                destructive 톤으로 따로 세운다. 단, 0건이면 경고가 아니라
-                정상 상태이므로 톤을 걷어 조용히 알린다(항상 빨가면 경고가 무뎌진다). */}
-            {data.lowStock.items.length === 0 ? (
-              <p className="flex items-center gap-2 rounded-sm bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-                <Check className="size-4 shrink-0" />
-                재고가 부족한 상품이 없어요.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3 rounded-sm border-l-2 border-l-destructive bg-destructive/5 p-4 sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="size-4 shrink-0 text-destructive" />
-                    <h3 className="text-sm font-semibold text-destructive">
-                      재고 부족
-                    </h3>
-                    {/* count 는 상품 수가 아니라 재고 부족인 "옵션 수"다(2026-08-09).
-                        "건"으로 두면 상품 개수로 읽혀 실제 목록 길이와 어긋나 보인다. */}
-                    <span className={cn("text-sm text-destructive/70", numeric)}>
-                      {data.lowStock.count}개 옵션
-                    </span>
-                  </div>
-                  <Link
-                    href="/seller/products"
-                    className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors duration-150 ease-out-strong hover:[@media(hover:hover)]:text-foreground hover:[@media(hover:hover)]:underline"
-                  >
-                    전체 보기
-                  </Link>
-                </div>
-
-                {/* 카드 격자 대신 구분선 리스트 — 상품명·남은 수량 2개뿐이라
-                    칸을 나눌 이유가 없다. 행이 얇아져 한 번에 더 많이 보인다.
-                    한 줄 = 옵션 하나다(2026-08-09) — 같은 상품이 색상별로 여러 줄
-                    나올 수 있어 key 는 productId 만으로는 충돌한다. */}
-                <ul className="flex flex-col divide-y divide-destructive/10">
-                  {data.lowStock.items.map((p) => (
-                    <li
-                      key={p.optionId ?? p.productId}
-                      className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-                    >
-                      <ProductImage
-                        src={p.imageUrl}
-                        alt=""
-                        className="size-9 shrink-0 rounded-sm bg-muted object-cover"
-                      />
-                      {/* 옵션명을 같이 보여야 어느 색을 채울지 알 수 있다 —
-                          상품명만 있으면 같은 이름 줄이 여럿이라 구분되지 않는다 */}
-                      <span className="min-w-0 flex-1 truncate text-sm">
-                        {p.name}
-                        {p.optionName && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            {p.optionName}
-                          </span>
-                        )}
-                      </span>
-                      <span
-                        className={cn(
-                          "shrink-0 text-sm font-semibold text-destructive",
-                          numeric,
-                        )}
-                      >
-                        {p.stockQuantity}개 남음
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <LowStockSection
+              items={data.lowStock.items}
+              threshold={data.lowStock.threshold}
+            />
           </section>
+
+          {/* ⑤ AI 도우미 — 맡길 일이 있을 때 */}
+          <div className="border-t pt-8">
+            <SellerAssistantBar />
+          </div>
         </>
       )}
     </div>
@@ -347,12 +182,10 @@ export default function DashboardPage() {
 function DashboardSkeleton() {
   return (
     // 구조·간격을 실제 화면과 같게 둔다 — 다르면 데이터가 도착하는 순간 블록이 뛴다.
-    // 오늘의 스토어 현황(히어로 + 보조 3) → 최근 7일 매출 → 오늘 할 일
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-5">
-        <Skeleton className="h-4 w-32 rounded-full" />
+      <section className="flex flex-col gap-4">
+        <Skeleton className="h-4 w-24 rounded-full" />
         <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-          {/* 히어로 지표 — 실제 화면의 text-4xl/5xl 자리 */}
           <div className="flex flex-col gap-2 lg:w-[280px] lg:shrink-0">
             <Skeleton className="h-4 w-20 rounded-full" />
             <Skeleton className="h-11 w-48 rounded-md" />
@@ -370,22 +203,23 @@ function DashboardSkeleton() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-5 border-t pt-8">
+      <section className="flex flex-col gap-4 border-t pt-8">
         <Skeleton className="h-4 w-28 rounded-full" />
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8">
-          <Skeleton className="h-36 rounded-sm" />
-          <Skeleton className="h-36 rounded-sm" />
+        <Skeleton className="h-28 rounded-sm" />
+      </section>
+
+      <section className="flex flex-col gap-4 border-t pt-8">
+        <Skeleton className="h-4 w-24 rounded-full" />
+        <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[86px] rounded-sm" />
+          ))}
         </div>
       </section>
 
-      <section className="flex flex-col gap-5 border-t pt-8">
-        <Skeleton className="h-4 w-20 rounded-full" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[60px] rounded-sm" />
-          ))}
-        </div>
-        <Skeleton className="h-32 rounded-sm" />
+      <section className="flex flex-col gap-4 border-t pt-8">
+        <Skeleton className="h-4 w-28 rounded-full" />
+        <Skeleton className="h-40 rounded-sm" />
       </section>
     </div>
   );
