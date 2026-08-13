@@ -8,8 +8,13 @@
 
 export type AttachState =
   | { status: "idle" }
-  | { status: "uploading"; previewUrl: string }
-  | { status: "ready"; previewUrl: string; imageUrl: string }
+  | { status: "uploading"; previewUrl: string; fileName: string }
+  | {
+      status: "ready";
+      previewUrl: string;
+      imageUrl: string;
+      fileName: string;
+    }
   | {
       status: "failed";
       message: string;
@@ -41,7 +46,9 @@ export function canSubmit(params: {
   disabled?: boolean;
 }): boolean {
   const { text, attach, disabled } = params;
-  if (!text.trim()) return false;
   if (disabled) return false;
-  return attach.status !== "uploading";
+  if (attach.status === "uploading") return false;
+  // 텍스트가 없어도 이미지가 준비됐으면 보낼 수 있다 — 사진만 올리고 "초안 작성해줘"를
+  // 이어서 말하는 흐름이 계약에 있고(2턴 시나리오), AI 가 사진만으로 되묻는다.
+  return Boolean(text.trim()) || attach.status === "ready";
 }

@@ -254,11 +254,21 @@ export function useChat({
         threadId: string;
       }) => StreamChatBody,
       userText: string | null,
+      /**
+       * 이 발화에 딸린 이미지 — 말풍선에 남길 표시용이다(요청 body 는 buildBody 가 만든다).
+       * 서버가 되돌려주지 않으므로 여기서 넣어 두지 않으면 화면에서 사라진다.
+       */
+      userImageUrls?: string[],
     ) => {
       if (useChatStore.getState().isStreaming) return;
 
       if (userText !== null) {
-        addMessage({ id: newId(), role: "user", text: userText });
+        addMessage({
+          id: newId(),
+          role: "user",
+          text: userText,
+          ...(userImageUrls?.length ? { imageUrls: userImageUrls } : {}),
+        });
       }
       // 스트리밍으로 채워질 빈 assistant 메시지 선 추가
       addMessage({ id: newId(), role: "assistant", text: "" });
@@ -641,6 +651,7 @@ export function useChat({
         // 칩 제거만 있는 턴은 사용자 말풍선을 남기지 않는다 — 제어 신호이지 발화가 아니다
         // (판매자 confirm 과 동일 처리, 계약 CH-2).
         trimmed || null,
+        opts?.imageUrls,
       );
     },
     [run],
@@ -662,10 +673,13 @@ export function useChat({
     [run],
   );
 
-  // 실패한 응답 재시도 — 에러난 (user, assistant) 쌍을 제거하고 같은 메시지로 다시 전송
+  // 실패한 응답 재시도 — 에러난 (user, assistant) 쌍을 제거하고 같은 발화로 다시 전송.
+  // 이미지도 그대로 다시 싣는다(실패한 턴은 서버에 닿지 않아 재분석 우려가 없다).
   const retry = useCallback(() => {
-    const userText = useChatStore.getState().dropLastExchange();
-    if (userText) send(userText);
+    const dropped = useChatStore.getState().dropLastExchange();
+    if (dropped?.text) {
+      send(dropped.text, undefined, { imageUrls: dropped.imageUrls });
+    }
   }, [send]);
 
   // 조건 칩 제거 — conditionActions 배열로 보낸다(계약 CH-2 #84, 규약 문자열 방식은 폐기).

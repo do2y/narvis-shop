@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { ProductImage } from "@/shared/ui/ProductImage";
 import { MessageMarkdown } from "./MessageMarkdown";
 import type { ChatMessage } from "./store";
 
@@ -65,9 +66,23 @@ export function MessageList({
               showUserAvatar ? "gap-2" : "gap-0",
             )}
           >
-            <span className="max-w-[80%] rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm leading-relaxed tracking-tight text-primary-foreground">
-              {msg.text}
-            </span>
+            <div className="flex max-w-[80%] flex-col items-end gap-1.5">
+              {/* 보낸 사진은 말풍선 위에 남긴다 — 입력창에서만 지우고 대화에는 보존한다.
+                  서버가 어떤 이벤트로도 되돌려주지 않으므로 여기가 유일한 기록이다. */}
+              {msg.imageUrls?.map((url) => (
+                <ProductImage
+                  key={url}
+                  src={url}
+                  alt="보낸 이미지"
+                  className="max-h-56 w-auto max-w-full rounded-2xl rounded-tr-sm border object-cover"
+                />
+              ))}
+              {msg.text && (
+                <span className="rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm leading-relaxed tracking-tight text-primary-foreground">
+                  {msg.text}
+                </span>
+              )}
+            </div>
             {showUserAvatar && <UserAvatar />}
           </div>
         ) : (

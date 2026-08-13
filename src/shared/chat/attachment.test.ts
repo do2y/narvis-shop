@@ -13,11 +13,16 @@ import { canSubmit, imageUrlsFor, type AttachState } from "./attachment";
  */
 
 const idle: AttachState = { status: "idle" };
-const uploading: AttachState = { status: "uploading", previewUrl: "blob:x" };
+const uploading: AttachState = {
+  status: "uploading",
+  previewUrl: "blob:x",
+  fileName: "shirt.jpg",
+};
 const ready: AttachState = {
   status: "ready",
   previewUrl: "blob:x",
   imageUrl: "https://bucket.s3.example/seller/7/a3f1.jpg",
+  fileName: "shirt.jpg",
 };
 const failed: AttachState = {
   status: "failed",
@@ -61,9 +66,17 @@ describe("canSubmit", () => {
     expect(canSubmit({ text: "그냥 보낼게", attach: failed })).toBe(true);
   });
 
-  it("빈 문자열·공백만 있으면 막는다", () => {
-    expect(canSubmit({ text: "", attach: ready })).toBe(false);
-    expect(canSubmit({ text: "   ", attach: ready })).toBe(false);
+  it("텍스트가 없어도 이미지가 준비됐으면 보낼 수 있다", () => {
+    // 사진만 올리고 다음 턴에 가격·재고를 말하는 2턴 흐름이 계약에 있다.
+    expect(canSubmit({ text: "", attach: ready })).toBe(true);
+    expect(canSubmit({ text: "   ", attach: ready })).toBe(true);
+  });
+
+  it("텍스트도 이미지도 없으면 막는다", () => {
+    expect(canSubmit({ text: "", attach: idle })).toBe(false);
+    expect(canSubmit({ text: "   ", attach: idle })).toBe(false);
+    // 실패한 첨부는 보낼 URL 이 없다 — 빈 요청이 나가면 400 이다
+    expect(canSubmit({ text: "", attach: failed })).toBe(false);
   });
 
   it("스트리밍 중(disabled)에는 막는다", () => {

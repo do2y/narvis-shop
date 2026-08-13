@@ -108,7 +108,7 @@ export function ChatInput({
     // 미리보기는 업로드 완료 전부터 보여준다 — 판매자가 문장을 쓰는 동안
     // "무엇을 올리는 중인지"가 보여야 한다
     const previewUrl = URL.createObjectURL(file);
-    setAttach({ status: "uploading", previewUrl });
+    setAttach({ status: "uploading", previewUrl, fileName: file.name });
 
     try {
       const imageUrl = await uploadProductImage(file);
@@ -117,7 +117,7 @@ export function ChatInput({
         URL.revokeObjectURL(previewUrl);
         return;
       }
-      setAttach({ status: "ready", previewUrl, imageUrl });
+      setAttach({ status: "ready", previewUrl, imageUrl, fileName: file.name });
     } catch (e) {
       URL.revokeObjectURL(previewUrl);
       if (isStale()) return;
@@ -182,8 +182,16 @@ export function ChatInput({
                   </div>
                 )}
               </div>
-              <span className="flex-1 truncate text-xs text-muted-foreground">
-                {uploading ? "이미지 올리는 중…" : "이미지 1장 첨부됨"}
+              {/* 파일명을 보여준다 — 비슷한 사진이 여러 장일 때 썸네일만으로는
+                  어느 것을 골랐는지 분간이 안 된다. 상태는 그 아래 한 줄로 분리해
+                  "무엇을"과 "지금 어떤 상태인지"가 겹쳐 읽히지 않게 한다. */}
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-xs font-medium">
+                  {attach.fileName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {uploading ? "올리는 중…" : "첨부됨"}
+                </span>
               </span>
               <button
                 type="button"
@@ -251,10 +259,11 @@ export function ChatInput({
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
 
-        {/* 업로드 중 전송을 막는다 — URL 없이 나가면 이미지 없는 초안이 된다 */}
+        {/* 업로드 중 전송을 막는다 — URL 없이 나가면 이미지 없는 초안이 된다.
+            판정은 canSubmit 하나로 모은다(버튼과 submit 이 서로 다른 규칙을 갖지 않게). */}
         <button
           type="submit"
-          disabled={disabled || uploading || !value.trim()}
+          disabled={!canSubmit({ text: value, attach, disabled })}
           aria-label="전송"
           className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground transition-all duration-150 hover:opacity-90 active:scale-90 disabled:scale-100 disabled:opacity-40"
         >
