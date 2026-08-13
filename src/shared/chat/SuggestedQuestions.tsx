@@ -1,12 +1,24 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 interface SuggestedQuestionsProps {
   questions: string[];
   onSelect: (question: string) => void;
   disabled?: boolean;
 }
 
-/** 추천 질문 칩 — 클릭 시 해당 문장으로 대화 시작. 채널별 문구는 주입받는다. */
+/**
+ * 추천 질문 — 입력창 위 보조 선택지. 클릭 시 해당 문장으로 대화를 시작한다.
+ *
+ * 종전에는 캡슐 버튼이 왼쪽부터 여러 줄로 흘러넘쳤다. 문구 길이가 제각각이라
+ * 줄마다 끝나는 지점이 달라 정렬이 무너져 보였고, 네 개가 2~3줄을 차지해
+ * 입력창과 한 덩어리의 큰 버튼 묶음처럼 읽혔다.
+ *
+ * 여기서는 **한 줄 가로 스크롤**로 바꾼다. 좁은 채팅 패널에서 긴 문장 네 개를
+ * 다 펼칠 방법은 없고, 억지로 2열 그리드에 끼우면 문구가 잘린다. 한 줄로 두면
+ * 높이가 고정되고(칩 하나 높이), 잘린 다음 칩이 "옆에 더 있다"를 알려준다.
+ */
 export function SuggestedQuestions({
   questions,
   onSelect,
@@ -15,21 +27,53 @@ export function SuggestedQuestions({
   if (questions.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {questions.map((q) => (
-        <button
-          key={q}
-          type="button"
-          onClick={() => onSelect(q)}
-          disabled={disabled}
-          // whitespace-nowrap: 문구 길이가 제각각이라 줄바꿈을 허용하면 긴 칩만
-          // 2줄이 되어 혼자 높이가 달라진다. 한 줄로 고정하고 폭만 늘린다
-          // (좁은 패널에서는 flex-wrap 이 칩 단위로 줄을 바꾼다).
-          className="animate-in whitespace-nowrap rounded-full border px-3 py-1.5 text-sm text-muted-foreground transition-all duration-200 fade-in zoom-in-95 hover:bg-muted hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+    <div className="flex flex-col gap-1.5">
+      {/* 칩이 무엇인지 한 마디로 알려준다 — 없으면 버튼 네 개가 왜 거기 있는지
+          맥락 없이 놓인다. 입력창 좌측 정렬선에 맞춘다(px-1). */}
+      <p className="px-1 text-xs text-muted-foreground">
+        이런 질문을 해보세요
+      </p>
+
+      {/* 바깥은 양 끝 fade 를 얹을 기준면.
+          mask-image 로 처리해 실제 요소를 덧대지 않는다 — 덧대면 그 위를 클릭할 때
+          칩이 안 눌린다. 아주 좁게(12px) 줘서 장식이 아니라 "잘렸다"는 신호로만 둔다. */}
+      <div
+        className={cn(
+          "-mx-4",
+          "[mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]",
+        )}
+      >
+        <div
+          className={cn(
+            "flex gap-1.5 overflow-x-auto px-4",
+            "scrollbar-none",
+          )}
         >
-          {q}
-        </button>
-      ))}
+          {questions.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => onSelect(q)}
+              disabled={disabled}
+              className={cn(
+                // 높이를 고정해 문구 길이와 무관하게 같은 띠로 읽히게 한다.
+                // whitespace-nowrap 이 없으면 긴 문구가 2줄이 되어 혼자 높이가 달라진다.
+                "flex h-8 shrink-0 items-center whitespace-nowrap",
+                // radius 를 낮춘다 — 캡슐(rounded-full)은 통통해 보여 주 액션처럼 읽힌다
+                "rounded-sm border px-2.5 text-xs",
+                "bg-background text-muted-foreground",
+                // hover 는 아주 미세하게 — 이동·확대 없이 면과 글자색만 한 단 바뀐다
+                "transition-colors duration-150 ease-out-strong",
+                "hover:[@media(hover:hover)]:bg-muted hover:[@media(hover:hover)]:text-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "disabled:pointer-events-none disabled:opacity-40",
+              )}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

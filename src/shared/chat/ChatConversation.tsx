@@ -107,8 +107,11 @@ export function ChatConversation({
         )}
         onPointerDown={onInputAreaPointerDown}
       >
+        {/* 입력창과의 간격은 여기서 준다(바깥 gap-3 보다 넓게) — 붙어 있으면
+            추천 질문과 입력창이 하나의 큰 버튼 묶음처럼 읽힌다.
+            aboveInputClassName 을 준 화면(구매자)은 그쪽 값이 이긴다. */}
         {aboveInput ? (
-          <div className={aboveInputClassName}>{aboveInput}</div>
+          <div className={aboveInputClassName ?? "mb-1"}>{aboveInput}</div>
         ) : null}
         <ChatInput
           onSend={onSend}
