@@ -200,7 +200,9 @@ export default function SellerChatPage() {
   };
 
   const conversation = (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // min-w-0: 안쪽 추천 질문 줄이 가로 스크롤되려면 이 칸이 패널 폭으로 줄어들 수
+    // 있어야 한다. 기본 min-width:auto 면 내용 폭만큼 벌어져 넘칠 것이 없어진다.
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <ChatConversation
         // 입력창은 (message, imageUrls) 로 주지만 send 의 2번째 자리는 조건 칩이다 —
         // 구매자 전용이라 판매자 챗에서는 넘길 값이 없다
