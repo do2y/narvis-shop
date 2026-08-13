@@ -52,7 +52,7 @@ export default function ReportDetailPage({ reportId }: { reportId: string }) {
   const notFound = error instanceof ApiError && error.status === 404;
 
   return (
-    <div className="flex flex-col gap-5 pb-16 pt-8">
+    <div className="flex flex-col gap-5 pb-20 pt-8 sm:pb-24">
       <Link
         href="/seller/reports"
         className={cn(

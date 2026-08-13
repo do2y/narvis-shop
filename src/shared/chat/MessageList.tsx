@@ -36,11 +36,14 @@ export function MessageList({
   onRetry,
 }: MessageListProps) {
   return (
-    <div className="flex flex-col gap-4">
+    // 메시지 간 간격(gap-6)은 말풍선 내부(gap-1.5)·같은 응답의 요소 간격보다 넓다 —
+    // 셋이 같은 값이면 "누가 말한 덩어리"가 어디서 끊기는지 읽히지 않는다.
+    // 단계: 섹션 내부(1.5) < 섹션 간(3) < 메시지 간(6).
+    <div className="flex flex-col gap-6">
       {/* 비휴지 안내는 대화 시작 전에만 — 대화가 시작되면 공간을 비워 대화에 집중 */}
       {messages.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          · 이 대화는 이 탭에서만 유지돼요 · 탭을 닫으면 사라집니다
+          · 이 대화는 이 탭에서만 유지돼요
         </p>
       )}
 
@@ -116,6 +119,8 @@ export function MessageList({
                 )}
               </div>
             ) : (
+              // 같은 응답에 속한 것들(본문 + 진행 표시)은 가깝게 둔다 —
+              // 메시지 간 간격(gap-6)보다 훨씬 좁아야 한 덩어리로 읽힌다
               <div className="flex min-w-0 max-w-[80%] flex-col items-start gap-1.5">
                 <span
                   className={cn(

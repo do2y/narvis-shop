@@ -76,7 +76,9 @@ export function ChatConversation({
         <div
           ref={scrollRef}
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto p-4 sm:p-6",
+            // pb 를 키운다 — 마지막 말풍선이 입력창 경계에 딱 붙으면 잘린 것처럼
+            // 보이고, 스트리밍으로 줄이 늘 때 읽을 여유가 없다.
+            "min-h-0 flex-1 overflow-y-auto p-4 pb-8 sm:p-6 sm:pb-10",
             scrollAreaClassName,
           )}
         >
@@ -98,6 +100,9 @@ export function ChatConversation({
       <div
         className={cn(
           "shrink-0 flex flex-col gap-3 border-t p-4",
+          // iOS 홈 인디케이터 영역만큼 아래를 더 띄운다 — 없으면 전송 버튼이
+          // 제스처 바에 닿아 눌리지 않는다. 지원하지 않는 브라우저에선 0 이다.
+          "pb-[max(1rem,env(safe-area-inset-bottom))]",
           inputAreaClassName,
         )}
         onPointerDown={onInputAreaPointerDown}

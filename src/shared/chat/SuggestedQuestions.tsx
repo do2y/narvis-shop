@@ -22,7 +22,10 @@ export function SuggestedQuestions({
           type="button"
           onClick={() => onSelect(q)}
           disabled={disabled}
-          className="animate-in rounded-full border px-3 py-1.5 text-sm text-muted-foreground transition-all duration-200 fade-in zoom-in-95 hover:bg-muted hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+          // whitespace-nowrap: 문구 길이가 제각각이라 줄바꿈을 허용하면 긴 칩만
+          // 2줄이 되어 혼자 높이가 달라진다. 한 줄로 고정하고 폭만 늘린다
+          // (좁은 패널에서는 flex-wrap 이 칩 단위로 줄을 바꾼다).
+          className="animate-in whitespace-nowrap rounded-full border px-3 py-1.5 text-sm text-muted-foreground transition-all duration-200 fade-in zoom-in-95 hover:bg-muted hover:text-foreground active:scale-95 disabled:pointer-events-none disabled:opacity-40"
         >
           {q}
         </button>

@@ -62,7 +62,7 @@ export default function ReportsPage() {
   const totalPages = data ? Math.ceil(data.total / REPORTS_PAGE_SIZE) : 0;
 
   return (
-    <div className="flex flex-col gap-5 pb-16 pt-8">
+    <div className="flex flex-col gap-5 pb-20 pt-8 sm:pb-24">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h1 className="text-2xl font-bold tracking-tight">분석 보고서</h1>
         <p className="text-sm text-muted-foreground">
