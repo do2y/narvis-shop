@@ -124,7 +124,7 @@ export default function DashboardPage() {
         <>
           {/* ① 핵심 운영 현황 — 오늘 하루의 요약. 기간 집계보다 먼저 온다 */}
           <section className="flex flex-col gap-5 border-t pt-8">
-            <SectionHeading title="오늘의 현황" />
+            <SectionHeading title="오늘의 스토어 현황" />
             <MetricCards items={toMetrics(data.today)} />
           </section>
 
