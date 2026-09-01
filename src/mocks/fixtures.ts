@@ -37,14 +37,42 @@ import "server-only";
  * 외부 URL 을 넣으면 오프라인에서 또 깨진다. ProductImage 의 실패 대체 화면이 뜨면
  * 캡처용으로 쓸 수 없다.
  */
-function productImage(label: string, from: string, to: string): string {
+/**
+ * 상품 실루엣 모음 — 품목별 형태를 단순 도형으로 그린 것.
+ *
+ * 사진 대신 이걸 쓰는 이유는 저작권이다. 실제 상품 사진은 쇼핑몰·브랜드의 저작물이고,
+ * 무료 사진 사이트의 상품 컷도 로고가 찍혀 있으면 상표 문제가 남는다(나이키 로고가
+ * 선명한 컷을 실제로 받아 본 뒤 이 방식으로 정했다). 직접 그린 도형은 그 두 가지가 없다.
+ */
+const SILHOUETTES: Record<string, string> = {
+  shoe: `<path d="M112 344 C112 330 120 322 136 319 L206 306 C222 303 234 295 246 283 L288 240 C300 228 316 226 328 236 L344 250 C358 262 374 270 392 274 L452 288 C476 294 490 310 490 332 L490 344 C490 352 484 358 476 358 L126 358 C118 358 112 352 112 344 Z" fill="#3F3B36" opacity=".82"/><path d="M112 348 L490 348 L490 368 C490 376 484 382 476 382 L126 382 C118 382 112 376 112 368 Z" fill="#2B2825" opacity=".9"/><path d="M252 288 L286 250 M278 302 L312 264 M304 314 L336 278" stroke="#F6F4F1" stroke-width="6" stroke-linecap="round" opacity=".5"/>`,
+  hoodie: `<path d="M228 214 C228 194 250 178 300 178 C350 178 372 194 372 214 L410 232 C428 240 438 256 438 274 L438 322 C438 332 430 340 420 340 L404 340 L404 424 C404 434 396 442 386 442 L214 442 C204 442 196 434 196 424 L196 340 L180 340 C170 340 162 332 162 322 L162 274 C162 256 172 240 190 232 Z" fill="#413D38" opacity=".82"/><path d="M262 182 C262 208 276 224 300 224 C324 224 338 208 338 182" fill="none" stroke="#F6F4F1" stroke-width="6" opacity=".5"/><path d="M300 230 L300 300" stroke="#F6F4F1" stroke-width="5" stroke-linecap="round" opacity=".38"/>`,
+  padding: `<path d="M232 190 L368 190 L410 214 C426 222 434 238 434 254 L434 428 C434 438 426 446 416 446 L184 446 C174 446 166 438 166 428 L166 254 C166 238 174 222 190 214 Z" fill="#413D38" opacity=".82"/><path d="M172 250 L428 250 M172 302 L428 302 M172 354 L428 354 M172 406 L428 406" stroke="#F6F4F1" stroke-width="4" opacity=".3"/><path d="M300 194 L300 446" stroke="#F6F4F1" stroke-width="5" opacity=".45"/><path d="M232 190 C232 214 250 228 268 228 L300 228" fill="none" stroke="#F6F4F1" stroke-width="5" opacity=".3"/>`,
+  bag: `<path d="M214 300 L386 300 C398 300 408 310 409 322 L418 410 C420 426 407 440 391 440 L209 440 C193 440 180 426 182 410 L191 322 C192 310 202 300 214 300 Z" fill="#433F3A" opacity=".82"/><path d="M214 300 L386 300 L389 330 C390 342 381 352 369 352 L231 352 C219 352 210 342 211 330 Z" fill="#2E2B27" opacity=".45"/><path d="M226 302 L150 168" fill="none" stroke="#433F3A" stroke-width="12" opacity=".5" stroke-linecap="round"/><path d="M374 302 L450 168" fill="none" stroke="#433F3A" stroke-width="12" opacity=".5" stroke-linecap="round"/><path d="M150 168 C210 150 390 150 450 168" fill="none" stroke="#433F3A" stroke-width="12" opacity=".5" stroke-linecap="round"/><rect x="286" y="368" width="28" height="20" rx="4" fill="#F6F4F1" opacity=".42"/>`,
+  mat: `<rect x="150" y="240" width="304" height="120" rx="60" fill="#443F3A" opacity=".8"/><ellipse cx="152" cy="300" rx="32" ry="60" fill="#2E2B27" opacity=".88"/><ellipse cx="152" cy="300" rx="14" ry="26" fill="#F6F4F1" opacity=".35"/><path d="M240 268 L240 332 M300 268 L300 332 M360 268 L360 332" stroke="#F6F4F1" stroke-width="4" opacity=".28" stroke-linecap="round"/>`,
+  bottle: `<path d="M268 150 L332 150 L332 186 L344 196 C356 206 362 220 362 236 L362 430 C362 442 352 452 340 452 L260 452 C248 452 238 442 238 430 L238 236 C238 220 244 206 256 196 L268 186 Z" fill="#433F3A" opacity=".82"/><rect x="262" y="132" width="76" height="30" rx="8" fill="#2E2B27" opacity=".9"/><path d="M238 268 L362 268 M238 300 L362 300" stroke="#F6F4F1" stroke-width="4" opacity=".26"/><rect x="272" y="330" width="26" height="70" rx="13" fill="#F6F4F1" opacity=".28"/>`,
+  denim: `<path d="M212 168 L388 168 L396 262 L378 448 C377 456 370 462 362 462 L326 462 C318 462 311 456 310 448 L300 330 L290 448 C289 456 282 462 274 462 L238 462 C230 462 223 456 222 448 L204 262 Z" fill="#413D38" opacity=".82"/><path d="M212 168 L388 168 L392 214 L208 214 Z" fill="#2E2B27" opacity=".55"/><path d="M300 218 L300 330" stroke="#F6F4F1" stroke-width="4" opacity=".3"/><rect x="232" y="232" width="44" height="34" rx="5" fill="none" stroke="#F6F4F1" stroke-width="4" opacity=".28"/><rect x="324" y="232" width="44" height="34" rx="5" fill="none" stroke="#F6F4F1" stroke-width="4" opacity=".28"/>`,
+  earbuds: `<g transform="rotate(-18 232 300)"><ellipse cx="232" cy="268" rx="46" ry="50" fill="#433F3A" opacity=".82"/><path d="M214 306 C214 300 222 296 232 296 C242 296 250 300 250 306 L246 396 C246 406 240 412 232 412 C224 412 218 406 218 396 Z" fill="#433F3A" opacity=".82"/><ellipse cx="232" cy="266" rx="20" ry="22" fill="#F6F4F1" opacity=".42"/></g><g transform="rotate(14 372 322)"><ellipse cx="372" cy="290" rx="46" ry="50" fill="#403C37" opacity=".7"/><path d="M354 328 C354 322 362 318 372 318 C382 318 390 322 390 328 L386 418 C386 428 380 434 372 434 C364 434 358 428 358 418 Z" fill="#403C37" opacity=".7"/><ellipse cx="372" cy="288" rx="20" ry="22" fill="#F6F4F1" opacity=".38"/></g>`,
+  brandmark: `<circle cx="300" cy="300" r="132" fill="none" stroke="#433F3A" stroke-width="16" opacity=".5"/><path d="M238 356 L300 236 L362 356" fill="none" stroke="#433F3A" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity=".62"/>`,
+};
+
+/**
+ * 배경색 4종을 번갈아 쓴다. 한 색으로 통일하면 목록이 단조롭고,
+ * 색을 많이 쓰면 카드가 저마다 튀어 상품이 아니라 배경이 먼저 보인다.
+ */
+const CANVAS = ["#F2F0ED", "#EDEAE6", "#F4F2EF", "#EAE7E2"];
+
+/**
+ * 인라인 SVG 상품 이미지.
+ *
+ * 외부 이미지 호스트를 쓰지 않는 이유: 목의 목적이 "백엔드·네트워크 없이 화면이 뜨는 것"이라
+ * 외부 URL 을 넣으면 오프라인에서 또 깨진다. ProductImage 의 실패 대체 화면이 뜨면
+ * 캡처용으로 쓸 수 없다.
+ */
+function productImage(shape: string, tone = 0): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/>
-</linearGradient></defs>
-<rect width="600" height="600" fill="url(#g)"/>
-<text x="300" y="318" font-family="Pretendard, sans-serif" font-size="44" font-weight="700"
- fill="rgba(255,255,255,.92)" text-anchor="middle">${label}</text>
+<rect width="600" height="600" fill="${CANVAS[tone % CANVAS.length]}"/>
+${SILHOUETTES[shape] ?? ""}
 </svg>`;
   // encodeURIComponent 로 감싼다 — base64 는 한글에서 btoa 가 터진다.
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -77,7 +105,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "스트라이드",
     categoryId: "1",
     categoryName: "신발",
-    imageUrl: productImage("러닝화", "#2a63b8", "#6f9fe0"),
+    imageUrl: productImage("shoe", 0),
     price: 89000,
     originalPrice: 129000,
     rating: 4.6,
@@ -92,7 +120,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "베이직랩",
     categoryId: "2",
     categoryName: "상의",
-    imageUrl: productImage("후드", "#1d6b45", "#5fbc8f"),
+    imageUrl: productImage("hoodie", 1),
     price: 39900,
     originalPrice: 59000,
     rating: 4.4,
@@ -107,7 +135,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "노스레이어",
     categoryId: "3",
     categoryName: "아우터",
-    imageUrl: productImage("패딩", "#8c3b2e", "#d98a72"),
+    imageUrl: productImage("padding", 2),
     price: 149000,
     originalPrice: 249000,
     rating: 4.8,
@@ -122,7 +150,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "포켓폼",
     categoryId: "4",
     categoryName: "가방",
-    imageUrl: productImage("크로스백", "#5b4b8a", "#9c8bc7"),
+    imageUrl: productImage("bag", 3),
     price: 54000,
     originalPrice: 78000,
     rating: 4.3,
@@ -137,7 +165,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "코어핏",
     categoryId: "5",
     categoryName: "운동용품",
-    imageUrl: productImage("요가매트", "#b5761a", "#e8b463"),
+    imageUrl: productImage("mat", 4),
     price: 32000,
     originalPrice: 45000,
     rating: 4.5,
@@ -152,7 +180,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "킵워머",
     categoryId: "6",
     categoryName: "생활용품",
-    imageUrl: productImage("보온병", "#2f6d75", "#7bb8bf"),
+    imageUrl: productImage("bottle", 5),
     price: 24900,
     originalPrice: 33000,
     rating: 4.7,
@@ -167,7 +195,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "베이직랩",
     categoryId: "7",
     categoryName: "하의",
-    imageUrl: productImage("데님", "#33507a", "#7d9ac4"),
+    imageUrl: productImage("denim", 6),
     price: 59000,
     originalPrice: 89000,
     rating: 4.2,
@@ -182,7 +210,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     brandName: "사운드코어",
     categoryId: "8",
     categoryName: "디지털",
-    imageUrl: productImage("이어버드", "#3c3c46", "#8a8a99"),
+    imageUrl: productImage("earbuds", 7),
     price: 119000,
     originalPrice: 179000,
     rating: 4.6,
@@ -289,7 +317,7 @@ export function mockProductDetail(id: string) {
     brand: {
       id: p.brandId,
       name: p.brandName,
-      logoUrl: productImage(p.brandName, "#14181d", "#454d57"),
+      logoUrl: productImage("brandmark", 2),
     },
     category: { id: p.categoryId, name: p.categoryName },
     rating: { average: p.rating, count: p.reviewCount },
@@ -373,7 +401,7 @@ export function mockBrand(id: string) {
   return {
     id: p.brandId,
     name: p.brandName,
-    logoUrl: productImage(p.brandName, "#14181d", "#454d57"),
+    logoUrl: productImage("brandmark", 2),
     description: `${p.brandName}은(는) 일상에서 편하게 쓰는 물건을 만듭니다.`,
     products: MOCK_PRODUCTS.filter((x) => x.brandId === id).map(toPopularCard),
   };
