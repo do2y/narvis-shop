@@ -1,5 +1,6 @@
 import "server-only";
 
+import { mockChatList } from "./chatScript";
 import {
   mockBrand,
   mockCart,
@@ -38,6 +39,13 @@ export function resolveMock(
   method: string,
   pathname: string,
   search: URLSearchParams,
+  /**
+   * 요청 오리진 — 채팅 세션의 llmSseUrl 을 **절대 URL** 로 만들기 위해서만 쓴다.
+   * 상대경로로 두면 판매자 리포트가 깨진다: reportsApi 가 그 값에 new URL() 을 걸어
+   * origin 을 취하는데, 상대경로는 파싱되지 않아 REPORT_ENDPOINT_UNRESOLVED 로 떨어진다.
+   * SSR 조회처럼 오리진을 모르는 호출부는 생략한다(채팅은 브라우저에서만 시작한다).
+   */
+  origin = "",
 ): MockResult | null {
   const path = pathname.replace(/\/+$/, "");
   const num = (key: string, fallback: number) => {
@@ -82,6 +90,31 @@ export function resolveMock(
   }
   if (path === "/api/cart/items" || path.startsWith("/api/cart/items/")) {
     return ok(mockCart());
+  }
+
+  // --- 채팅 ---
+  // 세션 발급 응답의 llmSseUrl 로 목 SSE 라우트를 내려준다.
+  // streamChat 은 이 값을 그대로 POST 하므로 클라이언트 코드는 손대지 않는다.
+  // 상대경로인 이유: 배포 도메인을 목이 알 수 없고, 같은 오리진이라 CORS 도 필요 없다.
+  // 티켓 재발급·세션 승계도 같은 세션을 돌려준다 — 목은 만료를 흉내 내지 않는다
+  const isSessionIssue =
+    path === "/api/chat/sessions" ||
+    path === "/api/chat/seller/sessions" ||
+    path === "/api/chat/tickets" ||
+    /^\/api\/chat\/sessions\/[^/]+\/claim$/.test(path);
+  if (method === "POST" && isSessionIssue) {
+    return ok({
+      sessionId: "mock-session-0001",
+      ttlSeconds: 600,
+      streamTicket: "mock-ticket",
+      ticketTtlSeconds: 60,
+      llmSseUrl: `${origin}/api/mock-chat/stream`,
+    });
+  }
+  // CH-5 — products.ready 뒤 화면이 목록을 따로 조회한다(경로 B)
+  const chatListMatch = path.match(/^\/api\/chat\/lists\/([^/]+)$/);
+  if (method === "GET" && chatListMatch) {
+    return ok(mockChatList(chatListMatch[1]));
   }
 
   // --- 찜 ---
