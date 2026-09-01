@@ -17,6 +17,20 @@ import "server-only";
  */
 
 /**
+ * ⚠️ 사진으로 바꾸려면 여기가 아니라 각 상품의 `imageUrl` 을 고친다.
+ *
+ * 값은 `<img src>` 에 그대로 들어간다(ProductImage 는 next/image 가 아니라 네이티브 img 다)
+ * — 그래서 외부 URL·`/public` 경로·data URI 무엇이든 되고 설정 변경도 필요 없다.
+ *   외부 URL: "https://…/shoe.jpg"
+ *   로컬 파일: "/mock-products/shoe.jpg"  (public/mock-products/shoe.jpg 로 두면 된다)
+ *
+ * 외부 URL 을 쓸 때 두 가지가 걸린다:
+ * 1. 쇼핑몰 CDN 은 대개 Referer 를 검사해 외부 도메인에서의 요청을 막는다(핫링크 차단).
+ *    로컬에서 보이던 것이 배포 후 전부 깨질 수 있다 — 배포본에서 반드시 다시 확인할 것.
+ * 2. 로드 실패는 ProductImage 가 대체 화면으로 받아내므로 레이아웃은 안 무너진다.
+ *
+ * 아래 SVG 는 그 사진이 채워지기 전까지 자리를 지키는 기본값이다.
+ *
  * 인라인 SVG 상품 이미지.
  *
  * 외부 이미지 호스트를 쓰지 않는 이유: 목의 목적이 "백엔드·네트워크 없이 화면이 뜨는 것"이라
@@ -44,6 +58,8 @@ interface MockProduct {
   categoryId: string;
   categoryName: string;
   imageUrl: string;
+  /** 상세 갤러리. 생략하면 imageUrl 한 장만 쓴다 */
+  detailImages?: string[];
   price: number;
   originalPrice: number;
   rating: number;
@@ -234,10 +250,9 @@ export function mockProductDetail(id: string) {
     id: p.productId,
     name: p.name,
     imageUrl: p.imageUrl,
-    detailImages: [
-      productImage(`${p.name} 상세 1`, "#e9ecf0", "#c9ced5"),
-      productImage(`${p.name} 상세 2`, "#dfe4ea", "#b8bfc8"),
-    ],
+    // 상품이 detailImages 를 들고 있으면 그것을, 없으면 대표 이미지 한 장을 쓴다.
+    // 사진을 붙일 때 상세만 SVG 로 남아 대표 이미지와 따로 노는 것을 막는다.
+    detailImages: p.detailImages ?? [p.imageUrl],
     price: p.price,
     originalPrice: p.originalPrice,
     summary: p.summary,
