@@ -97,7 +97,7 @@ async function handler(req: NextRequest): Promise<Response> {
   // 목이 처리하는 경로면 백엔드로 가지 않는다.
   // 처리하지 않는 경로는 null 이라 아래 실제 프록시로 그대로 떨어진다.
   if (useMock) {
-    const mocked = resolveMock(req.method, url.pathname, url.searchParams);
+    const mocked = resolveMock(req.method, url.pathname, url.searchParams, url.origin);
     if (mocked) {
       return Response.json(mocked.body, { status: mocked.status });
     }

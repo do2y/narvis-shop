@@ -4,7 +4,11 @@ const nextConfig: NextConfig = {
   // 컨테이너 이미지에 필요한 파일만 담는다(node_modules 전체 설치 불필요).
   // .next/standalone에 server.js가 생성되며, public·.next/static은 자동 복사되지
   // 않으므로 Dockerfile에서 직접 넣는다.
-  output: "standalone",
+  //
+  // Vercel 에서는 끈다 — 자체 빌드 파이프라인이 서버리스 함수로 패키징하므로
+  // standalone 산출물이 쓰이지 않고, 켜 두면 빌드 산출물만 두 벌이 된다.
+  // VERCEL 은 Vercel 빌드 환경이 자동으로 넣어주는 값이라 따로 설정할 것이 없다.
+  output: process.env.VERCEL ? undefined : "standalone",
 
   /**
    * 구 랜딩 주소 → 루트 (2026-08-12 랜딩을 루트로 올림).
