@@ -396,13 +396,34 @@ export function mockCart() {
   };
 }
 
+/**
+ * P-6 브랜드 홈 — features/brand/types.ts 의 `BrandHome` 계약.
+ *
+ * 봉투가 두 겹이다: { brand, products: { content, page, ... } }.
+ * 카드 배열을 그대로 내려주면 화면이 `data.brand.categories` 를 읽다 터진다
+ * (실제로 배포본에서 겪음 — 상세 페이지 하단 "브랜드 홈" 링크가 죽었다).
+ */
 export function mockBrand(id: string) {
   const p = MOCK_PRODUCTS.find((x) => x.brandId === id) ?? MOCK_PRODUCTS[0];
+  const items = MOCK_PRODUCTS.filter((x) => x.brandId === p.brandId);
   return {
-    id: p.brandId,
-    name: p.brandName,
-    logoUrl: productImage("brandmark", 2),
-    description: `${p.brandName}은(는) 일상에서 편하게 쓰는 물건을 만듭니다.`,
-    products: MOCK_PRODUCTS.filter((x) => x.brandId === id).map(toPopularCard),
+    brand: {
+      id: p.brandId,
+      name: p.brandName,
+      logoUrl: productImage("brandmark", 2),
+      description: `${p.brandName}은(는) 일상에서 편하게 쓰는 물건을 만듭니다.`,
+      // 그 브랜드가 실제로 파는 상품의 카테고리만 추린다 —
+      // 전체 카테고리를 주면 눌러도 결과가 0인 필터 칩이 생긴다.
+      categories: [...new Map(items.map((x) => [x.categoryId, x])).values()].map(
+        (x) => ({ id: x.categoryId, name: x.categoryName }),
+      ),
+    },
+    products: {
+      content: items.map(toPopularCard),
+      page: 0,
+      size: 20,
+      totalElements: items.length,
+      totalPages: 1,
+    },
   };
 }
