@@ -1,0 +1,6 @@
+# 실 시크릿 — 절대 커밋하지 않는다
+.env
+
+# prepare-sql.sh 가 백엔드 레포에서 생성하는 복사본.
+# 원본이 jarvis-backend 소관이라 커밋하면 조용히 낡는다(스키마 validate 실패로 나타남).
+sql/

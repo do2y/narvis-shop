@@ -1,0 +1,259 @@
+# 나비스(Narvis) 포트폴리오 데모 — FE·BE·AI 3개 서비스 + 상태 6개를 한 호스트에서 띄운다.
+#
+# 원래 팀 형상(03 D-분산4)은 EC2 4대 + ALB + RDS + ElastiCache + 전용 Kafka EC2다.
+# 포트폴리오 링크는 ① 비용 0 ② 부트캠프 계정과 무관한 수명 ③ 한 명이 관리 가능이 목표라
+# 그 상태 계층을 전부 컨테이너로 흡수했다. 트래픽·가용성 요구가 없으므로 단일 호스트가 맞다.
+#
+# ⚠️ 이것은 데모 형상이다. 운영 형상으로 쓰지 않는다:
+#   - DB·Redis·Kafka가 같은 호스트에 있고 백업이 없다
+#   - Kafka 단일 노드(RF=1) — 브로커가 죽으면 이벤트가 유실된다
+#   - LLM은 mock(무과금) — 실제 추론이 아니다
+#
+# 전제: 호스트에 Docker + compose v2. TLS는 Cloudflare Tunnel이 담당하므로
+# 이 파일은 포트를 호스트로 열지 않는다(tunnel 컨테이너가 도커 네트워크 안에서 붙는다).
+#
+# 사용:
+#   cp .env.example .env && vi .env      # 시크릿 채우기 (scripts/gen-secrets.sh 활용)
+#   docker compose up -d
+#   docker compose logs -f app-web
+
+name: narvis-demo
+
+x-logging: &default-logging
+  # 데모 링크는 몇 달을 방치할 수 있다 — 로그 회전을 걸지 않으면
+  # 디스크가 차서 어느 날 조용히 컨테이너가 죽는다(Oracle 무료 부트볼륨 50GB).
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ───────────────────────── 프론트엔드 (Next SSR + nginx) ─────────────────────────
+  # 이 컨테이너가 유일한 진입점이다. 내장 nginx가 /api·/internal·/.well-known·/actuator를
+  # spring으로, 그 외를 Next(3000)로 보낸다 — 동일 오리진이라 쿠키·CORS 문제가 없다.
+  app-web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: narvis-web:demo
+    environment:
+      # 브라우저는 상대경로(/api/...)로 요청 → 내장 nginx가 spring으로 프록시.
+      # (빌드 시점 값이라 Dockerfile의 ENV가 이미 빈 값으로 박아둔다)
+      SITE_URL: ${SITE_URL}
+      # 로컬 프록시 Route Handler는 배포에서 쓰이지 않지만(nginx가 먼저 받는다)
+      # 빈 값이면 혼란스러우므로 컨테이너 내 spring을 가리켜 둔다.
+      API_PROXY_TARGET: http://app-api:8080
+    depends_on:
+      app-api:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ───────────────────────── 백엔드 (Spring Boot) ─────────────────────────
+  app-api:
+    build:
+      context: ${BACKEND_REPO_PATH:-../../jarvis-backend}
+      dockerfile: Dockerfile
+    image: narvis-api:demo
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # JVM 힙 — 이미지 Dockerfile에 상한이 없어 컨테이너 메모리를 다 보고 늘어난다.
+      # 여러 컨테이너가 한 호스트를 나눠 쓰므로 비율로 묶는다.
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60 -XX:+UseSerialGC"
+      DB_URL: jdbc:mariadb://mariadb:3306/${DB_NAME:-jarvis}?useUnicode=true&characterEncoding=utf8
+      DB_USERNAME: ${DB_USERNAME:-jarvis}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD 필요}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 필요}
+      STREAM_TICKET_PRIVATE_KEY: ${STREAM_TICKET_PRIVATE_KEY:?STREAM_TICKET_PRIVATE_KEY 필요}
+      STREAM_TICKET_KID: ${STREAM_TICKET_KID:-narvis-demo-1}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN 필요}
+      CUSTOMER_LABEL_SECRET: ${CUSTOMER_LABEL_SECRET:?CUSTOMER_LABEL_SECRET 필요}
+      # AI 서버 주소. sse-url은 **base**다 — 백엔드가 /chat·/seller/chat을 붙여
+      # llmSseUrl로 내려주고 브라우저가 그 절대 URL로 직접 SSE를 연다.
+      # 그래서 컨테이너 내부 이름(app-ai)이 아니라 **공개 주소**여야 한다.
+      LLM_BASE_URL: http://app-ai:8000
+      LLM_SSE_URL: ${AI_PUBLIC_URL:?AI_PUBLIC_URL 필요 — 브라우저가 직접 여는 주소}
+      # Cloudflare Tunnel → app-web nginx 2홉. 실측값이며 틀리면 rate-limit이
+      # 엉뚱한 IP를 세어 로그인 제한이 오작동한다.
+      APP_CLIENT_IP_FORWARDED_DEPTH: ${APP_CLIENT_IP_FORWARDED_DEPTH:-2}
+      APP_COOKIE_SECURE: "true"
+      # ⚠️ 자체 브로커를 쓰지만 접두어는 반드시 준다. 팀 운영 브로커를 가리키게
+      # 잘못 설정된 경우에도 접두어가 남아 있으면 운영 컨슈머 그룹에 합류하지 않는다
+      # (jarvis-backend/DEPLOY.md §2-1 — 무증상 이벤트 유실 사고).
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      APP_KAFKA_PREFIX: "demo-"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ───────────────────────── AI 서버 (FastAPI) ─────────────────────────
+  app-ai:
+    build:
+      context: ${AI_REPO_PATH:-../../jarvis-ai}
+      dockerfile: Dockerfile
+    image: narvis-ai:demo
+    environment:
+      # mock = 무과금 데모 provider. 실제 추론이 아니며 API 키가 필요 없다.
+      LLM_PROVIDER: mock
+      # 임베딩도 과금 대상이다 — Spring 위임 검색으로 내려 Google 키 없이 돌린다.
+      # (embedding_rerank가 기본값이라 명시적으로 덮어야 한다)
+      SEARCH_BACKEND: spring
+      AUTH_MODE: jwks
+      JWKS_URL: http://app-api:8080/.well-known/jwks.json
+      JWT_SCOPE: chat:stream
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN 필요}
+      # jwks 모드 필수 — 없으면 기동 거부(약한 PII 해시로 조용히 도는 것 방지).
+      PII_HASH_PEPPER: ${PII_HASH_PEPPER:?PII_HASH_PEPPER 필요}
+      SPRING_BASE_URL: http://app-api:8080
+      CATALOG_DB_URL: postgresql://jarvis:${PG_PASSWORD:?PG_PASSWORD 필요}@pg-catalog:5432/catalog
+      PROFILE_DB_URL: postgresql://jarvis:${PG_PASSWORD}@pg-profile:5432/profile
+      # FE가 AI를 직접 호출(SSE)하므로 FE 공개 오리진이 반드시 들어가야 한다.
+      CORS_ORIGINS: '["${SITE_URL}"]'
+      LANGSMITH_TRACING: "false"
+    depends_on:
+      pg-catalog:
+        condition: service_healthy
+      pg-profile:
+        condition: service_healthy
+      app-api:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ───────────────────────── 상태: 백엔드 ─────────────────────────
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD 필요}
+      MARIADB_DATABASE: ${DB_NAME:-jarvis}
+      MARIADB_USER: ${DB_USERNAME:-jarvis}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      # 최초 부팅 시 스키마+시드를 자동 적용한다. BE는 ddl-auto=validate라
+      # 스키마가 없으면 **기동을 거부**하므로 이 순서가 앱보다 먼저여야 한다.
+      - ./sql/backend:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    logging: *default-logging
+
+  # KRaft 단일 노드. 행동 이벤트 파이프라인(08 D6)이 포트폴리오 셀링포인트라
+  # 빼지 않고 유지한다. RF=1이라 유실 내성은 없다 — 데모라 허용.
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      # 컨테이너 간 통신이라 서비스명으로 광고한다. 0.0.0.0은 컴바인드 모드에서
+      # CONTROLLER 광고 주소가 파생돼 기동 실패한다(원본 compose 주석 참조).
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # 단일 노드 데모에서 힙 기본값(1GB)은 과하다.
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ───────────────────────── 상태: AI (pgvector ×2) ─────────────────────────
+  pg-catalog:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: catalog
+    volumes:
+      - pg-catalog-data:/var/lib/postgresql/data
+      - ${AI_REPO_PATH:-../../jarvis-ai}/db/catalog/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis -d catalog"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    logging: *default-logging
+
+  pg-profile:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: profile
+    volumes:
+      - pg-profile-data:/var/lib/postgresql/data
+      - ${AI_REPO_PATH:-../../jarvis-ai}/db/profile/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jarvis -d profile"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ───────────────────────── 공개 노출 (Cloudflare Tunnel) ─────────────────────────
+  # 왜 tunnel인가: 인바운드 포트를 열지 않고 HTTPS를 얻는다. 쿠키가 Secure httpOnly라
+  # 평문 http로는 로그인 자체가 불가능한데, 인증서 발급·갱신이 필요 없어진다.
+  # Oracle 무료 인스턴스의 보안목록·iptables 삽질도 함께 사라진다.
+  #
+  # 두 개의 호스트명을 쓴다:
+  #   ${SITE_URL}        → app-web:80   (쇼핑몰 전체 + /api 프록시)
+  #   ${AI_PUBLIC_URL}   → app-ai:8000  (브라우저가 직접 여는 SSE)
+  # AI를 경로(/ai/)가 아니라 서브도메인으로 분리한 이유: 백엔드가 LLM_SSE_URL 뒤에
+  # /chat·/seller/chat을 붙이고 AI 라우터에 prefix가 없어, 경로 분리는 rewrite가 필요하다.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN:?TUNNEL_TOKEN 필요}
+    depends_on:
+      app-web:
+        condition: service_started
+      app-ai:
+        condition: service_started
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  mariadb-data:
+  kafka-data:
+  pg-catalog-data:
+  pg-profile-data:
