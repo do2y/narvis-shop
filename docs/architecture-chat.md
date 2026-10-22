@@ -4,7 +4,7 @@
 > 개별 사건 기록(`analytics-401-retry.md` 등)과 달리 **평상시 구조**를 적는다.
 > 코드 주석에 흩어진 판단을 한자리에 모은 것이라, 구현과 어긋나면 코드가 정본이다.
 >
-> 구현: `src/shared/chat/*` · 계약 타입: `src/shared/types/chat.ts` ·
+> 구현: `src/shared/chat/*` · 계약 타입: `src/shared/types/chat/*` ·
 > 판매자 계약 원문: `FE-CONTRACT-SELLER-CHAT.md`
 
 ## 0. 한 줄 요약
@@ -70,7 +70,7 @@ AI 서버에 로그인 AT 를 보내지 않는다. 대신 **단명 `streamTicket
 세션 발급 단계에서 서버가 JWT→DB 로 도출해 **티켓 claim 에 박는다.**
 
 > 셀러: `brandId` 는 클라이언트 주장이 아니라 서버가 JWT→DB 로 도출해 티켓 claim 에 박음
-> — `types/chat.ts`
+> — `types/chat/session.ts`
 
 즉 FE 가 body 에 `brandId` 를 실어 남의 브랜드 데이터를 요청하는 게 **구조적으로
 불가능**하다. SSE body 는 순수 대화 필드만 싣는다.
@@ -561,6 +561,10 @@ case "report":
 > 끝나는 스트림에서 **실패한 턴의 리포트가 패널에 남는다**(계약 §3.2: error 종료 시 폐기).
 
 되묻기·거절은 report 없이 `done{keep}` 으로 끝난다.
+
+> 구현: 이벤트 처리는 `shared/chat/chatEventHandler.ts` 의 `createTurnHandler` 에 있다(2026-10 `useChat` 에서 분리).
+> 턴(스트림 1회)마다 새로 만들어 보관함·CH-5 조회도 턴 수명을 갖는다. 위 순서 규칙(report 보류 ·
+> token 이 progress 를 지우지 않음 · 단수 listId 수용 등)은 `chatEventHandler.test.ts` 가 이벤트 시퀀스로 고정한다.
 
 ---
 

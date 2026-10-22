@@ -16,7 +16,7 @@ export interface CategoryChild {
 
 // 인기상품 카드 — 백엔드 GET /api/products/popular (P-4) 계약.
 // 판매수·조회수 기반 단순 집계라 추천 이유(reason)가 없다.
-// reason은 LLM이 추천하는 챗봇 상품 카드(shared/types/chat.ts)에만 존재.
+// reason은 LLM이 추천하는 챗봇 상품 카드(shared/types/chat)에만 존재.
 // 할인율은 백엔드가 주지 않아 originalPrice·price에서 파생.
 export interface PopularProduct {
   productId: string;

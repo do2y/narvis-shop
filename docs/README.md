@@ -65,6 +65,7 @@
 |---|---|
 | [nextjs-migration.md](nextjs-migration.md) | Vite → Next.js 전환 계획 |
 | [nextjs-migration-qa.md](nextjs-migration-qa.md) | 전환 후 브라우저 검증 시나리오 |
+| [ssr-measurement.md](ssr-measurement.md) | 전환 효과 측정 — LCP 31~42% 단축·SEO 83→100. 폰트 서브셋 가설은 반증 |
 | [deploy-handoff-nextjs.md](deploy-handoff-nextjs.md) | 배포 인수인계 (nginx + node 2프로세스) |
 
 ## 5. 계획 — `plans/`

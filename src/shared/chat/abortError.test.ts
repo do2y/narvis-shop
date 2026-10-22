@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/shared/api/client";
 import { StreamStartError } from "./streamChat";
-import { isAbortError } from "./useChat";
+import { isAbortError } from "./chatErrors";
 
 /**
  * 중단 판정 — 사용자가 스스로 끊은 스트림을 오류로 표시하지 않기 위한 분기.

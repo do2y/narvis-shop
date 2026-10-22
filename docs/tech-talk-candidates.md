@@ -174,7 +174,7 @@ Performance 프로파일러·실기기 측정은 아직 하지 않음"** 이라�
 
 - `src/features/chat/useScreenContext.ts` (53줄) · `useScreenContext.test.ts` (5 케이스)
 - `src/features/chat/components/ProductPanel.tsx` — GRID 상수
-- `src/shared/types/chat.ts` — `ChatScreenContext`
+- `src/shared/types/chat/session.ts` — `ChatScreenContext`
 - 커밋 — `e6e97d5`(최초 배선) → `3527b98`(순수 함수 분리 + 테스트)
 
 ### 예상 질문
