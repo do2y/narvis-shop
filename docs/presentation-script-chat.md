@@ -51,7 +51,7 @@
 | 깨진 프레임만 버림 | [streamChat.ts:96-100](../src/shared/chat/streamChat.ts#L96-L100), [:110-114](../src/shared/chat/streamChat.ts#L110-L114) |
 | 마지막 버퍼 살림 | [streamChat.ts:81-87](../src/shared/chat/streamChat.ts#L81-L87) |
 | 사고 2건 실제 수정 | 커밋 `9964218` (fix: 챗봇 스트림 안정성·경쟁 상태 문제 수정) |
-| stage 7종 확장 → 개방형 전환 | 커밋 `594e3ab`, [chat.ts BUYER_PROGRESS_LABEL](../src/shared/types/chat.ts) |
+| stage 7종 확장 → 개방형 전환 | 커밋 `594e3ab`, [chat/buyer.ts BUYER_PROGRESS_LABEL](../src/shared/types/chat/buyer.ts) |
 | 무시 ≠ 초기화 | [progress.ts:11-13](../src/shared/chat/progress.ts#L11-L13) |
 
 ---

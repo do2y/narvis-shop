@@ -4,7 +4,7 @@
 > 개별 사건 기록(`analytics-401-retry.md` 등)과 달리 **평상시 구조**를 적는다.
 > 코드 주석에 흩어진 판단을 한자리에 모은 것이라, 구현과 어긋나면 코드가 정본이다.
 >
-> 구현: `src/shared/chat/*` · 계약 타입: `src/shared/types/chat.ts` ·
+> 구현: `src/shared/chat/*` · 계약 타입: `src/shared/types/chat/*` ·
 > 판매자 계약 원문: `FE-CONTRACT-SELLER-CHAT.md`
 
 ## 0. 한 줄 요약
@@ -70,7 +70,7 @@ AI 서버에 로그인 AT 를 보내지 않는다. 대신 **단명 `streamTicket
 세션 발급 단계에서 서버가 JWT→DB 로 도출해 **티켓 claim 에 박는다.**
 
 > 셀러: `brandId` 는 클라이언트 주장이 아니라 서버가 JWT→DB 로 도출해 티켓 claim 에 박음
-> — `types/chat.ts`
+> — `types/chat/session.ts`
 
 즉 FE 가 body 에 `brandId` 를 실어 남의 브랜드 데이터를 요청하는 게 **구조적으로
 불가능**하다. SSE body 는 순수 대화 필드만 싣는다.

@@ -58,9 +58,9 @@
 | 낙관적 업데이트 순서 (취소→갱신→롤백→`onSettled` 재조회) | [cart/useCart.ts:42-60](../src/features/cart/useCart.ts#L42-L60), [useWishlist.ts:119-175](../src/shared/hooks/useWishlist.ts#L119-L175) |
 | 10분 TTL → 탭 저장 | [chatPersistence.ts:7-11](../src/shared/chat/chatPersistence.ts#L7-L11) 주석 |
 | AI action → 같은 키 무효화 | [features/chat/index.tsx:63-71](../src/features/chat/index.tsx#L63-L71) |
-| 2종→10종, 판별을 계약 옆으로 | [chat.ts:531-547](../src/shared/types/chat.ts#L531-L547) |
-| 실패 액션 제외 | [chat.ts:536-542](../src/shared/types/chat.ts#L536-L542) — 성공 3종만 |
-| 승인은 draftId만 / preview 고쳐도 안 바뀜 | [chat.ts:365-367](../src/shared/types/chat.ts#L365-L367), [:73-74](../src/shared/types/chat.ts#L73-L74), [ChatPage.tsx:168](../src/features/seller/ChatPage.tsx#L168) |
+| 2종→10종, 판별을 계약 옆으로 | [chat/action.ts](../src/shared/types/chat/action.ts) |
+| 실패 액션 제외 | [chat/action.ts `isCartMutatingAction`](../src/shared/types/chat/action.ts) — 성공 3종만 |
+| 승인은 draftId만 / preview 고쳐도 안 바뀜 | [chat/seller.ts `DraftPreview`](../src/shared/types/chat/seller.ts), [chat/session.ts `StreamChatBody`](../src/shared/types/chat/session.ts), [ChatPage.tsx:168](../src/features/seller/ChatPage.tsx#L168) |
 
 ## §A 줄이는 법
 
@@ -178,9 +178,9 @@ AI가 뭔가를 하면 스트림으로 action 이벤트가 옵니다. 프론트�
 | 대사 | 코드 |
 |---|---|
 | action 수신 → 같은 키 무효화 | [features/chat/index.tsx:63-71](../src/features/chat/index.tsx#L63-L71) |
-| 판별을 계약 옆에 둔 이유 (2종→10종) | [chat.ts:531-547](../src/shared/types/chat.ts#L531-L547) 주석 |
-| 실패 액션 제외 | [chat.ts:536-542](../src/shared/types/chat.ts#L536-L542) — 성공 3종만 |
-| 찜엔 productId 없음 → 목록 재조회뿐 | [chat.ts:544-547](../src/shared/types/chat.ts#L544-L547), [index.tsx:68](../src/features/chat/index.tsx#L68) |
+| 판별을 계약 옆에 둔 이유 (2종→10종) | [chat/action.ts](../src/shared/types/chat/action.ts) 주석 |
+| 실패 액션 제외 | [chat/action.ts `isCartMutatingAction`](../src/shared/types/chat/action.ts) — 성공 3종만 |
+| 찜엔 productId 없음 → 목록 재조회뿐 | [chat/action.ts `isWishlistMutatingAction`](../src/shared/types/chat/action.ts), [index.tsx:68](../src/features/chat/index.tsx#L68) |
 | 설계 근거 | [architecture-data.md:184-187](./architecture-data.md#L184-L187) |
 
 ---

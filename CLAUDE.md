@@ -130,7 +130,7 @@ ALB → nginx(80) ─ /api/**, /internal/**, /.well-known/**, /actuator/** → s
 - `/internal`은 nginx가 프록시 중 — AI 서버가 ALB 경유로 호출해서, 차단하면 상품 검색이 죽는다.
   내부망 직행으로 바꾸려면 보안그룹 작업이 선행되므로 임의로 막지 않는다
 
-## 챗봇 공통 모듈 (src/shared/chat, 타입: src/shared/types/chat.ts)
+## 챗봇 공통 모듈 (src/shared/chat, 타입: src/shared/types/chat/)
 - 챗봇은 단일 API를 `channel`(SHOPPING|SELLER)만 바꿔 공유. 공통 모듈 + 채널별 렌더러 주입
   (`CS`는 2026-08-11 폐기 — 타입에서도 제거했다. 유효한 값은 SHOPPING·SELLER 2종)
 - 와이어는 `data: {"type":..,"data":{..}}` envelope 한 줄 — **`event:` 줄을 쓰지 않는다**. 이름이 아니라 `payload.type`으로 분기

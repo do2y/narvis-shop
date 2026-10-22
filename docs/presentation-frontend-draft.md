@@ -1556,7 +1556,7 @@ LLM·백엔드와 **동시에** 개발하다 보니 "상대가 무엇을 보낼�
 - **키 2벌 근거는 코드 주석에 있음**: `useProduct.ts:12-14` — `brandName` vs `brand.name`,
   `rating: number` vs `rating: {average,count}` 때문에 "같은 키를 쓰면 캐시가 섞여 렌더가 깨진다"
 - **챗 무효화 판정 위치**: `isCartMutatingAction`/`isWishlistMutatingAction`은 화면이 아니라
-  계약 옆(`shared/types/chat.ts:524-535`)에 있음. **실패 액션은 제외** — 서버 상태가 그대로라 재조회 안 함
+  계약 옆(`shared/types/chat/action.ts`)에 있음. **실패 액션은 제외** — 서버 상태가 그대로라 재조회 안 함
   (`features/chat/index.tsx:63`)
 - **테스트**: `wishlistOptimistic.test.ts`(15케이스)가 낙관적 갱신·`cancelQueries` 동작을 고정
 - **사실 / 해석 구분**: 합산 근거·사고 경위·수정 코드는 **문서+코드로 확인된 사실**.
