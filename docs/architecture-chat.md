@@ -562,6 +562,10 @@ case "report":
 
 되묻기·거절은 report 없이 `done{keep}` 으로 끝난다.
 
+> 구현: 이벤트 처리는 `shared/chat/chatEventHandler.ts` 의 `createTurnHandler` 에 있다(2026-10 `useChat` 에서 분리).
+> 턴(스트림 1회)마다 새로 만들어 보관함·CH-5 조회도 턴 수명을 갖는다. 위 순서 규칙(report 보류 ·
+> token 이 progress 를 지우지 않음 · 단수 listId 수용 등)은 `chatEventHandler.test.ts` 가 이벤트 시퀀스로 고정한다.
+
 ---
 
 ## 11. 화면 맥락(screen) — path 와 label 은 금지
