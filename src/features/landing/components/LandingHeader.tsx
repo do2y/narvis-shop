@@ -77,7 +77,7 @@ export function LandingHeader({
 
   // 탭을 고르면 메뉴를 함께 닫는다 — 패널이 남아 있으면 방금 바뀐 화면을
   // 자기가 가린다. 이펙트로 `tab` 변화를 감시하지 않는 이유는 헤더에서 탭을
-  // 바꾸는 경로가 여기뿐이기 때문이다(푸터·CrossLink는 스크롤을 맨 위로 올린다).
+  // 바꾸는 경로가 여기뿐이기 때문이다(맨 위로 올리는 건 onTabChange가 한다).
   const selectTab = (next: LandingTab) => {
     onTabChange(next);
     setMenuOpen(false);

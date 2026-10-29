@@ -36,7 +36,6 @@ export function CrossLink({
             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
             e.preventDefault();
             onNavigate(to);
-            window.scrollTo({ top: 0, behavior: "auto" });
           }}
           className={cn(
             "group flex min-h-16 flex-col gap-2 rounded-xl border bg-muted/30 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-7",

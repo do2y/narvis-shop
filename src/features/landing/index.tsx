@@ -93,6 +93,12 @@ export default function LandingPage({
       window.history.pushState(null, "", `/?tab=${next}`);
       // pushState는 popstate를 발화하지 않는다 — 구독자에게 직접 알린다
       notifyUrlChange();
+      // 탭을 바꾸면 새 탭은 맨 위부터 읽어야 한다. 헤더·푸터·CrossLink 어디서
+      // 눌렀든 같아야 하므로 호출부가 아니라 여기서 한다(헤더만 빠져 있어서
+      // 소비자 탭 중간에서 넘어가면 판매자 탭 중간이 보였다).
+      // "auto"는 CSS의 `scroll-behavior: smooth`를 따르므로 "instant"로 명시한다
+      // — 본문이 통째로 갈린 뒤라 부드럽게 올라가는 동안 엉뚱한 섹션이 스친다.
+      window.scrollTo({ top: 0, behavior: "instant" });
     },
     [tab],
   );
