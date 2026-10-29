@@ -159,10 +159,8 @@ function FooterTab({
         onClick={(e) => {
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
           e.preventDefault();
+          // 맨 위로 올리는 건 onSelect(LandingPage의 changeTab)가 한다
           onSelect(tab);
-          // 탭을 바꾸면 화면 맨 위부터 읽어야 한다 — 푸터에서 눌렀으므로
-          // 그대로 두면 새 탭의 마지막 섹션이 보인다.
-          window.scrollTo({ top: 0, behavior: "auto" });
         }}
         className={
           active
