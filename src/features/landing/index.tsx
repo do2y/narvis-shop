@@ -109,7 +109,10 @@ export default function LandingPage({
   const isSeller = tab === "seller";
 
   return (
-    <div className="min-h-screen bg-background">
+    // 한글은 기본값(word-break: normal)에서 음절 단위로 줄이 바뀌어 "여/러"처럼
+    // 단어가 갈린다. 랜딩은 문장 위주라 어절 단위로 끊고(break-keep), 공백 없는
+    // 긴 문자열만 예외로 쪼개 가로 넘침을 막는다(wrap-break-word).
+    <div className="min-h-screen bg-background break-keep wrap-break-word">
       <LandingHeader
         tab={tab}
         onTabChange={changeTab}
