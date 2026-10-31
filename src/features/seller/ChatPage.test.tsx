@@ -164,7 +164,7 @@ async function confirmFromCard() {
 // 카드가 오류 상태로 보이는 실제 경로는 "등록 승인 실패"뿐이다. 수정 요청은 입력창 전송이
 // 패널을 "auto"로 돌려 카드가 가려지므로(07-issues I-3과 같은 원인) 카드 버튼에 닿지 않는다.
 // 서버가 등록 실패를 action 으로 알리는 경우도 done{keep} 이 패널을 목록으로 돌려 카드가 보이지 않는다.
-describe("판매자 등록 카드 — 다시 시도 (H1)", () => {
+describe("판매자 등록 카드 — 다시 시도 (H1 · I-4)", () => {
   it("[H1·카드] 승인 요청이 나가기 전에 실패하면(세션 확보 실패) 카드의 다시 시도가 같은 초안을 다시 승인한다", async () => {
     vi.mocked(ensureSession)
       .mockResolvedValueOnce(session)
@@ -182,5 +182,16 @@ describe("판매자 등록 카드 — 다시 시도 (H1)", () => {
 
     await waitFor(() => expect(aiCalls).toHaveLength(2));
     expect(aiBody(1)).toMatchObject({ action: "confirm", draftId: "draft-1" });
+  });
+
+  it("[I-4·카드] 승인 요청이 나간 뒤 실패하면(500) 카드와 말풍선 어디에도 다시 시도가 없고 반영 여부 확인을 안내한다", async () => {
+    replies.push(draftTurn(), rejected(500));
+    renderPage();
+
+    const card = await confirmFromCard();
+
+    expect(card.textContent).toContain("상품 목록에서 반영 여부를 확인");
+    expect(screen.queryAllByRole("button", { name: /다시 시도/ })).toHaveLength(0);
+    expect(aiCalls).toHaveLength(2);
   });
 });

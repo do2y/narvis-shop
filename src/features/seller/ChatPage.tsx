@@ -6,6 +6,7 @@ import { useQueryParams } from "@/shared/hooks/useQueryParams";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChatConversation } from "@/shared/chat/ChatConversation";
 import { NewChatButton } from "@/shared/chat/NewChatButton";
+import { canRetry } from "@/shared/chat/retryPolicy";
 import { SuggestedQuestions } from "@/shared/chat/SuggestedQuestions";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
@@ -304,8 +305,13 @@ export default function SellerChatPage() {
       onConfirmDraft={confirmDraft}
       onCancelDraft={cancelDraft}
       streamError={streamError}
-      // 카드의 오류 상태는 마지막 말풍선의 error 에서 나온다(streamError) — 대상도 그 말풍선이다
-      onRetry={() => lastMessage && retry(lastMessage.id)}
+      // 카드의 오류 상태는 마지막 말풍선의 error 에서 나온다(streamError) — 대상도 그 말풍선이다.
+      // 재시도할 수 없으면 버튼 자체를 주지 않는다(카드는 onRetry 가 있으면 버튼을 그린다, I-4)
+      onRetry={
+        canRetry(messages, isStreaming, lastMessage?.id)
+          ? () => retry(lastMessage.id)
+          : undefined
+      }
     />
   );
 
