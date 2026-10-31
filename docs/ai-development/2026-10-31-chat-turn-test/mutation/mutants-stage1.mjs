@@ -14,18 +14,21 @@ export const mutants = [
   {
     id: "E1",
     scenario: "B1",
-    target: "src/shared/chat/useChat.ts",
+    target: "src/shared/chat/retryPolicy.ts",
     desc: "retry 의 스트리밍 중 가드 제거",
-    find: "    if (isStreaming) return;\n    if (last?.id !== messageId",
-    replace: "    if (last?.id !== messageId",
+    // 재정의(2026-10-31, H1 2단계): 판정이 canRetry(retryPolicy.ts)로 옮겨감. 의미 동일.
+    //   원문 target useChat.ts · find "    if (isStreaming) return;\n    if (last?.id !== messageId"
+    find: "  if (isStreaming) return false;\n",
+    replace: "",
   },
   {
     id: "E2",
     scenario: "B4",
-    target: "src/shared/chat/useChat.ts",
+    target: "src/shared/chat/retryPolicy.ts",
     desc: "retry 의 '대상이 마지막 말풍선인가' 확인 제거",
-    find: "if (last?.id !== messageId || !last.error",
-    replace: "if (!last?.error",
+    // 재정의(2026-10-31, H1 2단계): canRetry 로 이동. 원문 find "if (last?.id !== messageId || !last.error"
+    find: "if (!last || last.id !== messageId || last.role !== \"assistant\") return false;",
+    replace: "if (!last || last.role !== \"assistant\") return false;",
   },
   {
     id: "E3",
@@ -40,8 +43,10 @@ export const mutants = [
     scenario: "MessageList",
     target: "src/shared/chat/MessageList.tsx",
     desc: "재시도 버튼을 마지막 말풍선으로 제한하지 않음",
-    find: "{isLast && msg.retryable !== false && (",
-    replace: "{msg.retryable !== false && (",
+    // 재정의(2026-10-31, H1 2단계): 노출이 canRetry 로 바뀜 → "화면이 판정 함수를 쓰지 않고 실패면 다 그림"으로.
+    //   원문 find "{isLast && msg.retryable !== false && ("
+    find: "{canRetry(messages, isStreaming, msg.id) && (",
+    replace: "{msg.error && msg.retryable !== false && (",
   },
   // --- 사후 추가 (1단계 최종 검토, 2026-10-31) ---
   // 판매자 카드 배선 테스트(ChatPage.test.tsx)를 **작성한 뒤** 그 테스트가 배선 오류를 잡는지 보려고 추가.
@@ -51,7 +56,8 @@ export const mutants = [
     scenario: "B·카드",
     target: "src/features/seller/ChatPage.tsx",
     desc: "[사후] 등록 카드 재시도가 마지막 말풍선이 아닌 대상을 넘김",
-    find: "onRetry={() => lastMessage && retry(lastMessage.id)}",
-    replace: 'onRetry={() => lastMessage && retry("")}',
+    // 재정의(2026-10-31, H1 2단계): 카드 연결이 canRetry 조건부로 바뀜. 원문 find "onRetry={() => lastMessage && retry(lastMessage.id)}"
+    find: "? () => retry(lastMessage.id)",
+    replace: '? () => retry("")',
   },
 ];
