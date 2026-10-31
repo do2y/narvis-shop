@@ -2,7 +2,7 @@
 
 > 작성일 2026-08-12. 근거는 `docs/` 문서와 실제 코드로 한정함.
 > **문서로 확인되지 않는 것은 지어내지 않고 `추가 확인 필요`로 표시함.**
-> 성능 수치는 실측 기록이 있는 것만 인용함(`image-loading-review.md`, `hero-animation-perf-review.md`).
+> 성능 수치는 실측 기록이 있는 것만 인용함(`docs/performance/image-loading.md`, `docs/performance/hero-animation.md`).
 
 **분량**: 슬라이드 15장 (핵심 발표 소재 6개 표시) — **평가지표 6항목 전부 대응**
 > 시간이 빠듯하면 아래 "평가지표 대응표" → "전체 구성 제안"의 압축안을 따를 것.
@@ -152,9 +152,9 @@
 
 ### 근거
 
-- **문서**: `docs/features.md` (페이지별 목적·핵심 기능 — 10개 섹션)
+- **문서**: `docs/features/page-spec.md` (페이지별 목적·핵심 기능 — 10개 섹션)
 - **코드(직접 확인함)**: `src/app` 하위 `page.tsx` **24개**, RHF+Zod 폼 **11곳**
-- **문서**: `docs/architecture-chat.md` §4(경로 B)·§6(action 10종)·§6-1(실패 분류)
+- **문서**: `docs/architecture/chat.md` §4(경로 B)·§6(action 10종)·§6-1(실패 분류)
 - **사실 / 해석 구분**: 기능 목록·라우트 수·예외 처리 방식은 **코드·문서로 확인된 사실**.
   "AI 조건을 조작 가능하게 만든 것이 핵심 판단"은 **본인 해석**
 
@@ -258,7 +258,7 @@
 
 ### 근거
 
-- **문서**: `CLAUDE.md`(디자인 시스템·반응형·상태 구분 규칙), `docs/ui-implementation-notes.md`
+- **문서**: `CLAUDE.md`(디자인 시스템·반응형·상태 구분 규칙), `docs/features/ui-implementation-notes.md`
 - **코드(직접 확인함)**: RHF+Zod 폼 **11곳**, `ApiError.displayMessage`·`availableStock`·`options`
   (`shared/api/client.ts`), `useWishlist.ts`(낙관적 갱신·토스트 위치), `ProductPanel.tsx`(스켈레톤·빈 상태)
 - **사실 / 해석 구분**: 규칙·구현은 **코드·문서 확인 사실**. 접근성 미비는 **문서가 스스로 밝힌 한계**
@@ -311,7 +311,7 @@ FE가 판단한 것은 "이 분리를 화면에서 어떻게 감출 것인가"�
 ### 결과와 배운 점
 
 - 화면상으로는 하나의 대화처럼 보이지만 내부는 3경로. 장애가 나면 **어디서 깨졌는지 먼저 가르는**
-  디버깅 체크리스트를 문서로 남김(`architecture-chat.md` §12)
+  디버깅 체크리스트를 문서로 남김(`docs/architecture/chat.md` §12)
 - 남은 한계: 이 구조는 **AI 서버 CORS 설정에 배포가 묶임**. 프론트 도메인 변경이 FE 단독 작업이 아님
 - 다시 한다면: 경로 3개의 실패를 하나의 상태 모델로 합치는 설계를 처음부터 잡았을 것.
   지금은 실패 분류가 나중에 붙어 `useChat.ts`가 654줄로 커짐
@@ -335,7 +335,7 @@ FE가 판단한 것은 "이 분리를 화면에서 어떻게 감출 것인가"�
 
 ### 근거
 
-- **문서**: `docs/architecture-chat.md` §0(한 줄 요약 표), §1(SSE가 인프라를 우회하는 이유·와이어 포맷), §12(디버깅 체크리스트)
+- **문서**: `docs/architecture/chat.md` §0(한 줄 요약 표), §1(SSE가 인프라를 우회하는 이유·와이어 포맷), §12(디버깅 체크리스트)
 - **코드(확인함)**: `src/shared/chat/streamChat.ts`, `src/shared/chat/useChat.ts` (654줄 — 직접 확인)
 - **사실 / 해석 구분**: 3경로 구조·CORS 제약·EventSource 불가는 **문서에 명시된 사실**.
   "useChat이 654줄로 커진 게 실패 분류가 나중에 붙어서"는 **해석**(줄 수는 확인함, 커진 원인은 추정)
@@ -479,10 +479,10 @@ SSR은 **켜고 끄는 스위치가 아니라 경계를 긋는 일**이었음.
 
 ### 근거
 
-- **문서**: `docs/architecture-data.md` §5(SSR 경계 표·API 모듈 2벌·봉투 타입 복제·5초 타임아웃·
+- **문서**: `docs/architecture/data.md` §5(SSR 경계 표·API 모듈 2벌·봉투 타입 복제·5초 타임아웃·
   `cachedGet`·SSR 실패 처리), §3(`initialData` 함정), §2(revalidate = staleTime)
 - **문서**: `CLAUDE.md` SSR 경계 · `useSearchParams`와 Suspense 함정(`/login` 9KB 사례)
-- **문서**: `docs/deploy-handoff-nextjs.md` §2(왜 바꾸나 — SEO/OG)
+- **문서**: `docs/migration/deploy-handoff.md` §2(왜 바꾸나 — SEO/OG)
 - **코드(직접 확인함)**: `src/app/products/[productId]/page.tsx`·`brands/[brandId]/page.tsx`·`page.tsx`가
   **`"use client"` 없는 서버 컴포넌트**임을 확인 / `shared/api/server.ts:65`(`TIMEOUT_MS = 5000`)·
   `:130`(`AbortSignal.timeout`)
@@ -506,7 +506,7 @@ SSR은 **켜고 끄는 스위치가 아니라 경계를 긋는 일**이었음.
 
 ## 슬라이드 2. `핵심 발표 소재` 탭을 2개 열면 채팅 세션이 서로를 죽인다
 
-> **📌 2026-08-12 — 통합 재구성본이 별도 문서로 있음: `docs/presentation-chat-session-design.md`**
+> **📌 2026-08-12 — 통합 재구성본이 별도 문서로 있음: `docs/portfolio/chat-session-design.md`**
 > 이 슬라이드(멀티탭)와 슬라이드 2-1의 ⑤항목(탭 간 인증 일관성), 슬라이드 0의 게스트 정책을
 > **"채팅 세션 설계"라는 하나의 축**으로 합친 것. 근거를 코드 줄 번호까지 확인해 두었고
 > 통합 발표 멘트(3분)·예상 질문 6종이 들어 있음.
@@ -595,8 +595,8 @@ SSR은 **켜고 끄는 스위치가 아니라 경계를 긋는 일**이었음.
 
 ### 근거
 
-- **문서**: `docs/architecture-chat.md` §3(세션 조정·방송 2종·순서 고정), §8(저장 4계층·threadId), §9(CH-7 승계 실패)
-- **문서**: `docs/tech-talk-candidates.md` §2 (1위 후보, trade-off 표·커밋 이력)
+- **문서**: `docs/architecture/chat.md` §3(세션 조정·방송 2종·순서 고정), §8(저장 4계층·threadId), §9(CH-7 승계 실패)
+- **문서**: `docs/portfolio/talk-candidates.md` §2 (1위 후보, trade-off 표·커밋 이력)
 - **코드(확인함)**: `src/shared/chat/sessionCoordinator.ts` (297줄 — 문서 기재와 일치), `threadId.ts`, `claimOnLogin.ts`, `ClaimFailureBanner.tsx`
 - **테스트 파일 존재 확인**: `sessionCoordinator.test.ts` · `claimOnLogin.test.ts` · `threadId.test.ts` · `chatPersistence.test.ts`
 - **사실 / 해석 구분**: 구조·trade-off·커밋 3개 이력은 **문서에 명시된 사실**.
@@ -751,7 +751,7 @@ finishRestore() → isRestoring = false
 
 ### 근거
 
-- **문서**: `docs/architecture-auth.md` §0(쿠키 전제·결과 3가지), §1(persist 범위·version 2),
+- **문서**: `docs/architecture/auth.md` §0(쿠키 전제·결과 3가지), §1(persist 범위·version 2),
   §2(복원 4판단·StrictMode), §3(`selectIsAuthReady`), §4(401 2종·동시 401 2겹), §6(가드·SellerIsolation), §7(수집 분리)
 - **코드(직접 확인함)**: `shared/api/client.ts`(401 분기·`redirecting`·`withCredentials`·`DEBUG_API`),
   `shared/hooks/useRestoreSession.ts`(복원 순서·모듈 프라미스), `shared/auth/guards.tsx:47·62·66`,
@@ -762,7 +762,7 @@ finishRestore() → isRestoring = false
 
 ### 추가 확인 필요
 
-- **CLAUDE.md의 인증 서술이 옛 내용**(AT 메모리 보관)으로 남아 있음 — `architecture-auth.md` §8이
+- **CLAUDE.md의 인증 서술이 옛 내용**(AT 메모리 보관)으로 남아 있음 — `docs/architecture/auth.md` §8이
   드리프트를 표로 정리해 둠. 발표에선 **코드·auth 문서 기준**으로 말할 것
 - 쿠키 전환을 **FE가 제안했는지 BE가 요구했는지** — 협업 사례로 쓰려면 확인 필요
 
@@ -838,8 +838,8 @@ finishRestore() → isRestoring = false
 
 ### 근거
 
-- **문서**: `docs/tech-talk-candidates.md` §3 (2위 후보 — 문제·난점·trade-off 표 전부)
-- **문서**: `docs/architecture-chat.md` §11 (화면 맥락 — path·label 금지 이유)
+- **문서**: `docs/portfolio/talk-candidates.md` §3 (2위 후보 — 문제·난점·trade-off 표 전부)
+- **문서**: `docs/architecture/chat.md` §11 (화면 맥락 — path·label 금지 이유)
 - **코드(직접 확인함)**: `src/features/chat/useScreenContext.ts` (53줄).
   `useRef` + 빈 deps `useCallback`, `MAX_PRODUCTS = 20`, `.filter((item) => !item.recommendationContext)`,
   `currentColumns()`의 1280px/640px 분기 — **문서 기재와 코드가 정확히 일치함**
@@ -921,8 +921,8 @@ finishRestore() → isRestoring = false
 
 ### 근거
 
-- **문서**: `docs/architecture-chat.md` §7 (조건 칩 — `field`가 유일 키가 아님·React key·낙관적 제거·규약 문자열 폐기)
-- **문서**: `docs/tech-talk-candidates.md` 후보 4번 ("서버는 하위호환인데 렌더링은 아니었다"는 통찰이 핵심)
+- **문서**: `docs/architecture/chat.md` §7 (조건 칩 — `field`가 유일 키가 아님·React key·낙관적 제거·규약 문자열 폐기)
+- **문서**: `docs/portfolio/talk-candidates.md` 후보 4번 ("서버는 하위호환인데 렌더링은 아니었다"는 통찰이 핵심)
 - **문서**: `docs/README.md` 문서 드리프트 표 (조건 칩 `field` → `(field, value)` 쌍, 계기: v0.32.14)
 - **코드(직접 확인함)**: `src/shared/chat/conditionRemoval.ts` — 주석과 구현 모두 문서와 일치
 - **테스트 파일 존재 확인**: `src/shared/chat/conditionRemoval.test.ts`
@@ -1011,9 +1011,9 @@ AI 응답은 일반 API와 달리 **도착 여부·횟수·순서가 보장되�
 
 ### 근거
 
-- **문서**: `docs/architecture-chat.md` §5(SSE 11종·progress 개방형·token이 지우면 안 되는 이유·null 해석),
+- **문서**: `docs/architecture/chat.md` §5(SSE 11종·progress 개방형·token이 지우면 안 되는 이유·null 해석),
   §10(report는 즉시 반영 안 함), §11-1(함정 요약 10·11)
-- **문서**: `docs/ui-implementation-notes.md` §3 (마크다운 `danglingEmphasis` 스트리밍 대응)
+- **문서**: `docs/features/ui-implementation-notes.md` §3 (마크다운 `danglingEmphasis` 스트리밍 대응)
 - **문서**: `docs/README.md` 문서 드리프트 표 (progress 1종→7종+개방형, 0~1회→다회)
 - **코드(파일 존재 확인)**: `src/shared/chat/progress.ts` + `progress.test.ts`, `analysisReport.ts` + 테스트,
   `src/shared/utils/markdown.ts` + 테스트
@@ -1097,7 +1097,7 @@ PC는 좌우로 나누면 되지만 모바일은 **두 축이 같은 세로 공�
 
 ### 근거
 
-- **문서**: `docs/tech-talk-candidates.md` §4 (3위 후보 — 문제·난점·해결·trade-off 표·커밋 이력)
+- **문서**: `docs/portfolio/talk-candidates.md` §4 (3위 후보 — 문제·난점·해결·trade-off 표·커밋 이력)
 - **코드(확인함)**: `src/shared/chat/MobileBottomSheetFrame.tsx` (213줄 — 문서 기재와 일치),
   `ChatLayout.tsx`, `ChatInput.tsx`, `src/features/chat/components/ProductPanel.tsx`
 - **커밋 이력(문서 기재)**: `bd5bdeb`(시트 도입) → `158c940`·`9ab3d5e`(높이 조정) → `bef0a8a`(초기 expanded) → `c3198e8`(하단 여백)
@@ -1298,10 +1298,10 @@ lazy 로는 막을 수 없다. 렌더 자체를 막아야 한다
 
 ### 근거
 
-- **문서**: `docs/image-loading-review.md` (문제 0~3·측정표·한계·**7건 추가 측정**·미룬 것)
-- **문서**: `docs/hero-animation-perf-review.md` (가설·측정 방법·반증·조치 없음·측정 한계)
-- **문서**: `docs/home-scroll-interaction-perf-review.md` (정적 리뷰임을 명시·병목 후보 3가지)
-- **문서**: `docs/tech-talk-candidates.md` §1 "5번을 낮게 둔 이유" (실측 유무가 발표 강도를 가름)
+- **문서**: `docs/performance/image-loading.md` (문제 0~3·측정표·한계·**7건 추가 측정**·미룬 것)
+- **문서**: `docs/performance/hero-animation.md` (가설·측정 방법·반증·조치 없음·측정 한계)
+- **문서**: `docs/performance/home-scroll-interaction.md` (정적 리뷰임을 명시·병목 후보 3가지)
+- **문서**: `docs/portfolio/talk-candidates.md` §1 "5번을 낮게 둔 이유" (실측 유무가 발표 강도를 가름)
 - **추가 측정(직접 실시, 2026-08-12)**: 배포 백엔드에서 상품 7건의 `detailImages` URL별
   실제 바이트를 `curl`로 측정. before=전체 합계 / after=앞 2장 합계(코드가 `DetailImages.tsx:47-48`에서
   앞 2장으로 고정하므로 결정론적). 기존 측정 상품 `8909282005`는 **배포 DB에 없어 404**라 제외
@@ -1329,7 +1329,7 @@ lazy 로는 막을 수 없다. 렌더 자체를 막아야 한다
 
 ### 추가 확인 필요
 
-- ~~평범한 상품 추가 측정~~ ✅ **2026-08-12 완료** — 7건, `image-loading-review.md` §추가 측정
+- ~~평범한 상품 추가 측정~~ ✅ **2026-08-12 완료** — 7건, `docs/performance/image-loading.md` §추가 측정
 - 홈 스크롤 검토의 **후속 조치를 실제로 했는지** — 문서엔 권장만 있음.
   `ProductCard.tsx`의 불필요 observer가 지금도 남아 있는지 코드 확인 필요
 - 시드 이미지 GIF 문제를 **백엔드에 실제로 전달했는지**와 그 결과
@@ -1546,7 +1546,7 @@ LLM·백엔드와 **동시에** 개발하다 보니 "상대가 무엇을 보낼�
 
 ### 근거
 
-- **문서**: `docs/architecture-data.md` §2(staleTime 근거 표·합산 사고방식), §3(SSR `initialData` 함정 — 2026-07-28),
+- **문서**: `docs/architecture/data.md` §2(staleTime 근거 표·합산 사고방식), §3(SSR `initialData` 함정 — 2026-07-28),
   §1(상품 키 2벌·시딩 슬롯), §4(무효화 규칙·`cancelQueries`)
 - **코드(직접 확인함)**: `useBrandHome.ts:9-46`(조합 검사·`normalize`·주석에 사고 날짜 기재),
   `useGoToProduct.ts:15-21`(시딩 + `SeededProductCard` 타입 가드), `useHomeData.ts:19/30/50`,
@@ -1567,7 +1567,7 @@ LLM·백엔드와 **동시에** 개발하다 보니 "상대가 무엇을 보낼�
 - ❌ **"챗봇 경로 B가 상세 캐시를 시딩한다"** — 코드에 그런 호출이 없음. 챗 카드는 새 탭을 열어
   구조적으로 시딩이 불가능함. `lists.ts:15` 주석은 "쓸 수 있다"이지 "쓰고 있다"가 아님
 - ⚠️ **"8분·15분이 코드 주석에 있다"** — 부정확함. **15분만 코드에 있고**(`useHomeData.ts:49`),
-  **8분은 `CLAUDE.md:66`과 `architecture-data.md:92`에만** 있음. 코드 주석(`useHomeData.ts:23`)은
+  **8분은 `CLAUDE.md:66`과 `docs/architecture/data.md:92`에만** 있음. 코드 주석(`useHomeData.ts:23`)은
   "BE Redis(3분)와 합산"까지만 적고 합계를 안 씀
 - ⚠️ **"브랜드 목록 30분"** — 정확히는 **브랜드 홈**(소개+상품목록, `["brands", brandId, current]`)임.
   별도의 브랜드 목록 쿼리는 레포에 없음
@@ -1716,10 +1716,10 @@ nginx :80  (층2 LB — 앱 티어)
 
 ### 근거
 
-- **문서**: `docs/deploy-handoff-nextjs.md` §3(컨테이너·nginx.conf·워크플로·헬스체크),
+- **문서**: `docs/migration/deploy-handoff.md` §3(컨테이너·nginx.conf·워크플로·헬스체크),
   §4(백엔드 네트워크 확인), §6(롤백 2안), §7(배포 후 확인 6항목)
 - **문서**: `CLAUDE.md` 배포 구조(03 D-분산4)·SSR 경계·서버 fetch 5초 타임아웃
-- **문서**: `docs/architecture-chat.md` §1(SSE가 인프라 우회), `docs/analytics-401-retry.md`(재전송 401 한정)
+- **문서**: `docs/architecture/chat.md` §1(SSE가 인프라 우회), `docs/troubleshooting/analytics-401-retry.md`(재전송 401 한정)
 - **사실 / 해석 구분**: 구조·설정·체크리스트는 **문서 명시 사실**.
   "SSR 전환은 배포 토폴로지 변경"은 **본인 해석**
 
@@ -2216,7 +2216,7 @@ nginx :80  (층2 LB — 앱 티어)
 1. **도입부(0.5장)로 축소**하고 남은 시간을 슬라이드 2·3에 배분 — **가장 추천**.
    "이 서비스가 왜 일반 쇼핑몰과 다른가"만 30초로 깔고 넘어가기
 2. **FE가 판단한 부분으로 초점 이동** — "이 분리를 사용자에게 어떻게 감췄나"를 주제로 바꾸고,
-   실패 분류(어디서 깨졌는지로 나누는 표, `architecture-chat.md` §6-1)를 중심에 놓기.
+   실패 분류(어디서 깨졌는지로 나누는 표, `docs/architecture/chat.md` §6-1)를 중심에 놓기.
    그러면 "재시도 버튼을 줄지 말지"라는 **실제 판단**이 생김
 3. 슬라이드 5(SSE 타이밍)와 **합치기** — 둘 다 "AI 응답 다루기"라 자연스러움
 

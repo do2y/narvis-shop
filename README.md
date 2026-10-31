@@ -157,7 +157,7 @@ npm run test          # vitest 233건
 | 판매자 | `/seller/**` | 대시보드·주문·상품 관리 + 분석 챗봇 |
 | 인증·운영 | `/login` · `/signup` · `/healthz` | 로그인(복귀 URL 유지)·가입·헬스 체크 |
 
-화면별 목적과 상세 기능은 [docs/features.md](docs/features.md).
+화면별 목적과 상세 기능은 [docs/features/page-spec.md](docs/features/page-spec.md).
 
 ### 환경변수
 
@@ -186,7 +186,7 @@ npm run test          # vitest 233건
 - CI는 백엔드 없이도 통과해야 한다 — 서버 fetch에 5초 타임아웃이 걸려 있고 홈은 빌드 시점에 백엔드를 부르지 않는다.
 - 커밋 메시지는 [Conventional Commits](https://www.conventionalcommits.org) (`feat:` `fix:` `docs:` `refactor:` `test:` `chore:`).
 - 문서와 PR 본문은 **개조식(~함/~음)** 으로 쓴다.
-- **계약·구조가 바뀌는 커밋은 [CLAUDE.md](CLAUDE.md)를 같이 고친다** — 문서가 구현보다 뒤처졌던 지점들을 정리한 이력이 [docs/README.md](docs/README.md)에 남아 있다.
+- **계약·구조가 바뀌는 커밋은 [CLAUDE.md](CLAUDE.md)를 같이 고친다** — 문서가 구현보다 뒤처졌던 지점들을 정리한 이력이 [docs/ai-development/claude-md-drift.md](docs/ai-development/claude-md-drift.md)에 남아 있다.
 - `.env.local`은 커밋하지 않는다(gitignore 확인).
 
 ---
@@ -196,10 +196,10 @@ npm run test          # vitest 233건
 | 문서 | 내용 |
 |---|---|
 | [docs/README.md](docs/README.md) | 문서 색인 — 상황별로 어디부터 볼지 |
-| [docs/architecture-chat.md](docs/architecture-chat.md) | 채팅 구조 — 세 갈래 통신 경로 · SSE 이벤트 11종 · 카드 조회 · 세션/멀티탭 · 판매자 초안/리포트 |
-| [docs/architecture-auth.md](docs/architecture-auth.md) | 인증 구조 — 쿠키 전환 이후 · 부팅 복원 · 401 2종 규약 · 가드 |
-| [docs/architecture-data.md](docs/architecture-data.md) | 데이터 구조 — 쿼리 키 · 신선도 기준 · 무효화 · 서버 렌더 경계 |
-| [docs/features.md](docs/features.md) | 화면별 목적과 핵심 기능 |
-| [docs/deploy-handoff-nextjs.md](docs/deploy-handoff-nextjs.md) | 배포 인수인계 — nginx + node 2프로세스 구조 |
+| [docs/architecture/chat.md](docs/architecture/chat.md) | 채팅 구조 — 세 갈래 통신 경로 · SSE 이벤트 11종 · 카드 조회 · 세션/멀티탭 · 판매자 초안/리포트 |
+| [docs/architecture/auth.md](docs/architecture/auth.md) | 인증 구조 — 쿠키 전환 이후 · 부팅 복원 · 401 2종 규약 · 가드 |
+| [docs/architecture/data.md](docs/architecture/data.md) | 데이터 구조 — 쿼리 키 · 신선도 기준 · 무효화 · 서버 렌더 경계 |
+| [docs/features/page-spec.md](docs/features/page-spec.md) | 화면별 목적과 핵심 기능 |
+| [docs/migration/deploy-handoff.md](docs/migration/deploy-handoff.md) | 배포 인수인계 — nginx + node 2프로세스 구조 |
 | [CLAUDE.md](CLAUDE.md) | 이 저장소의 작업 규칙 요약 (구조·상태·인증·디자인 토큰) |
 </content>

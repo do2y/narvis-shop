@@ -3,7 +3,8 @@
 > "이 데이터를 어디에 두고, 얼마나 믿고, 언제 다시 부를까"에 대한 이 프로젝트의 답.
 > 규칙 자체는 CLAUDE.md 에 요약돼 있고, 여기엔 **왜 그 값인지와 실제로 겪은 사고**를 적는다.
 >
-> 함께 볼 것: `architecture-auth.md`(인증 쿼리의 `enabled`) · `architecture-chat.md`(챗 액션 무효화)
+> 함께 볼 것: `docs/architecture/auth.md`(인증 쿼리의 `enabled`) · `docs/architecture/chat.md`(챗 액션 무효화)
+> · `docs/architecture/state.md`(상태 4축·저장소 수명 기준 — §0·§1 과 겹치는 내용의 상세)
 
 ## 0. 상태를 어디에 둘지 — 4갈래
 
@@ -184,7 +185,7 @@ prefetch 는 각각 `.catch(() => {})` 로 감싼다 — 한쪽이 실패해도 
 **챗봇 경로가 같은 무효화를 타는 게 핵심이다.** AI 가 담아준 것도 서버 상태 변경이라,
 빼먹으면 장바구니 뱃지가 안 바뀐다.
 
-판정은 `isCartMutatingAction` / `isWishlistMutatingAction` 으로만 한다(→ `architecture-chat.md` §6).
+판정은 `isCartMutatingAction` / `isWishlistMutatingAction` 으로만 한다(→ `docs/architecture/chat.md` §6).
 
 ### 낙관적 업데이트 — cancelQueries 가 먼저다
 
@@ -317,7 +318,7 @@ SSR 조회는 브라우저 네트워크 탭에 안 잡히므로(서버가 부른
    `headers.get()` 은 콤마로 합쳐 값이 깨지므로 **`getSetCookie()`** 로 개별 처리한다.
 4. **스트리밍 유지.** `duplex:"half"`(Node fetch 필수), `redirect:"manual"`, 버퍼링 없이 흘림.
 
-SSE 는 이 경로를 타지 않는다(→ `architecture-chat.md` §1).
+SSE 는 이 경로를 타지 않는다(→ `docs/architecture/chat.md` §1).
 
 ---
 
@@ -366,7 +367,7 @@ SSE 는 이 경로를 타지 않는다(→ `architecture-chat.md` §1).
 
 ### `useSearchParams` 는 SSR 을 죽인다
 
-→ `architecture-auth.md` §6. 쿼리값이 **렌더**에 필요한지 **이벤트/이펙트 시점**에만
+→ `docs/architecture/auth.md` §6. 쿼리값이 **렌더**에 필요한지 **이벤트/이펙트 시점**에만
 필요한지로 가른다. 후자면 그 시점에 `window.location.search` 를 읽는다.
 
 화면 내 쿼리 갱신은 `router.push` 가 아니라 **`window.history.pushState`**

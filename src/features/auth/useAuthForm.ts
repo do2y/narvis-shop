@@ -79,7 +79,7 @@ function toRateLimitMessage(error: ApiError): string {
   return error.message || "시도가 너무 많습니다. 잠시 후 다시 시도해주세요";
 }
 
-// 로그인 실패는 계정 존재 여부를 노출하지 않도록 통합 메시지로 처리 (features.md).
+// 로그인 실패는 계정 존재 여부를 노출하지 않도록 통합 메시지로 처리 (docs/features/page-spec.md).
 // 백엔드는 이메일 없음/비번 불일치를 AUTH_LOGIN_FAILED 하나로 통일해 내려줌.
 function toLoginErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {

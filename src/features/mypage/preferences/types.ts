@@ -1,6 +1,6 @@
 // 개인화 취향 프로필 데이터 계약.
 //
-// 정본: docs/plans/personalization-contract-2026-08-09.md (노션 M-11~M-16 / I-32~I-37)
+// 정본: docs/features/personalization-contract.md (노션 M-11~M-16 / I-32~I-37)
 // 2026-08-09 BE·FE 협의 완료 — 구현 근거로 쓸 수 있다.
 //
 // ⚠️ 이 파일은 한 번 축소됐다. 8/07 초안에 있던 nodes[]·confidence·source·origin·

@@ -4,7 +4,7 @@
 > **I-32 · I-33 · I-34 · I-36 · I-37** (Spring→AI internal). 전부 `✅ 확정 — BE·FE 협의 완료(2026-08-09)`.
 >
 > **이 문서가 계약 정본이다.** 같은 주제의
-> [personalization-mypage.md](personalization-mypage.md) · [preference-profile-explained.md](preference-profile-explained.md)
+> [docs/archive/personalization/mypage-plan.md](../archive/personalization/mypage-plan.md) · [docs/archive/personalization/preference-profile-explained.md](../archive/personalization/preference-profile-explained.md)
 > 는 2026-08-07 **초안** 기준이라 **응답 필드가 실제와 다르다**. 어긋나면 이 문서가 맞다.
 
 ---

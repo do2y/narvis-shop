@@ -1,6 +1,6 @@
 # 발표 소재 — 채팅 세션 설계: 게스트/회원 승계와 멀티탭
 
-> 작성일 2026-08-12. `presentation-frontend-draft.md`의 **슬라이드 2 + 2-1⑤를 하나의 축으로 재구성**한 것.
+> 작성일 2026-08-12. `docs/portfolio/frontend-draft.md`의 **슬라이드 2 + 2-1⑤를 하나의 축으로 재구성**한 것.
 > 기존 초안은 이 내용이 "멀티탭"(슬라이드 2)과 "인증"(슬라이드 2-1)에 나뉘어 있어
 > **"채팅 세션을 어떻게 설계했나"라는 하나의 이야기로 안 읽혔음.** 그걸 합침.
 >
@@ -53,9 +53,9 @@
 | **화면 상태** | Zustand(메모리) | 마운트 | 없음 | 새로고침에 남을 이유가 없음 |
 
 **근거(코드 확인)**
-- 세션 캐시 25초 — [sessionCoordinator.ts:43](src/shared/chat/sessionCoordinator.ts#L43) `TICKET_TTL_MS = 25_000`
-- 방 id는 sessionStorage — [threadId.ts:8-13](src/shared/chat/threadId.ts#L8-L13)
-- 대화는 sessionStorage — [chatPersistence.ts:8-16](src/shared/chat/chatPersistence.ts#L8-L16)
+- 세션 캐시 25초 — [sessionCoordinator.ts:43](../../src/shared/chat/sessionCoordinator.ts#L43) `TICKET_TTL_MS = 25_000`
+- 방 id는 sessionStorage — [threadId.ts:8-13](../../src/shared/chat/threadId.ts#L8-L13)
+- 대화는 sessionStorage — [chatPersistence.ts:8-16](../../src/shared/chat/chatPersistence.ts#L8-L16)
 
 ### 25초라는 숫자의 근거 (물어보면 답할 것)
 
@@ -87,7 +87,7 @@ navigator.locks.request(발급 구간만)
       └ 없으면 발급 → publish(캐시 + 브로드캐스트)
 ```
 
-**락 진입 후 재확인이 핵심인 이유** — [sessionCoordinator.ts:201-203](src/shared/chat/sessionCoordinator.ts#L201-L203)
+**락 진입 후 재확인이 핵심인 이유** — [sessionCoordinator.ts:201-203](../../src/shared/chat/sessionCoordinator.ts#L201-L203)
 
 이게 없으면 탭 N개가 **순서대로 락에 들어와 각자 발급**함. 락을 쓴 의미가 사라짐.
 "기다렸다가 들어왔으니 내 차례에 만들면 된다"가 아니라, **기다리는 동안 상황이 바뀌었는지 봐야 함.**
@@ -103,10 +103,10 @@ navigator.locks.request(발급 구간만)
 
 ### Web Locks가 없는 브라우저 (degrade)
 
-- `navigator.locks` 미지원이면 **300ms 대기 후 캐시 재확인**으로 저하 — [sessionCoordinator.ts:162-169](src/shared/chat/sessionCoordinator.ts#L162-L169)
+- `navigator.locks` 미지원이면 **300ms 대기 후 캐시 재확인**으로 저하 — [sessionCoordinator.ts:162-169](../../src/shared/chat/sessionCoordinator.ts#L162-L169)
 - 엄밀한 상호배제는 아니지만 **최악이 "중복 발급 1회"**라 손해가 작다고 판단
 - 같은 태도가 저장소 접근에도 있음 — private mode에서 `localStorage`가 던지면 **조용히 흡수**.
-  캐시는 최적화일 뿐이고 정확성은 락+브로드캐스트가 책임짐 ([:78-97](src/shared/chat/sessionCoordinator.ts#L78-L97))
+  캐시는 최적화일 뿐이고 정확성은 락+브로드캐스트가 책임짐 ([:78-97](../../src/shared/chat/sessionCoordinator.ts#L78-L97))
 
 ---
 
@@ -116,7 +116,7 @@ navigator.locks.request(발급 구간만)
 
 - 게스트 허용 범위: **탐색 · 챗봇 · 장바구니 담기** (구매·찜·마이페이지만 로그인 필요)
 - 이유: **로그인을 먼저 요구하면 이탈**함. AI 채팅은 이 서비스의 검색이라 게스트에게 막으면 서비스를 못 보여줌
-- 게스트 식별은 **`guest_id` 쿠키** — [sessions.ts:26](src/shared/chat/sessions.ts#L26)
+- 게스트 식별은 **`guest_id` 쿠키** — [sessions.ts:26](../../src/shared/chat/sessions.ts#L26)
 
 ### 4-2. 그래서 생긴 문제 — 로그인하면 대화가 끊긴다
 
@@ -142,7 +142,7 @@ POST /api/chat/sessions/{sessionId}/claim
 
 - 서버는 "어디서 로그인했는지" 추측하지 않음. **FE가 이 API를 부르는 것으로 의도를 표현**함
 - 판단 근거: *상세페이지나 장바구니에서 로그인한 사람이 20분 전 다른 탭의 게스트 대화를 붙여달라고 했을 리는 없다*
-- 근거: [claimOnLogin.ts:8-21](src/shared/chat/claimOnLogin.ts#L8-L21)
+- 근거: [claimOnLogin.ts:8-21](../../src/shared/chat/claimOnLogin.ts#L8-L21)
 
 **② 실패해도 로그인은 성공한 상태다 — 그래서 던지지 않는다**
 
@@ -165,7 +165,7 @@ POST /api/chat/sessions/{sessionId}/claim
 **고친 것 — 발급 자체를 막고 사용자에게 묻는다**
 
 `SessionClaimPendingError`를 던져 다음 세션 발급을 **차단**하고, 3지선다 배너를 띄움
-([sessionCoordinator.ts:29-34](src/shared/chat/sessionCoordinator.ts#L29-L34) · [:205](src/shared/chat/sessionCoordinator.ts#L205))
+([sessionCoordinator.ts:29-34](../../src/shared/chat/sessionCoordinator.ts#L29-L34) · [:205](../../src/shared/chat/sessionCoordinator.ts#L205))
 
 | 선택지 | 동작 |
 |---|---|
@@ -173,17 +173,17 @@ POST /api/chat/sessions/{sessionId}/claim
 | **기억 없이 계속** | 대화는 남기고 맥락만 포기 |
 | **지우고 새로 시작** | 대화까지 비움 |
 
-**설계 원칙 한 줄** — [ClaimFailureBanner.tsx:24-25](src/shared/chat/ClaimFailureBanner.tsx#L24-L25)
+**설계 원칙 한 줄** — [ClaimFailureBanner.tsx:24-25](../../src/shared/chat/ClaimFailureBanner.tsx#L24-L25)
 
 > **"내가 막으려던 건 '조용히' 맥락이 끊기는 것이지, 사용자의 선택이 아니다."**
 > 알고 고른다면 맥락 없이 계속하는 것도 정당한 선택이라 길을 열어둠.
 
-**말풍선은 지우지 않는다** — [claimOnLogin.ts:42-43](src/shared/chat/claimOnLogin.ts#L42-L43)
+**말풍선은 지우지 않는다** — [claimOnLogin.ts:42-43](../../src/shared/chat/claimOnLogin.ts#L42-L43)
 서버 맥락이 끊겨도 사용자가 하던 얘기는 보여야 **"로그인했더니 대화가 사라졌다"**가 안 됨.
 
 ### 4-5. 놓쳤다가 잡은 것 — 에러 종류로 거르면 안 된다
 
-[claimOnLogin.ts:49-51](src/shared/chat/claimOnLogin.ts#L49-L51)
+[claimOnLogin.ts:49-51](../../src/shared/chat/claimOnLogin.ts#L49-L51)
 
 - 처음엔 `ApiError`(서버가 코드로 거절)만 잡았음
 - 그런데 **네트워크 단절·타임아웃처럼 응답 자체가 없는 실패**도 "승계 못 함"은 똑같음
@@ -196,7 +196,7 @@ POST /api/chat/sessions/{sessionId}/claim
 
 승계 실패 상태를 **스토어(메모리)에만** 두면, 로그인 직후 `/chat`으로 이동하는 사이
 새로고침이 끼면 배너와 재시도가 사라짐 → `claimFailedSessionId`를 **저장소에도** 남김
-([chatPersistence.ts:27-33](src/shared/chat/chatPersistence.ts#L27-L33))
+([chatPersistence.ts:27-33](../../src/shared/chat/chatPersistence.ts#L27-L33))
 
 `sessionId`와 **따로 둔 이유**: 승계 실패 시 `sessionId`는 비워야 하지만
 (구 게스트 티켓으로 스트림을 열면 AI가 403으로 막음) 재시도하려면 그 값을 알아야 함.
@@ -220,7 +220,7 @@ POST /api/chat/sessions/{sessionId}/claim
 
 ### 해결 — 방송을 2종으로 나눴다
 
-[sessionCoordinator.ts:54-66](src/shared/chat/sessionCoordinator.ts#L54-L66)
+[sessionCoordinator.ts:54-66](../../src/shared/chat/sessionCoordinator.ts#L54-L66)
 
 | 방송 | 의미 | 받는 탭의 행동 |
 |---|---|---|
@@ -234,7 +234,7 @@ POST /api/chat/sessions/{sessionId}/claim
 
 ### 순서를 고정한 것 — 이것도 판단이다
 
-[sessionCoordinator.ts:276-284](src/shared/chat/sessionCoordinator.ts#L276-L284)
+[sessionCoordinator.ts:276-284](../../src/shared/chat/sessionCoordinator.ts#L276-L284)
 
 ```
 publish(회원 티켓)  →  ownership 방송
@@ -243,13 +243,13 @@ publish(회원 티켓)  →  ownership 방송
 
 반대면 받는 탭이 **방금 심긴 유효한 회원 티켓까지 지워서** 재발급이 한 번 더 남.
 받는 쪽도 방어함 — 캐시에 든 세션이 **승계된 그 세션이면 이미 회원 티켓이므로 그대로 둠**
-([:142-153](src/shared/chat/sessionCoordinator.ts#L142-L153))
+([:142-153](../../src/shared/chat/sessionCoordinator.ts#L142-L153))
 
 ### 전송을 막지는 않았다
 
 - `ownership`을 받아도 **전송 자체는 막지 않음**. 캐시만 비워서 다음 전송이 회원 신원으로 재발급받게 함
 - 이유: 실제로 깨지는 건 방송 도착 전 **수십 ms**뿐인데, 막으면 **멀쩡히 이어질 대화까지 끊김**
-- 코드 주석에도 *"실패하지도 않은 흐름을 끊지 않는다"*로 남김 ([:136](src/shared/chat/sessionCoordinator.ts#L136))
+- 코드 주석에도 *"실패하지도 않은 흐름을 끊지 않는다"*로 남김 ([:136](../../src/shared/chat/sessionCoordinator.ts#L136))
 
 **PPT 문구**: *"완벽한 정합성이 아니라 **사용자가 이유를 알 수 있는 상태**를 목표로 했다"*
 
@@ -271,10 +271,10 @@ publish(회원 티켓)  →  ownership 방송
 `npx vitest run src/shared/chat` → **11개 파일 · 85개 테스트 통과** (2026-08-12 실행 확인)
 
 관련 테스트 파일:
-- [sessionCoordinator.test.ts](src/shared/chat/sessionCoordinator.test.ts) — 락·캐시 재확인·방송
-- [claimOnLogin.test.ts](src/shared/chat/claimOnLogin.test.ts) — 승계 성공/실패/재시도
-- [threadId.test.ts](src/shared/chat/threadId.test.ts) — 탭별 방 분리
-- [chatPersistence.test.ts](src/shared/chat/chatPersistence.test.ts) — 대화 저장·복원
+- [sessionCoordinator.test.ts](../../src/shared/chat/sessionCoordinator.test.ts) — 락·캐시 재확인·방송
+- [claimOnLogin.test.ts](../../src/shared/chat/claimOnLogin.test.ts) — 승계 성공/실패/재시도
+- [threadId.test.ts](../../src/shared/chat/threadId.test.ts) — 탭별 방 분리
+- [chatPersistence.test.ts](../../src/shared/chat/chatPersistence.test.ts) — 대화 저장·복원
 
 > 멀티탭 동시성은 **손으로 재현하기가 어렵고 재현돼도 타이밍에 의존**함.
 > 그래서 이 영역은 단위 테스트가 특히 값어치가 있었음.

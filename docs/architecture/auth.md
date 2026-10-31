@@ -291,7 +291,7 @@ SELLER 만 걸러내므로 게스트·USER·ADMIN 은 그대로 통과한다.
 >
 > ⚠️ 이 예외를 5xx 로 넓히지 말 것 — 중복·부하가 실제로 생긴다.
 
-자세한 경위는 `analytics-401-retry.md`.
+자세한 경위는 `docs/troubleshooting/analytics-401-retry.md`.
 
 ### 게스트 승계는 서버가 한다
 
@@ -327,4 +327,4 @@ S-1 `aiAttribution.coverage` 분자가 0 이 된다.
 | "SSR 안 함: AT 가 메모리에만 있어 서버가 알 수 없다" | 이유가 바뀌었다(쿠키는 서버도 읽을 수 있다). **결론은 유지** — 가드·복원 흐름이 클라이언트 기준이라 |
 | role enum `MEMBER` | 코드는 **`USER`** / SELLER / ADMIN |
 
-`docs/architecture-chat.md` 도 함께 참조.
+`docs/architecture/chat.md` 도 함께 참조.
