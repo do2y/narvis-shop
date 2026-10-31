@@ -5,7 +5,7 @@
 > 코드 주석에 흩어진 판단을 한자리에 모은 것이라, 구현과 어긋나면 코드가 정본이다.
 >
 > 구현: `src/shared/chat/*` · 계약 타입: `src/shared/types/chat/*` ·
-> 판매자 계약 원문: `docs/features/seller-chat-contract.md`
+> 판매자 계약 원문(보관): `docs/archive/contracts/seller-chat-contract.md` — 현재 정본은 `src/shared/types/chat/seller.ts`
 
 ## 0. 한 줄 요약
 
@@ -108,6 +108,12 @@ return withLock(key, async () => {
 
 **락은 발급/재발급만 감싼다.** 장시간 SSE 스트림까지 감싸면 그동안 다른 탭의
 발급이 막힌다.
+
+**저하 경로의 손해는 작다고 판단했다** — 300ms 대기 후 재확인은 엄밀한 상호배제가 아니지만,
+최악이 "중복 발급 1회"이고 CH-1 이 멱등이라 다른 탭을 축출하지도 않는다.
+
+> 한계: 어떤 브라우저가 저하 경로를 타는지는 조사하지 않았다. 판단 로직은
+> `sessionCoordinator.test.ts` 로 고정돼 있지만, **탭 2개를 실제로 띄운 검증은 수동**이다.
 
 ### 탭 간 방송이 2종인 이유
 
@@ -430,6 +436,11 @@ abort → newThreadId(channel) → clearChat() → reset() → setThreadId
 채팅 화면에서 로그인·가입한 직후 `claimSession()` 이 게스트 세션을 회원으로 승계한다.
 성공하면 회원 티켓으로 갈아끼우고 다른 탭에도 전파한다.
 
+**채팅 화면에서 로그인했을 때만 부른다.** 서버는 "어디서 로그인했는지"를 추측하지 않고,
+FE 가 이 API 를 부르는 것으로 의도를 표현한다. 상세페이지나 장바구니에서 로그인한 사람이
+다른 탭의 게스트 대화를 이어 달라고 했다고 볼 근거가 없다(`claimOnLogin.ts` 주석).
+승계에 실패해도 로그인 자체는 이미 끝났으므로 로그인 흐름을 되돌리지 않는다.
+
 ### 실패하면 조용히 새 세션을 만들지 않는다
 
 `SessionClaimPendingError` 가 이걸 강제한다.
@@ -581,6 +592,37 @@ case "report":
 | `label`(한글 화면명) | AI 가 pageType→표시명 매핑을 config 로 갖는다. FE 가 관리하면 표현이 흔들린다 |
 
 `pageType` 만 보낸다.
+
+### 무엇을 싣나 — 기준은 "서버가 이미 아는가"
+
+구현: `src/features/chat/useScreenContext.ts` (테스트 `useScreenContext.test.ts`)
+
+```ts
+{ pageType: "chat", products: [{ productId, name }, ...], columns }
+```
+
+| 결정 | 버린 것 | 이유 |
+|---|---|---|
+| **추천 카드(CH-5)는 `products` 에서 뺀다** | 그 카드에 대한 FE 쪽 지시어 정보 | 서버가 `listId` 로 이미 안다. FE 가 그 목록을 되돌려 보내면 **FE 가 보낸 목록을 서버가 믿는 경로**가 생긴다 |
+| 그 밖에 패널에 보이는 상품은 `{productId, name}` 만, **최대 20개**, 화면 순서대로 | 가격·재고 등 상세 필드 | 용도는 "무엇을 가리키는가"를 푸는 것뿐이다. 얼마인지·담을 수 있는지는 서버가 정한다 |
+| `columns` 를 함께 보낸다 | — | "3번째 줄 2번째"를 인덱스로 바꾸려면 열 수가 필요한데, **반응형이라 서버가 알 수 없다** |
+| 패널이 비어 있으면 `screen` 자체를 생략 | 늘 같은 모양의 페이로드 | `pageType` 만으로는 정보가 없다. 추천 카드만 보이면 `{pageType, columns}` 만 보낸다 |
+
+### 값이 아니라 함수를 넘긴다
+
+대화 중 패널이 계속 바뀌므로 훅을 만든 시점이 아니라 **전송하는 순간**의 화면을 실어야 한다.
+결과를 deps 에 넣으면 콜백이 매번 새로 만들어져 `useChat` 의 `send` 까지 흔들리므로,
+`useRef` 에 최신 결과를 담고 **빈 deps `useCallback`** 으로 함수를 고정한다.
+판단 로직은 순수 함수 3개(`screenProductsFromResults` · `hasVisibleProductPanel` ·
+`buildBuyerScreenContext`)로 떼어 테스트한다.
+
+### 한계
+
+- **`columns` 가 두 곳에서 관리된다** — `currentColumns()`(1280px 이상 3열, 그 밖 2열)와
+  `ProductPanel.tsx` 의 `GRID` 클래스(`grid-cols-2 … xl:grid-cols-3`). 타입으로 묶을 수단이 없어
+  양쪽 주석으로만 맞춰 두고 있다. 한쪽만 고치면 좌표 해석이 **조용히** 틀린다.
+  렌더된 그리드에서 열 수를 읽어 오는 구조로 바꾸면 이 의존이 없어진다
+- AI 서버가 이 값을 실제로 어떻게 해석하는지는 FE 코드로 확인할 수 없다
 
 ---
 

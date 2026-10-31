@@ -1,5 +1,8 @@
 # Next.js 마이그레이션 계획
 
+> 📌 **2026-07-28~29 시점의 계획 기록이다.** 전환은 완료됐다. 아래 상태·작업 폴더(`jarvis-web-next/`)·참조 문서(`auth-token-strategy.md`)는 당시 기준이며 지금은 레포에 없다.
+> 전환 효과 측정은 `docs/performance/ssr-measurement.md`.
+
 > 작성 2026-07-28 · **상태: 1~5단계 코드 완료 + 브라우저 검증 전 시나리오 통과(2026-07-29).**
 > **남은 것: 워크플로 rename → 푸시 → 전환.** 아직 원본 Vite 앱이 배포 중이다(스위치 OFF).
 > 검증 결과는 `docs/migration/nextjs-migration-qa.md` 참조 — 브라우저에서만 드러난 버그 5건 발견·수정

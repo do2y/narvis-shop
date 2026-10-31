@@ -328,7 +328,7 @@ const restored = useRef(false);   // 이게 없으면
 - 티켓은 **25초** — 티켓 TTL(30~60초)보다 짧게 잡아 만료 직전 것을 재사용하지 않게
   ([sessionCoordinator.ts:43](../../src/shared/chat/sessionCoordinator.ts#L43))
 
-> 자세한 멀티탭 동기화(락·BroadcastChannel)는 `docs/portfolio/chat-session-design.md` 참조.
+> 자세한 멀티탭 동기화(락·BroadcastChannel)는 `docs/architecture/chat.md` §3 참조.
 
 ---
 
