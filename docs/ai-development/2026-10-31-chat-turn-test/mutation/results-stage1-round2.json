@@ -1,0 +1,92 @@
+{
+  "tests": [
+    "src/shared/chat/useChat.test.ts",
+    "src/shared/chat/MessageList.test.tsx"
+  ],
+  "restored": {
+    "src/shared/chat/useChat.ts": {
+      "originalSha": "87d570d143d6",
+      "restoredSha": "87d570d143d6",
+      "identical": true
+    },
+    "src/shared/chat/store.ts": {
+      "originalSha": "8a1beaaed71d",
+      "restoredSha": "8a1beaaed71d",
+      "identical": true
+    },
+    "src/shared/chat/MessageList.tsx": {
+      "originalSha": "6643a7b7da74",
+      "restoredSha": "6643a7b7da74",
+      "identical": true
+    }
+  },
+  "restoredIdentical": true,
+  "baselineTotal": 35,
+  "results": [
+    {
+      "id": "E1",
+      "scenario": "B1",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "retry 의 스트리밍 중 가드 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[B1] 실패가 표시됐어도 턴이 아직 끝나지 않았으면(카드 조회 대기) 재시도하지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [] to deeply equal [ 'user', 'assistant' ]"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "E2",
+      "scenario": "B4",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "retry 의 '대상이 마지막 말풍선인가' 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[B4] 실패가 연달아 있을 때 위쪽 실패의 id 로 재시도하면 아무것도 보내지 않는다 — 마지막 실패가 대신 나가면 안 된다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected \"vi.fn()\" to be called 2 times, but got 3 times"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "E3",
+      "scenario": "B",
+      "target": "src/shared/chat/store.ts",
+      "desc": "dropLastExchange 의 '마지막이 실패인가' 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[B] dropLastExchange 는 마지막 말풍선이 실패가 아니면 아무것도 지우지 않는다 — 응답 중인 턴을 지키는 마지막 방어선",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { text: '질문', imageUrls: undefined } to be null"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "E4",
+      "scenario": "MessageList",
+      "target": "src/shared/chat/MessageList.tsx",
+      "desc": "재시도 버튼을 마지막 말풍선으로 제한하지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[MessageList] 마지막 실패 말풍선에만 버튼을 그리고, 누르면 그 말풍선의 id 를 넘긴다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ <button …(2)></button>, …(1) ] to have a length of 1 but got 2"
+        },
+        {
+          "name": "[MessageList] 위쪽 실패 말풍선은 버튼 없이 실패 문구를 그대로 보여준다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(1) ] to have a length of +0 but got 1"
+        }
+      ],
+      "byExpectedTest": true
+    }
+  ]
+}

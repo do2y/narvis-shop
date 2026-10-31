@@ -1,0 +1,179 @@
+import { useEffect } from "react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { writeFileSync } from "node:fs";
+import { track } from "@/shared/analytics/track";
+import { ApiError } from "@/shared/api/client";
+import { loadChat, saveChat } from "@/shared/chat/chatPersistence";
+import { fetchChatListGroup } from "@/shared/chat/lists";
+import {
+  clearCachedSession,
+  ensureSession,
+  refreshTicket,
+  SessionClaimPendingError,
+} from "@/shared/chat/sessionCoordinator";
+import type { ChatSession, ProductGroup } from "@/shared/types/chat";
+import { useChatStore } from "./store";
+import { useChat } from "./useChat";
+
+/**
+ * 한 턴의 실행(useChat.run)과 그 진입점 — 부품을 "엮는 쪽"의 회귀 방지.
+ *
+ * 이벤트 처리(chatEventHandler)·세션 발급(sessionCoordinator)·파서(streamChat)는 각자
+ * 테스트가 있다. 여기서 지키는 것은 그 부품들이 **어떤 순서와 분기로 엮이는가**다 —
+ * 연타 중복 전송, 입력창 영구 잠김, 만료 세션 재사용처럼 사용자에게 바로 보이는 결함이 여기서 난다.
+ *
+ * 목 경계: 네트워크에서만 끊는다. SSE 는 global fetch 를 가짜로 두고 실제 바이트를 흘려
+ * 진짜 파서 → 진짜 이벤트 핸들러 → 진짜 스토어를 지나게 한다. 세션 코디네이터는
+ * Web Locks·BroadcastChannel 의존이고 자체 테스트가 있어 목으로 둔다.
+ */
+
+vi.mock("@/shared/chat/sessionCoordinator", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/shared/chat/sessionCoordinator")>();
+  return {
+    ...actual,
+    ensureSession: vi.fn(),
+    refreshTicket: vi.fn(),
+    clearCachedSession: vi.fn(),
+    subscribeSession: vi.fn(() => () => {}),
+    subscribeOwnershipChange: vi.fn(() => () => {}),
+  };
+});
+vi.mock("@/shared/chat/lists", () => ({ fetchChatListGroup: vi.fn() }));
+vi.mock("@/shared/analytics/track", () => ({ track: vi.fn() }));
+
+// --- 픽스처 ---------------------------------------------------------------
+
+function session(streamTicket = "ticket-1"): ChatSession {
+  return {
+    sessionId: "session-1",
+    ttlSeconds: 600,
+    streamTicket,
+    ticketTtlSeconds: 60,
+    llmSseUrl: "https://ai.example/chat",
+  };
+}
+
+const encoder = new TextEncoder();
+const frame = (type: string, data: unknown) =>
+  `data: ${JSON.stringify({ type, data })}\n\n`;
+const token = (text: string) => frame("token", { text });
+const DONE = frame("done", { finishReason: "stop" });
+
+/** 모든 프레임을 담고 닫힌 SSE 응답 */
+function sse(...frames: string[]): Response {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const f of frames) controller.enqueue(encoder.encode(f));
+      controller.close();
+    },
+  });
+  return new Response(stream, { status: 200 });
+}
+
+/** 스트림 시작 전 거부 — 계약 CH-2 §실패 응답 envelope */
+function rejected(status: number, code = "ERROR"): Response {
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: { code, message: "", requestId: "req-1" },
+    }),
+    { status },
+  );
+}
+
+/**
+ * 테스트가 프레임을 하나씩 밀어 넣는 스트림. abort 되면 실제 fetch 처럼
+ * 읽기가 AbortError 로 끊긴다.
+ */
+function openStream() {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const reply = (signal: AbortSignal) => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        controller = c;
+      },
+    });
+    signal.addEventListener("abort", () =>
+      controller.error(new DOMException("aborted", "AbortError")),
+    );
+    return new Response(stream, { status: 200 });
+  };
+  return {
+    reply,
+    push: (f: string) => controller.enqueue(encoder.encode(f)),
+    close: () => controller.close(),
+  };
+}
+
+// fetch 는 준비된 응답을 순서대로 하나씩 돌려준다. 준비되지 않은 호출은 곧 "나가면 안 되는 요청"이다.
+type Reply = Response | ((signal: AbortSignal) => Response);
+let replies: Reply[] = [];
+const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+  const signal = init.signal as AbortSignal;
+  if (signal.aborted) throw new DOMException("aborted", "AbortError");
+  const next = replies.shift();
+  if (!next) throw new Error("unexpected fetch");
+  return typeof next === "function" ? next(signal) : next;
+});
+
+const requestBody = (call: number) =>
+  JSON.parse(fetchMock.mock.calls[call][1].body as string);
+const requestAuth = (call: number) =>
+  (fetchMock.mock.calls[call][1].headers as Record<string, string>)
+    .Authorization;
+
+const state = () => useChatStore.getState();
+const lastMessage = () => state().messages.slice(-1)[0];
+
+function setup(options: Partial<Parameters<typeof useChat>[0]> = {}) {
+  return renderHook(() => useChat({ channel: "SHOPPING", ...options }));
+}
+
+beforeEach(() => {
+  state().reset();
+  sessionStorage.clear();
+  replies = [];
+  fetchMock.mockClear();
+  vi.stubGlobal("fetch", fetchMock);
+  vi.mocked(ensureSession).mockReset().mockResolvedValue(session());
+  vi.mocked(refreshTicket)
+    .mockReset()
+    .mockResolvedValue(session("ticket-2"));
+  vi.mocked(clearCachedSession).mockReset();
+  vi.mocked(fetchChatListGroup).mockReset();
+  vi.mocked(track).mockReset();
+});
+
+afterEach(async () => {
+  // vitest globals 를 켜지 않아 RTL 자동 정리가 등록되지 않는다 — 직접 언마운트한다.
+  cleanup();
+  // 언마운트 abort 는 한 틱 미뤄 실행된다. 다음 테스트의 스토어로 새지 않게 흘려보낸다.
+  await new Promise((r) => setTimeout(r, 0));
+  vi.unstubAllGlobals();
+});
+
+// ---- 관찰용 프로브 (저장소 미반영) ----
+const obs: Record<string, unknown> = {};
+afterAll(() => writeFileSync(process.env.PROBE_OUT!, JSON.stringify(obs, null, 2)));
+const snapshot = () => ({
+  isStreaming: state().isStreaming,
+  texts: state().messages.map((m) => `${m.role}:${m.text}${m.error ? " [ERR]" : ""}`),
+  results: state().results.length,
+  threadId: state().threadId,
+});
+const tick = () => new Promise((r) => setTimeout(r, 20));
+
+describe("probe2", () => {
+  it("B4 앞선 실패 말풍선의 재시도를 누름 (뒤에 성공한 턴이 있음)", async () => {
+    replies.push(rejected(500), sse(token("둘째 답"), DONE), sse(token("재전송된 답"), DONE));
+    const { result } = setup();
+    await act(() => result.current.send("첫 질문(실패)"));
+    await act(() => result.current.send("둘째 질문(성공)"));
+    const before = snapshot();
+    // 화면의 어느 실패 말풍선이든 onRetry 는 같은 retry() 다
+    await act(async () => { result.current.retry(); await tick(); await tick(); });
+    obs.B4 = { before, after: snapshot(), resentBody: requestBody(2).message };
+  });
+});

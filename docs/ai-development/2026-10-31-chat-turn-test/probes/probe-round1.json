@@ -1,0 +1,183 @@
+{
+  "A1": {
+    "before": {
+      "isStreaming": true,
+      "texts": [
+        "user:이전 질문",
+        "assistant:이전 답"
+      ],
+      "results": 0,
+      "threadId": "4fda2141-f3b8-4406-b624-40ff606d5608"
+    },
+    "afterNew": {
+      "isStreaming": false,
+      "texts": [],
+      "results": 0,
+      "threadId": "8f687113-5330-4e3c-95e5-e29879adaa5a"
+    },
+    "afterLateCards": {
+      "isStreaming": false,
+      "texts": [],
+      "results": 1,
+      "threadId": "8f687113-5330-4e3c-95e5-e29879adaa5a"
+    }
+  },
+  "A2": {
+    "newTurnStreaming": {
+      "isStreaming": true,
+      "texts": [
+        "user:새 질문",
+        "assistant:"
+      ],
+      "results": 0,
+      "threadId": "c132d5e5-f470-4887-9ef7-460357bfe1ae"
+    },
+    "afterOldFinally": {
+      "isStreaming": false,
+      "texts": [
+        "user:새 질문",
+        "assistant:"
+      ],
+      "results": 0,
+      "threadId": "c132d5e5-f470-4887-9ef7-460357bfe1ae"
+    },
+    "afterThirdSend": {
+      "isStreaming": false,
+      "texts": [
+        "user:새 질문",
+        "assistant:",
+        "user:또 보냄",
+        "assistant: [ERR]"
+      ],
+      "results": 0,
+      "threadId": "c132d5e5-f470-4887-9ef7-460357bfe1ae"
+    },
+    "fetchCalls": 3,
+    "final": {
+      "isStreaming": false,
+      "texts": [
+        "user:새 질문",
+        "assistant:",
+        "user:또 보냄",
+        "assistant:새 답 [ERR]"
+      ],
+      "results": 0,
+      "threadId": "c132d5e5-f470-4887-9ef7-460357bfe1ae"
+    }
+  },
+  "A3": {
+    "sameTick": {
+      "isStreaming": true,
+      "texts": [
+        "user:새 질문",
+        "assistant:"
+      ],
+      "results": 0,
+      "threadId": "67ec640b-ccc7-452e-974e-c3e52c3e0e08"
+    },
+    "afterOldSettled": {
+      "isStreaming": false,
+      "texts": [
+        "user:새 질문",
+        "assistant:"
+      ],
+      "results": 0,
+      "threadId": "67ec640b-ccc7-452e-974e-c3e52c3e0e08"
+    },
+    "final": {
+      "isStreaming": false,
+      "texts": [
+        "user:새 질문",
+        "assistant:새 답"
+      ],
+      "results": 0,
+      "threadId": "67ec640b-ccc7-452e-974e-c3e52c3e0e08"
+    }
+  },
+  "B1": {
+    "failed": {
+      "isStreaming": false,
+      "texts": [
+        "user:질문",
+        "assistant: [ERR]"
+      ],
+      "results": 0,
+      "threadId": "c8753cbd-57cc-495b-a5a3-dd3101520396"
+    },
+    "after": {
+      "isStreaming": false,
+      "texts": [],
+      "results": 0,
+      "threadId": "c8753cbd-57cc-495b-a5a3-dd3101520396"
+    },
+    "fetchCalls": 2
+  },
+  "B2": {
+    "inFlight": {
+      "isStreaming": true,
+      "texts": [
+        "user:앞 질문은 성공했다고 치고",
+        "assistant:"
+      ],
+      "results": 0,
+      "threadId": "06862039-e5e0-49db-95cd-e9ebc9df2fbf"
+    },
+    "afterSecond": {
+      "isStreaming": true,
+      "texts": [],
+      "results": 0,
+      "threadId": "06862039-e5e0-49db-95cd-e9ebc9df2fbf"
+    },
+    "final": {
+      "isStreaming": false,
+      "texts": [],
+      "results": 0,
+      "threadId": "06862039-e5e0-49db-95cd-e9ebc9df2fbf"
+    },
+    "fetchCalls": 2
+  },
+  "B3": {
+    "afterSecond": {
+      "isStreaming": true,
+      "texts": [
+        "user:첫 질문",
+        "assistant:첫 답"
+      ],
+      "results": 0,
+      "threadId": "d605eb88-e99c-4039-81e1-007e2b831614"
+    },
+    "final": {
+      "isStreaming": false,
+      "texts": [
+        "user:첫 질문",
+        "assistant:첫 답 + 늦은 토큰"
+      ],
+      "results": 0,
+      "threadId": "d605eb88-e99c-4039-81e1-007e2b831614"
+    },
+    "fetchCalls": 3
+  },
+  "R1": {
+    "trackCalls": 2,
+    "fetchCalls": 1
+  },
+  "C3": {
+    "cleared": [
+      [
+        "SHOPPING"
+      ]
+    ],
+    "last": {
+      "id": "07fd4742-15c2-483a-81a6-943cbc6deda8",
+      "role": "assistant",
+      "text": "",
+      "error": "대화가 만료되었어요. 다시 시도하면 새로 이어서 대화할 수 있어요.",
+      "retryable": true
+    },
+    "sessionId": null
+  },
+  "F": {
+    "progress": null,
+    "isStreaming": false
+  }
+}
