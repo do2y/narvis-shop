@@ -209,7 +209,9 @@ retry()  →  dropLastExchange()          (store.ts:199-213)
 
 > 예측을 적을 때의 질문: "지금 있는 25개 테스트 중 **어느 테스트의 어느 단언**이 이걸 잡을까?" — 그런 단언을 못 찾으면 생존 예측.
 
-### 4.2 상세 — 원래 코드 · 바뀌는 동작 · 관련 테스트 (2026-10-31, 테스트 보완 후 26건 기준)
+### 4.2 상세 — 원래 코드 · 바뀌는 동작 · 관련 테스트 (2026-10-31, 테스트 보완 후 26건 기준) — *§4.3이 대체*
+
+> ⚠️ **A 단위 이후 재매핑 필요** — `finally`가 `endTurn` 하나로 바뀌어 D1의 대상 줄이 사라졌고 다른 D의 줄 번호도 밀렸음. 아래 줄 번호·코드는 A 단위 이전 기준. 의미는 유지하고 실행 전에 대상을 다시 지정함(03 §10).
 
 > "관련 테스트"는 그 코드를 **지나가는** 테스트와 그 테스트가 보는 값만 적음. 검출 여부 판단은 개발자 몫이라 적지 않음.
 
@@ -268,6 +270,24 @@ retry()  →  dropLastExchange()          (store.ts:199-213)
 - 바뀌는 동작 — 요청 과다 거부에도 재시도 버튼이 뜸
 - 사용자 문제 — 버튼을 누를수록 제한이 길어짐
 - 관련 테스트 — `[C5] 시작 거부 429…`: `retryable` 값을 확인. 대상 파일이 `useChat.ts` 밖이라 실행기의 `TARGET` 확장이 필요함
+
+### 4.3 D1~D8 재매핑 — A 단위 커밋 `bd07411` 기준 (2026-10-31)
+
+> §4.2를 대체함. 의미는 그대로 두고 대상만 현재 코드로 옮김. **검출 여부·예상 결과는 적지 않음** — 개발자 예측 후 실행.
+> "관련 테스트"는 그 코드를 지나가거나 그 값을 읽는 테스트와 **그 테스트가 보는 값**만 적음.
+> 테스트 수: useChat 42 · chatEventHandler 16 · MessageList 3 · 판매자 ChatPage 1.
+> ⚠️ H1 2단계가 `useChat.ts`의 catch·retry 부근을 바꾸므로, 실행 시점에 대상 문자열을 다시 확인함(실행기가 0회·2회 이상 일치면 "무효"로 걸러냄).
+
+| # | 변경 위치 (현재) | 변이 | 바뀌는 동작 | 사용자 영향 | 관련 테스트 (보는 값) |
+|---|---|---|---|---|---|
+| D1 | [store.ts:254](../../../src/shared/chat/store.ts#L254) `endTurn`의 `{ activeTurnId: null, isStreaming: false, progress: null }` | `progress: null` 삭제 | 턴이 끝나도 진행 문구를 비우지 않음. (`done`·`error` 이벤트는 핸들러가 따로 비움, 다음 턴 시작부도 비움) | 응답이 중간에 끊긴 뒤 "상품을 찾고 있어요"가 남음 | `[F] 진행 표시 중에 응답이 끊겨도…` — 종결 이벤트 없이 끊긴 뒤 `state().progress` |
+| D2 | [useChat.ts:112](../../../src/shared/chat/useChat.ts#L112) `ensureSession(channel, sessionId, !claimFailure)` | 세 번째 인자 `true` 고정 | 승계 실패 배너가 있어도 "새로 만들어도 된다"고 알림 | 배너를 무시하고 보낸 메시지가 새 세션으로 가 AI가 이전 대화를 모름 | `[C2] 승계 실패 중에는 새 세션을 만들지 말라고…` — `ensureSession` 호출 인자 |
+| D3 | [useChat.ts:260](../../../src/shared/chat/useChat.ts#L260) 401 재시도 분기의 `setSessionId(fresh.sessionId)` | 이 줄 삭제 | 재발급 응답의 sessionId를 스토어에 쓰지 않음 (그 전 [:225](../../../src/shared/chat/useChat.ts#L225)에서 첫 발급값은 씀) | 재발급에서 sessionId가 바뀌는 경우 화면 상태가 옛 id를 들고 있음 | `[R2]` 2건 — 재발급 호출 인자·두 번째 요청 Authorization. 참고 사실: 픽스처의 재발급 응답 sessionId는 첫 발급과 같은 `"session-1"`. `[A2] 티켓 재발급을 기다리는 사이…`는 끝난 턴이 이 줄에 **닿기 전에** 멈추는 경로 |
+| D4 | [useChat.ts:305](../../../src/shared/chat/useChat.ts#L305) `else if (err instanceof StreamInterruptedError) { … }` | 분기 삭제 → 일반 실패로 | 끊김 안내가 "응답을 받지 못했어요"로 바뀜(재시도 가능 여부는 둘 다 true) | 답이 반쯤 왔는데 "받지 못했다"고 안내 | `[C4]` — `error` 문구 문자열 · `[F] 진행 표시 중에 응답이 끊겨도…` — progress·`isStreaming` |
+| D5 | [useChat.ts:212](../../../src/shared/chat/useChat.ts#L212) `run` 시작부 `setLane(null);` | 이 줄 삭제 | 새 턴이 `meta`를 받기 전까지 이전 턴 레인이 남음 | 판매자 화면에서 분석 다음 일반 질문 대기 중 분석 스켈레톤이 잘못 뜸 | `useChat`을 거치는 테스트 중 `lane`을 읽는 단언 없음. 핸들러 `[A] 11종 이벤트…`는 `lane`을 읽지만 `run`을 거치지 않음 |
+| D6 | [useChat.ts:382](../../../src/shared/chat/useChat.ts#L382) `...(screen ? { screen } : {}),` | 이 줄 삭제 | `getScreenContext`가 있어도 body에 `screen`이 빠짐 | 사이드 채팅에서 "이거 담아줘"의 "이거"를 AI가 모름 | `getScreenContext`를 넘기는 테스트 없음. 판매자 `ChatPage` 화면 테스트는 실제 `useSellerScreenContext`를 쓰지만 body의 `screen`을 단언하지 않음 |
+| D7 | [useChat.ts:460](../../../src/shared/chat/useChat.ts#L460) `startNewChat` 첫 줄 `abortRef.current?.abort();` | 이 줄 삭제 | 새 대화를 눌러도 이전 스트림의 네트워크를 끊지 않음 (A 단위 이후 대화 상태 쓰기는 소유권 확인이 따로 막음) | 이전 응답이 네트워크로 계속 흘러옴 · 서버 쪽 동시 스트림 제한(409)에 걸릴 수 있음 | 진행 중인 턴이 있을 때 `startNewChat`을 부르는 테스트: `[A·reset]`(`activeTurnId`·`isStreaming`) · `[A1]`(`results`·`messages`) · `[A2]` 4건(새 턴 상태·세션·캐시) · `[A3]`(새 턴 상태 · **새 턴 요청의 `signal.aborted`**). `[N1]`·`[U1]`은 진행 중 턴 없이 부름 |
+| D8 | [chatErrors.ts:52-57](../../../src/shared/chat/chatErrors.ts#L52-L57) `case 429: … retryable: false` | `retryable: true` | 요청 과다 거부에도 재시도 버튼 | 누를수록 제한이 길어짐 | `[C5] 시작 거부 429…` — `retryable` 값. 대상 파일이 `useChat.ts` 밖 |
 
 ## 5. 기존 테스트 보완 계획 (개발자 결정 반영, 2026-10-31)
 

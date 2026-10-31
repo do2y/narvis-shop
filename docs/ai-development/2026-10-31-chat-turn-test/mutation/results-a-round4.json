@@ -1,0 +1,209 @@
+{
+  "tests": [
+    "src/shared/chat/useChat.test.ts",
+    "src/shared/chat/chatEventHandler.test.ts",
+    "src/shared/chat/MessageList.test.tsx",
+    "src/features/seller/ChatPage.test.tsx"
+  ],
+  "restored": {
+    "src/shared/chat/store.ts": {
+      "originalSha": "dd2722c2fa1c",
+      "restoredSha": "dd2722c2fa1c",
+      "identical": true
+    },
+    "src/shared/chat/chatEventHandler.ts": {
+      "originalSha": "4f62c37a6596",
+      "restoredSha": "4f62c37a6596",
+      "identical": true
+    },
+    "src/shared/chat/useChat.ts": {
+      "originalSha": "a5bf8ebe48ff",
+      "restoredSha": "a5bf8ebe48ff",
+      "identical": true
+    }
+  },
+  "restoredIdentical": true,
+  "baselineTotal": 62,
+  "results": [
+    {
+      "id": "G1",
+      "scenario": "A2",
+      "target": "src/shared/chat/store.ts",
+      "desc": "endTurn 이 현재 턴인지 보지 않고 무조건 정리 (finally 의 소유권 확인 제거)",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A2] 세션 확보 중 새 대화 후 새 질문 → 이전 턴이 뒤늦게 끝나도 새 턴의 응답 중 상태·말풍선을 건드리지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "[A2] 이전 턴의 세션 확보가 새 대화 뒤에 실패해도, 그 실패가 새 턴의 말풍선에 찍히지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "[A3] 답변 수신 중 새 대화 + 곧바로 새 질문 → 이전 턴 정리가 새 턴을 풀지 않고, 새 대화를 다시 누르면 새 턴이 끊긴다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected false to be true // Object.is equality"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "G2",
+      "scenario": "A1",
+      "target": "src/shared/chat/chatEventHandler.ts",
+      "desc": "카드 조회 .then 의 소유권 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A1] 카드 조회 도중 현재 턴이 아니게 되면, 조회가 늦게 끝나도 카드를 넣지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ { kind: 'products', …(1) } ] to deeply equal []"
+        },
+        {
+          "name": "[A1] 추천 카드 조회 중 새 대화를 시작하면, 늦게 온 카드는 새 대화에 들어오지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ { kind: 'products', …(1) } ] to deeply equal []"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "G3",
+      "scenario": "A2",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "세션 확보 뒤 소유권 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A2] 세션 확보 중 새 대화 후 새 질문 → 이전 턴이 뒤늦게 끝나도 새 턴의 응답 중 상태·말풍선을 건드리지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected \"vi.fn()\" to be called 1 times, but got 2 times"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "G4",
+      "scenario": "A·reset",
+      "target": "src/shared/chat/store.ts",
+      "desc": "reset 이 activeTurnId 를 비우지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A·reset] 새 대화를 누르면 그 순간 이전 턴의 소유권이 사라진다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected 'f10f9ced-91b0-4551-b30b-0f3aad65b60f' to be null"
+        },
+        {
+          "name": "[A1] 추천 카드 조회 중 새 대화를 시작하면, 늦게 온 카드는 새 대화에 들어오지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ { kind: 'products', …(1) } ] to deeply equal []"
+        },
+        {
+          "name": "[A2] 티켓 재발급을 기다리는 사이 새 대화를 시작하면, 이전 턴의 재발급 결과가 새 대화의 세션에 쓰이지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected 'session-1' to be null"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "G5",
+      "scenario": "A",
+      "target": "src/shared/chat/chatEventHandler.ts",
+      "desc": "끝난 턴의 action 을 종류 불문하고 onAction 으로 넘김",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A] 서버에서 끝난 장바구니·찜 변경은 onAction 으로 넘기고(캐시 동기화), 실패·판매자 결과는 넘기지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(4) ] to deeply equal [ 'CART_ADDED', 'WISHLIST_ADDED' ]"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "G6",
+      "scenario": "A3",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "finally 의 abortRef 정리에서 컨트롤러 일치 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A3] 답변 수신 중 새 대화 + 곧바로 새 질문 → 이전 턴 정리가 새 턴을 풀지 않고, 새 대화를 다시 누르면 새 턴이 끊긴다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected false to be true // Object.is equality"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "G7",
+      "scenario": "A",
+      "target": "src/shared/chat/chatEventHandler.ts",
+      "desc": "[계획 외] 이벤트 처리 입구의 소유권 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A] 11종 이벤트 어느 것도 대화 상태(메시지·카드·칩·진행·레인·리포트·초안)를 바꾸지 않고, onDone 도 부르지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { messages: [ { …(5) } ], …(7) } to deeply equal { messages: [ { …(3) } ], …(7) }"
+        },
+        {
+          "name": "[A] 서버에서 끝난 장바구니·찜 변경은 onAction 으로 넘기고(캐시 동기화), 실패·판매자 결과는 넘기지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(4) ] to deeply equal [ 'CART_ADDED', 'WISHLIST_ADDED' ]"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "G8",
+      "scenario": "A",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "[계획 외] catch 의 소유권 확인 제거 (끝난 턴의 실패가 새 대화 말풍선에 쓰임)",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A2] 이전 턴의 세션 확보가 새 대화 뒤에 실패해도, 그 실패가 새 턴의 말풍선에 찍히지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.' to be undefined"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "G9",
+      "scenario": "A",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "[계획 외] 401 재발급 뒤 소유권 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A2] 티켓 재발급을 기다리는 사이 새 대화를 시작하면, 이전 턴의 재발급 결과가 새 대화의 세션에 쓰이지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected 'session-1' to be null"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "G10",
+      "scenario": "A2",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "[사후] 끝난 턴이 알게 된 세션 만료를 공유 캐시에 반영하지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A2] 새 대화 뒤 이전 턴이 세션 만료(404)를 알게 되면, 대화에는 아무것도 쓰지 않되 만료된 세션 캐시는 비운다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'SHOPPING' ]"
+        }
+      ],
+      "byExpectedTest": true
+    }
+  ]
+}

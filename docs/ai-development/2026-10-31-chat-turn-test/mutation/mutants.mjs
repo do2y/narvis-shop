@@ -76,8 +76,12 @@ export const mutants = [
     id: "M10",
     scenario: "F",
     desc: "finally 에서 스트리밍 상태를 풀지 않음",
-    find: "        setStreaming(false);\n        setProgress(null);\n        abortRef.current = null;",
-    replace: "        setProgress(null);\n        abortRef.current = null;",
+    // 재정의(2026-10-31, A 단위): finally 의 setStreaming(false)·setProgress(null) 이
+    // endTurn(turnId) 하나로 바뀌어 원래 문자열이 사라짐(5차까지는 아래 원문으로 실행).
+    //   원문 find: "        setStreaming(false);\n        setProgress(null);\n        abortRef.current = null;"
+    // 의미(턴이 끝나도 스트리밍 상태가 풀리지 않음)는 그대로 두고 대상만 옮김.
+    find: "        endTurn(turnId);\n",
+    replace: "\n",
   },
   {
     id: "M11",
