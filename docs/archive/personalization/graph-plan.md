@@ -1,7 +1,7 @@
 # 개인화 마이페이지 — 계약 정합 + 방사형 그래프 작업 계획서
 
 > 대상: `/mypage/preferences` (구현 커밋 `eef443c` 존재)
-> 계약 정본: [personalization-contract-2026-08-09.md](personalization-contract-2026-08-09.md)
+> 계약 정본: [docs/features/personalization-contract.md](../../features/personalization-contract.md)
 > 작성 2026-08-10
 
 ---

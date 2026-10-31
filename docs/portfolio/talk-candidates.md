@@ -12,7 +12,7 @@
 - `.agents/skills`(animation-vocabulary · apple-design · emil-design-eng), `CLAUDE.md`, `package.json`
 - 현재 브랜치 `design/mobile-responsive-ui` ↔ `main` diff (28 파일, +1223/-513)
 - 최근 커밋 60개 — 특히 챗 세션·screen context·조건 칩·바텀시트 계열
-- 기존 문서 — `home-scroll-interaction-perf-review.md`, `hero-animation-perf-review.md`, `cart-event-migration-incident.md`
+- 기존 문서 — `docs/performance/home-scroll-interaction.md`, `docs/performance/hero-animation.md`, `docs/troubleshooting/cart-event-migration.md`
 
 ---
 
@@ -24,15 +24,15 @@
 | 2 | **LLM 에 넘기는 화면 context** | "이거 담아줘" · "3번째 줄 2번째" 지시어를 AI 가 못 풂 | 전송 시점 스냅샷(값 아닌 함수 주입) · 반응형 `columns` 전송 · 신뢰 경계 기반 필터링 · 순수 함수 분리 + 단위 테스트 5종 | `features/chat/useScreenContext.ts` · `useScreenContext.test.ts` · `components/ProductPanel.tsx` | "AI 에 무엇을 보내지 **않을** 것인가"를 보안으로 판단. LLM 앱 FE 고유 문제 | ★★★★★ |
 | 3 | **모바일 채팅 바텀시트** | 좁은 화면에서 대화·결과 두 축이 동시에 필요 · 시트에 가려 마지막 카드가 안 보임 | Pointer Events + `setPointerCapture` · 거리+속도 이중 스냅 · ResizeObserver 실측 · CSS 변수로 시트 높이 전파 · 드래그 중 transition 해제 | `shared/chat/MobileBottomSheetFrame.tsx` · `ChatLayout.tsx` · `features/chat/components/ProductPanel.tsx` | 라이브러리 없이 네이티브 제스처 구현. Before/After 가 화면으로 가장 잘 보임 | ★★★★☆ |
 | 4 | **조건 칩 key 충돌 회귀** | 카테고리 칩 하나를 지웠는데 전부 사라짐 · 엉뚱한 칩이 사라져 보임 | React 리컨실리에이션과 key 중복 · `(field,value)` 복합 식별자 · 낙관적 업데이트 분리·테스트화 | `shared/chat/conditionRemoval.ts` · `conditionRemoval.test.ts` | "서버는 하위호환인데 렌더링은 아니었다"는 통찰이 핵심. 짧고 밀도 높음 | ★★★☆☆ |
-| 5 | **홈 스크롤 / reveal 인터랙션** | 스크롤 인터랙션이 메인 스레드를 잡아먹을 위험 | CSS `scroll-snap: proximity`(JS 하이재킹 회피) · `useRevealOnce` 1회성 observer · `prefers-reduced-motion` | `features/home/hooks/useRevealOnce.ts` · `app/globals.css` · `docs/home-scroll-interaction-perf-review.md` | 검토 문서는 있으나 **실측이 없음**. 문서 스스로 "정적 코드 리뷰 기반, 프로파일러 미실행"이라 밝힘 | ★★☆☆☆ |
+| 5 | **홈 스크롤 / reveal 인터랙션** | 스크롤 인터랙션이 메인 스레드를 잡아먹을 위험 | CSS `scroll-snap: proximity`(JS 하이재킹 회피) · `useRevealOnce` 1회성 observer · `prefers-reduced-motion` | `features/home/hooks/useRevealOnce.ts` · `app/globals.css` · `docs/performance/home-scroll-interaction.md` | 검토 문서는 있으나 **실측이 없음**. 문서 스스로 "정적 코드 리뷰 기반, 프로파일러 미실행"이라 밝힘 | ★★☆☆☆ |
 
 ### 5번을 낮게 둔 이유
 
-`home-scroll-interaction-perf-review.md` 는 서두에 기준을 **"정적 코드 리뷰 기반 / 브라우저
+`docs/performance/home-scroll-interaction.md` 는 서두에 기준을 **"정적 코드 리뷰 기반 / 브라우저
 Performance 프로파일러·실기기 측정은 아직 하지 않음"** 이라고 명시한다.
 발표에서 "개선했다"고 말하려면 실측이 선행되어야 한다.
 
-대비되는 사례가 `hero-animation-perf-review.md` 다 — 그쪽은 CPU 4x slowdown 조건에서
+대비되는 사례가 `docs/performance/hero-animation.md` 다 — 그쪽은 CPU 4x slowdown 조건에서
 측정했고, **코드만 읽고 세운 가설이 측정으로 반증됐다**는 결론까지 남겼다.
 발표 소재로서의 강도 차이는 여기서 갈린다.
 
@@ -278,7 +278,7 @@ Performance 프로파일러·실기기 측정은 아직 하지 않음"** 이라�
 | Web Locks 브라우저 지원 범위 | 코드에 degrade 경로만 있고 지원 표를 조사한 기록이 없음 |
 | AI 서버의 `screen` 수신부 현황 | `e6e97d5` 시점엔 없었음. FE 코드로는 확인 불가 |
 | 바텀시트 드래그 프레임 성능 | 미측정 |
-| 홈 스크롤 / reveal 실측 | `home-scroll-interaction-perf-review.md` 가 스스로 미측정이라 밝힘 |
+| 홈 스크롤 / reveal 실측 | `docs/performance/home-scroll-interaction.md` 가 스스로 미측정이라 밝힘 |
 
-**수치를 만들지 말 것.** 필요하면 `hero-animation-perf-review.md` 처럼 CPU throttling 조건을
+**수치를 만들지 말 것.** 필요하면 `docs/performance/hero-animation.md` 처럼 CPU throttling 조건을
 명시해 실측하고, 가설이 반증되면 그 사실까지 남긴다.

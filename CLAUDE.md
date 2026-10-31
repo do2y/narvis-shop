@@ -17,13 +17,13 @@
 > 변경 후 검증: `npm run build`. tsc만으로는 놓치는 에러가 있다
 
 ## 기능 명세
-- 페이지별 목적·핵심 기능은 `docs/features.md` 참조. 페이지 작업 시 해당 섹션을 먼저 읽고, 이번 세션에서 만들 범위는 프롬프트로 별도 지정받는다
+- 페이지별 목적·핵심 기능은 `docs/features/page-spec.md` 참조. 페이지 작업 시 해당 섹션을 먼저 읽고, 이번 세션에서 만들 범위는 프롬프트로 별도 지정받는다
 
 ## 문서 (`docs/README.md`가 색인)
 이 파일은 **규칙 요약**이고, 구조와 그 근거는 아래에 있다. 해당 영역을 건드리기 전에 읽을 것.
-- `docs/architecture-chat.md` — 세 갈래 통신 경로 · SSE 11종 · 경로 B · 세션/멀티탭 · CH-7 승계 · 판매자 draft/report
-- `docs/architecture-auth.md` — 쿠키 전환 후 구조 · 부팅 복원 · 401 2종 규약 · 가드
-- `docs/architecture-data.md` — 쿼리 키 · staleTime 근거 · **SSR `initialData` 함정** · 무효화 · 로컬 프록시
+- `docs/architecture/chat.md` — 세 갈래 통신 경로 · SSE 11종 · 경로 B · 세션/멀티탭 · CH-7 승계 · 판매자 draft/report
+- `docs/architecture/auth.md` — 쿠키 전환 후 구조 · 부팅 복원 · 401 2종 규약 · 가드
+- `docs/architecture/data.md` — 쿼리 키 · staleTime 근거 · **SSR `initialData` 함정** · 무효화 · 로컬 프록시
 > 코드가 정본이다. 문서와 어긋나면 코드를 믿고 문서를 고친다
 
 ## 기술 스택
@@ -113,7 +113,7 @@ API를 쓰기 전에 `node_modules/next/dist/docs/`의 해당 문서를 읽을 �
   복원 중에 true를 주면 만료된 AT로 요청이 나가 401 → refresh 폭주
 - 복원 경로의 401은 리다이렉트 대상이 아님 — `fetchMe`는 `NO_AUTH_REDIRECT`로 호출
 - **수집(analytics)은 이 경로를 공유하지 않는다** — `api` 인스턴스를 쓰면 배경 작업의 401이
-  사용자를 로그인으로 튕긴다. 재전송 대상은 **401 하나뿐**(→ `docs/analytics-401-retry.md`)
+  사용자를 로그인으로 튕긴다. 재전송 대상은 **401 하나뿐**(→ `docs/troubleshooting/analytics-401-retry.md`)
 
 ## 배포 구조 (03 D-분산4)
 ```

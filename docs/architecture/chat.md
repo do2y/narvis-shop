@@ -1,11 +1,11 @@
 # 챗봇 아키텍처 — 스트림·세션·카드가 각각 다른 경로로 오는 이유
 
 > 챗봇(구매자 SHOPPING / 판매자 SELLER)이 실제로 어떻게 동작하는지의 지도.
-> 개별 사건 기록(`analytics-401-retry.md` 등)과 달리 **평상시 구조**를 적는다.
+> 개별 사건 기록(`docs/troubleshooting/analytics-401-retry.md` 등)과 달리 **평상시 구조**를 적는다.
 > 코드 주석에 흩어진 판단을 한자리에 모은 것이라, 구현과 어긋나면 코드가 정본이다.
 >
 > 구현: `src/shared/chat/*` · 계약 타입: `src/shared/types/chat/*` ·
-> 판매자 계약 원문: `FE-CONTRACT-SELLER-CHAT.md`
+> 판매자 계약 원문: `docs/features/seller-chat-contract.md`
 
 ## 0. 한 줄 요약
 

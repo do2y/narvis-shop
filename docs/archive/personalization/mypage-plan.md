@@ -4,7 +4,7 @@
 > 이 문서는 2026-08-07 **초안** 기준이라 응답 필드가 실제와 다르다 —
 > `confidence` · `source` · `lastConfirmedAt` · `origin` · `verified` · `truncated` · `nodes[]` ·
 > `usagePolicy` 는 **확정 응답에 없다.** 서버 200개 상한도 없어졌다(전량 전송).
-> **계약은 [personalization-contract-2026-08-09.md](personalization-contract-2026-08-09.md) 를 정본으로 볼 것.**
+> **계약은 [docs/features/personalization-contract.md](../../features/personalization-contract.md) 를 정본으로 볼 것.**
 > 파일 구조·상태 관리 설계·목 전략·작업 순서(3~4장, 10~11장)는 여전히 유효하다.
 
 > 출처: 노션 「개인화 마이페이지 구현」(자료실 > 프로젝트 자료실, 2026-08-08 기준)
@@ -49,14 +49,14 @@
 
 | 필요한 것 | 기존 자산 |
 | --- | --- |
-| 응답 봉투 언래핑 | [client.ts](src/shared/api/client.ts) 인터셉터가 `data`를 이미 벗김 → **`res.data.graphVersion` 이슈는 자동 해결** |
+| 응답 봉투 언래핑 | [client.ts](../../../src/shared/api/client.ts) 인터셉터가 `data`를 이미 벗김 → **`res.data.graphVersion` 이슈는 자동 해결** |
 | `error.code` 분기 | `ApiError.code` — 409 두 종류 구분에 그대로 쓰임 |
 | 401 재시도 | 인터셉터가 `AUTH_TOKEN_EXPIRED` → refresh → 1회 재시도를 **이미 처리**. 화면에서 다시 만들지 않음 |
-| 확인 다이얼로그 | [dialog.tsx](src/shared/ui/dialog.tsx) (base-ui — 포커스 트랩·ESC 내장) |
-| 토스트 | [Toaster.tsx](src/shared/ui/Toaster.tsx) (sonner) — **`action` 버튼을 쓰지 않는다**(실행취소 금지) |
+| 확인 다이얼로그 | [dialog.tsx](../../../src/shared/ui/dialog.tsx) (base-ui — 포커스 트랩·ESC 내장) |
+| 토스트 | [Toaster.tsx](../../../src/shared/ui/Toaster.tsx) (sonner) — **`action` 버튼을 쓰지 않는다**(실행취소 금지) |
 | 빈/오류 상태 | [PageState.tsx](src/features/mypage/components/PageState.tsx) — `EmptyState`·`ErrorState` |
 | 인증 게이팅 | `selectIsAuthReady` — 쿼리 `enabled`에 필수 |
-| 레이아웃·네비 | [MyPageShell.tsx](src/features/mypage/MyPageShell.tsx) · [MyPageNav.tsx](src/features/mypage/components/MyPageNav.tsx) |
+| 레이아웃·네비 | [MyPageShell.tsx](../../../src/features/mypage/MyPageShell.tsx) · [MyPageNav.tsx](../../../src/features/mypage/components/MyPageNav.tsx) |
 
 > **인터셉터가 봉투를 벗기는 덕에 노션 13장 체크리스트 2개(`data`에서 꺼내기 · 401 재시도)가 이미 충족된다.** 화면 코드에서 중복 구현하지 말 것.
 

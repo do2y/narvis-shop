@@ -210,8 +210,8 @@ docker exec jarvis-frontend ps -o pid,comm
 
 ## 9. 참고 문서
 
-- `docs/nextjs-migration.md` — 전체 마이그레이션 계획·단계별 결과
-- `docs/nextjs-migration-qa.md` — 브라우저 검증 시나리오·결과(전 항목 통과, 버그 5건 수정)
+- `docs/migration/nextjs-migration-plan.md` — 전체 마이그레이션 계획·단계별 결과
+- `docs/migration/nextjs-migration-qa.md` — 브라우저 검증 시나리오·결과(전 항목 통과, 버그 5건 수정)
 - `jarvis-web-next/Dockerfile` — 새 컨테이너 정의
 - `jarvis-web-next/CLAUDE.md` — 아키텍처 결정 사항
 

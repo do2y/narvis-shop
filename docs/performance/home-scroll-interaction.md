@@ -24,7 +24,7 @@
 | 3 | 히어로 placeholder 타이핑으로 `Hero` 전체가 주기적으로 리렌더 | `src/features/home/hooks/useTypingText.ts:28-79`, `src/features/home/components/Hero.tsx:24-130` | 현재는 버틸 가능성이 높지만 지속적인 scripting 발생 |
 
 별도 참고:
-- 히어로 무한 애니메이션 자체는 이미 [`docs/hero-animation-perf-review.md`](./hero-animation-perf-review.md)에서 따로 점검됨
+- 히어로 무한 애니메이션 자체는 이미 [`docs/performance/hero-animation.md`](hero-animation.md)에서 따로 점검됨
 
 ## 이번 변경에서 성능상 안전한 부분
 

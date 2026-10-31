@@ -5,8 +5,8 @@
 > 서버가 한 일을 프론트 성과로 말하면 질문 한 번에 무너진다.
 > 각 항목에 **프론트 기여도**와 **말하면 안 되는 것**을 함께 적었다.
 >
-> 상세 내용은 `presentation-chat-session-design.md`(채팅 세션)와
-> `presentation-frontend-draft.md`(전체 초안) 참조.
+> 상세 내용은 `docs/portfolio/chat-session-design.md`(채팅 세션)와
+> `docs/portfolio/frontend-draft.md`(전체 초안) 참조.
 
 ---
 
@@ -56,10 +56,10 @@
 | **판단 ③** | 저장 시점을 **스토어 구독**으로. `done`에만 쓰면 스트리밍 중 탭이 닫힐 때 답변이 통째로 날아간다 |
 | **판단 ④** | **빈 대화는 저장하지 않는다.** 다른 탭이 시작한 대화를 덮어쓸 여지가 생긴다 |
 
-**근거**: [useChatPersistence.ts:14-15](src/shared/chat/useChatPersistence.ts#L14-L15)(순서) ·
-[:36-39](src/shared/chat/useChatPersistence.ts#L36-L39)(구독) ·
-[chatPersistence.ts:8-13](src/shared/chat/chatPersistence.ts#L8-L13)(탭 단위 근거) ·
-[:37-42](src/shared/chat/chatPersistence.ts#L37-L42)(빈 대화)
+**근거**: [useChatPersistence.ts:14-15](../../src/shared/chat/useChatPersistence.ts#L14-L15)(순서) ·
+[:36-39](../../src/shared/chat/useChatPersistence.ts#L36-L39)(구독) ·
+[chatPersistence.ts:8-13](../../src/shared/chat/chatPersistence.ts#L8-L13)(탭 단위 근거) ·
+[:37-42](../../src/shared/chat/chatPersistence.ts#L37-L42)(빈 대화)
 
 **PPT 문구**
 - 저장소는 **편한 곳이 아니라 수명이 같은 곳**에
@@ -83,9 +83,9 @@
 | **순서 고정** | `publish` → `ownership`. 반대면 방금 심은 유효 티켓을 받는 탭이 지운다 |
 | **전송을 막지 않음** | 깨지는 건 수십 ms뿐인데 막으면 **멀쩡한 대화까지 끊긴다** |
 
-**근거**: [sessionCoordinator.ts:201-203](src/shared/chat/sessionCoordinator.ts#L201-L203)(재확인) ·
-[:54-66](src/shared/chat/sessionCoordinator.ts#L54-L66)(방송 2종) ·
-[:276-284](src/shared/chat/sessionCoordinator.ts#L276-L284)(순서)
+**근거**: [sessionCoordinator.ts:201-203](../../src/shared/chat/sessionCoordinator.ts#L201-L203)(재확인) ·
+[:54-66](../../src/shared/chat/sessionCoordinator.ts#L54-L66)(방송 2종) ·
+[:276-284](../../src/shared/chat/sessionCoordinator.ts#L276-L284)(순서)
 
 **PPT 문구**
 - 멀티탭은 **FE의 분산 문제**다
@@ -109,7 +109,7 @@
 **한 번 더 놓쳤다가 잡은 것** — 처음엔 `ApiError`만 실패로 잡았는데
 **네트워크 단절·타임아웃**은 안 걸려서 배너 없이 넘어갔다.
 **없애려던 조용한 실패가 다른 문으로 돌아온 것.**
-→ [claimOnLogin.ts:49-51](src/shared/chat/claimOnLogin.ts#L49-L51) · 테스트로 고정 [claimOnLogin.test.ts:63-78](src/shared/chat/claimOnLogin.test.ts#L63-L78)
+→ [claimOnLogin.ts:49-51](../../src/shared/chat/claimOnLogin.ts#L49-L51) · 테스트로 고정 [claimOnLogin.test.ts:63-78](../../src/shared/chat/claimOnLogin.test.ts#L63-L78)
 
 **PPT 문구**
 - **조용한 실패가 시끄러운 실패보다 나쁘다**
@@ -128,7 +128,7 @@
   - `useSearchParams` → Suspense → **빈 HTML**(`/login`이 9KB)
   - 타임아웃 없는 서버 fetch → **CI 빌드가 멈춤**
 
-> 상세는 `presentation-frontend-draft.md` 슬라이드 1-1 참조.
+> 상세는 `docs/portfolio/frontend-draft.md` 슬라이드 1-1 참조.
 
 ---
 
@@ -201,7 +201,7 @@
 | **5분** | 대화 복원 → 멀티탭 | 시연 중심. 복원으로 시작하면 즉시 눈에 보임 |
 | **10분** | 기능 개요 → **SSR 경계** → **멀티탭 + 승계 실패** → 테스트 | 지표 대응 최소 |
 | **15분** | 위 + 조건 칩 · 성능 반증 | 권장 |
-| **20분+** | `presentation-frontend-draft.md` 전체 구성 따름 | — |
+| **20분+** | `docs/portfolio/frontend-draft.md` 전체 구성 따름 | — |
 
 ### 순서를 짤 때의 원칙
 

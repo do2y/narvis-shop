@@ -2,7 +2,7 @@
 
 > 작성일 2026-08-12.
 > **이 문서는 실제로 입으로 말할 문장**이다. 소재 선정·프레이밍 기준은
-> `presentation-talking-points.md`, 상세 설계 근거는 `presentation-chat-session-design.md` 참조.
+> `docs/portfolio/talking-points.md`, 상세 설계 근거는 `docs/portfolio/chat-session-design.md` 참조.
 >
 > 순서 원칙: **수신 계층 → 그 위의 식별자 → 그 안의 내용**.
 > 앞의 둘이 추상적이라 마지막 블록의 시연으로 착지시킨다.
@@ -47,12 +47,12 @@
 
 | 대사 | 코드 |
 |---|---|
-| POST + 티켓 헤더라 EventSource 불가 | [streamChat.ts:26](../src/shared/chat/streamChat.ts#L26), [:40-49](../src/shared/chat/streamChat.ts#L40-L49) |
-| 깨진 프레임만 버림 | [streamChat.ts:96-100](../src/shared/chat/streamChat.ts#L96-L100), [:110-114](../src/shared/chat/streamChat.ts#L110-L114) |
-| 마지막 버퍼 살림 | [streamChat.ts:81-87](../src/shared/chat/streamChat.ts#L81-L87) |
+| POST + 티켓 헤더라 EventSource 불가 | [streamChat.ts:26](../../src/shared/chat/streamChat.ts#L26), [:40-49](../../src/shared/chat/streamChat.ts#L40-L49) |
+| 깨진 프레임만 버림 | [streamChat.ts:96-100](../../src/shared/chat/streamChat.ts#L96-L100), [:110-114](../../src/shared/chat/streamChat.ts#L110-L114) |
+| 마지막 버퍼 살림 | [streamChat.ts:81-87](../../src/shared/chat/streamChat.ts#L81-L87) |
 | 사고 2건 실제 수정 | 커밋 `9964218` (fix: 챗봇 스트림 안정성·경쟁 상태 문제 수정) |
-| stage 7종 확장 → 개방형 전환 | 커밋 `594e3ab`, [chat/buyer.ts BUYER_PROGRESS_LABEL](../src/shared/types/chat/buyer.ts) |
-| 무시 ≠ 초기화 | [progress.ts:11-13](../src/shared/chat/progress.ts#L11-L13) |
+| stage 7종 확장 → 개방형 전환 | 커밋 `594e3ab`, [chat/buyer.ts BUYER_PROGRESS_LABEL](../../src/shared/types/chat/buyer.ts) |
+| 무시 ≠ 초기화 | [progress.ts:11-13](../../src/shared/chat/progress.ts#L11-L13) |
 
 ---
 
@@ -96,12 +96,12 @@ threadId를 상태 스토어에 두지 않은 이유도 여기 있습니다 — 
 | 대사 | 코드 |
 |---|---|
 | 축출 버그 → 세션 단일화 | 커밋 `d600e51` (fix: 멀티탭 채팅에서 세션이 서로 축출되는 문제 해결) |
-| 세션은 공유, 방은 탭별 | [threadId.ts:5-14](../src/shared/chat/threadId.ts#L5-L14) |
-| 세션·티켓 → localStorage | [sessionCoordinator.ts:36-37](../src/shared/chat/sessionCoordinator.ts#L36-L37), [:80](../src/shared/chat/sessionCoordinator.ts#L80), [:93](../src/shared/chat/sessionCoordinator.ts#L93) |
-| threadId → sessionStorage | [threadId.ts:26-38](../src/shared/chat/threadId.ts#L26-L38) |
-| 스토어에 두지 않은 이유 | [threadId.ts:12-13](../src/shared/chat/threadId.ts#L12-L13) |
-| 새 대화 = 방만 새로 | [threadId.ts:51](../src/shared/chat/threadId.ts#L51) |
-| 방송 2종 · 403 근거 | [sessionCoordinator.ts:54-66](../src/shared/chat/sessionCoordinator.ts#L54-L66) |
+| 세션은 공유, 방은 탭별 | [threadId.ts:5-14](../../src/shared/chat/threadId.ts#L5-L14) |
+| 세션·티켓 → localStorage | [sessionCoordinator.ts:36-37](../../src/shared/chat/sessionCoordinator.ts#L36-L37), [:80](../../src/shared/chat/sessionCoordinator.ts#L80), [:93](../../src/shared/chat/sessionCoordinator.ts#L93) |
+| threadId → sessionStorage | [threadId.ts:26-38](../../src/shared/chat/threadId.ts#L26-L38) |
+| 스토어에 두지 않은 이유 | [threadId.ts:12-13](../../src/shared/chat/threadId.ts#L12-L13) |
+| 새 대화 = 방만 새로 | [threadId.ts:51](../../src/shared/chat/threadId.ts#L51) |
+| 방송 2종 · 403 근거 | [sessionCoordinator.ts:54-66](../../src/shared/chat/sessionCoordinator.ts#L54-L66) |
 
 > ⚠️ **계약 변경을 프론트가 제안했다는 건 코드로 증명되지 않는 유일한 대목이다.**
 > 슬랙·이슈·명세 문서에 흔적이 있으면 슬라이드에 캡처 한 장 넣을 것.
@@ -155,11 +155,11 @@ threadId를 상태 스토어에 두지 않은 이유도 여기 있습니다 — 
 
 | 대사 | 코드 |
 |---|---|
-| 탭 복구까지 고려 | [chatPersistence.ts:9](../src/shared/chat/chatPersistence.ts#L9) |
-| TTL 10분 ↔ 탭 수명 | [chatPersistence.ts:10-12](../src/shared/chat/chatPersistence.ts#L10-L12) |
-| 복원 → 저장 순서 | [useChatPersistence.ts:14-15](../src/shared/chat/useChatPersistence.ts#L14-L15), [:33](../src/shared/chat/useChatPersistence.ts#L33) |
-| 구독 저장 근거 | [useChatPersistence.ts:37-39](../src/shared/chat/useChatPersistence.ts#L37-L39) |
-| 빈 대화 미저장 | [chatPersistence.ts:37-42](../src/shared/chat/chatPersistence.ts#L37-L42) |
+| 탭 복구까지 고려 | [chatPersistence.ts:9](../../src/shared/chat/chatPersistence.ts#L9) |
+| TTL 10분 ↔ 탭 수명 | [chatPersistence.ts:10-12](../../src/shared/chat/chatPersistence.ts#L10-L12) |
+| 복원 → 저장 순서 | [useChatPersistence.ts:14-15](../../src/shared/chat/useChatPersistence.ts#L14-L15), [:33](../../src/shared/chat/useChatPersistence.ts#L33) |
+| 구독 저장 근거 | [useChatPersistence.ts:37-39](../../src/shared/chat/useChatPersistence.ts#L37-L39) |
+| 빈 대화 미저장 | [chatPersistence.ts:37-42](../../src/shared/chat/chatPersistence.ts#L37-L42) |
 
 > 블록 3은 확인이 필요한 대목이 없다. 전부 코드 주석에 근거가 있다.
 
@@ -176,7 +176,7 @@ threadId를 상태 스토어에 두지 않은 이유도 여기 있습니다 — 
 **한 방향으로 흐른다**: 받는 층을 만들고 → 그 위에서 식별자를 가르고 → 그 안의 내용을 어디까지 살릴지 정한다.
 
 세 블록 모두 **"이렇게 만들었다"가 아니라 "이렇게 깨졌고, 그래서 이렇게 정했다"** 구조다.
-`presentation-talking-points.md` §3의 프레이밍 원칙(*"무엇을 만들었다"가 아니라 "무엇을 정했다"*)과
+`docs/portfolio/talking-points.md` §3의 프레이밍 원칙(*"무엇을 만들었다"가 아니라 "무엇을 정했다"*)과
 §6의 순서 원칙(*추상 뒤에는 반드시 화면*)을 따른 것.
 
 ---
@@ -194,4 +194,4 @@ threadId를 상태 스토어에 두지 않은 이유도 여기 있습니다 — 
 | **"EventSource를 쓸 방법은 정말 없었나요?"** | 티켓을 쿼리스트링에 실으면 GET으로 가능하지만, URL은 로그·리퍼러에 남습니다. 단명 티켓이어도 노출 경로를 늘리고 싶지 않았습니다 |
 
 > ⚠️ 마지막 두 질문은 **측정하지 않은 것**과 **선택하지 않은 대안**이다.
-> 물어보면 답하되 먼저 꺼내지 않는다. `presentation-talking-points.md` §4 참조.
+> 물어보면 답하되 먼저 꺼내지 않는다. `docs/portfolio/talking-points.md` §4 참조.

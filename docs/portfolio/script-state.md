@@ -2,7 +2,7 @@
 
 > 작성일 2026-08-12.
 > **이 문서는 실제로 입으로 말할 문장**이다. 소재 선정·프레이밍 기준은
-> `presentation-talking-points.md`, 채팅 대본은 `presentation-script-chat.md` 참조.
+> `docs/portfolio/talking-points.md`, 채팅 대본은 `docs/portfolio/script-chat.md` 참조.
 >
 > **버전이 둘이다.**
 > - **§A 슬라이드 1장** — 확정본. 실제 발표에서 쓴다
@@ -53,14 +53,14 @@
 
 | 대사 | 코드 |
 |---|---|
-| 서버 원본은 Query가 유일 소유자 | [useCart.ts:11-17](../src/shared/hooks/useCart.ts#L11-L17), [useWishlist.ts:20-29](../src/shared/hooks/useWishlist.ts#L20-L29) |
-| 뱃지도 같은 캐시 | [useCart.ts:21-24](../src/shared/hooks/useCart.ts#L21-L24) |
-| 낙관적 업데이트 순서 (취소→갱신→롤백→`onSettled` 재조회) | [cart/useCart.ts:42-60](../src/features/cart/useCart.ts#L42-L60), [useWishlist.ts:119-175](../src/shared/hooks/useWishlist.ts#L119-L175) |
-| 10분 TTL → 탭 저장 | [chatPersistence.ts:7-11](../src/shared/chat/chatPersistence.ts#L7-L11) 주석 |
-| AI action → 같은 키 무효화 | [features/chat/index.tsx:63-71](../src/features/chat/index.tsx#L63-L71) |
-| 2종→10종, 판별을 계약 옆으로 | [chat/action.ts](../src/shared/types/chat/action.ts) |
-| 실패 액션 제외 | [chat/action.ts `isCartMutatingAction`](../src/shared/types/chat/action.ts) — 성공 3종만 |
-| 승인은 draftId만 / preview 고쳐도 안 바뀜 | [chat/seller.ts `DraftPreview`](../src/shared/types/chat/seller.ts), [chat/session.ts `StreamChatBody`](../src/shared/types/chat/session.ts), [ChatPage.tsx:168](../src/features/seller/ChatPage.tsx#L168) |
+| 서버 원본은 Query가 유일 소유자 | [useCart.ts:11-17](../../src/shared/hooks/useCart.ts#L11-L17), [useWishlist.ts:20-29](../../src/shared/hooks/useWishlist.ts#L20-L29) |
+| 뱃지도 같은 캐시 | [useCart.ts:21-24](../../src/shared/hooks/useCart.ts#L21-L24) |
+| 낙관적 업데이트 순서 (취소→갱신→롤백→`onSettled` 재조회) | [cart/useCart.ts:42-60](../../src/features/cart/useCart.ts#L42-L60), [useWishlist.ts:119-175](../../src/shared/hooks/useWishlist.ts#L119-L175) |
+| 10분 TTL → 탭 저장 | [chatPersistence.ts:7-11](../../src/shared/chat/chatPersistence.ts#L7-L11) 주석 |
+| AI action → 같은 키 무효화 | [features/chat/index.tsx:63-71](../../src/features/chat/index.tsx#L63-L71) |
+| 2종→10종, 판별을 계약 옆으로 | [chat/action.ts](../../src/shared/types/chat/action.ts) |
+| 실패 액션 제외 | [chat/action.ts `isCartMutatingAction`](../../src/shared/types/chat/action.ts) — 성공 3종만 |
+| 승인은 draftId만 / preview 고쳐도 안 바뀜 | [chat/seller.ts `DraftPreview`](../../src/shared/types/chat/seller.ts), [chat/session.ts `StreamChatBody`](../../src/shared/types/chat/session.ts), [ChatPage.tsx:168](../../src/features/seller/ChatPage.tsx#L168) |
 
 ## §A 줄이는 법
 
@@ -103,9 +103,9 @@
 
 | 대사 | 코드 |
 |---|---|
-| 서버 원본은 Query, staleTime 0 | [useCart.ts:11-17](../src/shared/hooks/useCart.ts#L11-L17), [useWishlist.ts:20-29](../src/shared/hooks/useWishlist.ts#L20-L29) |
-| 찜 여부는 목록에서 파생 | [useWishlist.ts:33-36](../src/shared/hooks/useWishlist.ts#L33-L36) |
-| 헤더 뱃지도 같은 캐시 | [useCart.ts:21-24](../src/shared/hooks/useCart.ts#L21-L24) |
+| 서버 원본은 Query, staleTime 0 | [useCart.ts:11-17](../../src/shared/hooks/useCart.ts#L11-L17), [useWishlist.ts:20-29](../../src/shared/hooks/useWishlist.ts#L20-L29) |
+| 찜 여부는 목록에서 파생 | [useWishlist.ts:33-36](../../src/shared/hooks/useWishlist.ts#L33-L36) |
+| 헤더 뱃지도 같은 캐시 | [useCart.ts:21-24](../../src/shared/hooks/useCart.ts#L21-L24) |
 | 규칙 문서화 | CLAUDE.md「상태 구분」 |
 
 ---
@@ -135,10 +135,10 @@
 
 | 대사 | 코드 |
 |---|---|
-| 4단계 순서 (취소→백업→갱신→롤백→재조회) | [useCart.ts:42-60](../src/features/cart/useCart.ts#L42-L60), [:66-80](../src/features/cart/useCart.ts#L66-L80) |
-| 취소가 먼저인 이유 | [architecture-data.md §낙관적 업데이트](./architecture-data.md#L189) |
-| 409/404를 실패로 보지 않음 | [useWishlist.ts:141-148](../src/shared/hooks/useWishlist.ts#L141-L148) |
-| status 아닌 code로 갈라야 하는 이유 | [useWishlist.ts:139-140](../src/shared/hooks/useWishlist.ts#L139-L140) 주석 (M-5·M-6) |
+| 4단계 순서 (취소→백업→갱신→롤백→재조회) | [useCart.ts:42-60](../../src/features/cart/useCart.ts#L42-L60), [:66-80](../../src/features/cart/useCart.ts#L66-L80) |
+| 취소가 먼저인 이유 | [docs/architecture/data.md §낙관적 업데이트](../architecture/data.md#L189) |
+| 409/404를 실패로 보지 않음 | [useWishlist.ts:141-148](../../src/shared/hooks/useWishlist.ts#L141-L148) |
+| status 아닌 code로 갈라야 하는 이유 | [useWishlist.ts:139-140](../../src/shared/hooks/useWishlist.ts#L139-L140) 주석 (M-5·M-6) |
 | 경계 조건 테스트로 고정 | `wishlistOptimistic.test.ts` (15케이스) |
 
 ---
@@ -177,11 +177,11 @@ AI가 뭔가를 하면 스트림으로 action 이벤트가 옵니다. 프론트�
 
 | 대사 | 코드 |
 |---|---|
-| action 수신 → 같은 키 무효화 | [features/chat/index.tsx:63-71](../src/features/chat/index.tsx#L63-L71) |
-| 판별을 계약 옆에 둔 이유 (2종→10종) | [chat/action.ts](../src/shared/types/chat/action.ts) 주석 |
-| 실패 액션 제외 | [chat/action.ts `isCartMutatingAction`](../src/shared/types/chat/action.ts) — 성공 3종만 |
-| 찜엔 productId 없음 → 목록 재조회뿐 | [chat/action.ts `isWishlistMutatingAction`](../src/shared/types/chat/action.ts), [index.tsx:68](../src/features/chat/index.tsx#L68) |
-| 설계 근거 | [architecture-data.md:184-187](./architecture-data.md#L184-L187) |
+| action 수신 → 같은 키 무효화 | [features/chat/index.tsx:63-71](../../src/features/chat/index.tsx#L63-L71) |
+| 판별을 계약 옆에 둔 이유 (2종→10종) | [chat/action.ts](../../src/shared/types/chat/action.ts) 주석 |
+| 실패 액션 제외 | [chat/action.ts `isCartMutatingAction`](../../src/shared/types/chat/action.ts) — 성공 3종만 |
+| 찜엔 productId 없음 → 목록 재조회뿐 | [chat/action.ts `isWishlistMutatingAction`](../../src/shared/types/chat/action.ts), [index.tsx:68](../../src/features/chat/index.tsx#L68) |
+| 설계 근거 | [docs/architecture/data.md:184-187](../architecture/data.md#L184-L187) |
 
 ---
 
@@ -225,7 +225,7 @@ AI가 뭔가를 하면 스트림으로 action 이벤트가 옵니다. 프론트�
 서버가 알려줄 경로가 없습니다.** 프론트가 재지 않으면 판매자가 죽은 초안을 붙들고
 수정을 시도하게 됩니다. 수정 턴에서 새 초안이 오면 타이머도 새로 잡습니다 —
 첫 초안 시각을 물려받으면 5분 만에 사라져서, 이건 테스트로 고정했습니다.
-([ChatPage.tsx:178-195](../src/features/seller/ChatPage.tsx#L178-L195), `activeDraft.test.ts`)
+([ChatPage.tsx:178-195](../../src/features/seller/ChatPage.tsx#L178-L195), `activeDraft.test.ts`)
 
 **Q. 화면 정보를 서버로 보낸다고 했는데, 그게 위조 경로가 되지 않나요?**
 보내는 건 **상품 ID와 이름뿐**이고, 용도는 "그거 담아줘" 같은 지시대명사를 푸는 것뿐입니다.
@@ -239,8 +239,8 @@ AI가 뭔가를 하면 스트림으로 action 이벤트가 옵니다. 프론트�
 - ~~"서버가 이미 아는 정보는 다시 보내지 않는다 — 추천 목록은 목록 ID로만"~~
   → **사실과 다르다.** `listIds`는 **서버→프론트** 방향이고, 위조 방지가 아니라
   페이로드 축소·최신값 보장(경로 B)이다. 게다가 프론트는 `screen`으로 상품
-  `{productId, name}`을 최대 20개까지 **보내고 있다**([useScreenContext.ts:21](../src/features/chat/useScreenContext.ts#L21)).
+  `{productId, name}`을 최대 20개까지 **보내고 있다**([useScreenContext.ts:21](../../src/features/chat/useScreenContext.ts#L21)).
   질문 한 번에 무너진다.
   → 위조 논리를 쓰고 싶으면 **`seed`**가 정확한 예시다: 카드 데이터는 캐시 삽입에만 쓰고
-  서버 요청엔 `productId`만 보낸다([useWishlist.ts:115](../src/shared/hooks/useWishlist.ts#L115)).
+  서버 요청엔 `productId`만 보낸다([useWishlist.ts:115](../../src/shared/hooks/useWishlist.ts#L115)).
   위 예상 질문 4번이 그 답이다.
