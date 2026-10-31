@@ -52,6 +52,6 @@ AI가 관여했는지는 **작성자 확인 후** 기록으로 옮길 것. 아�
 | 후보 | 근거 위치 |
 |---|---|
 | 시뮬레이션 LCP를 실측처럼 읽어 결론이 틀렸던 측정과 그 정정 | [performance/ssr-measurement.md](../performance/ssr-measurement.md) "정정 이력" |
-| 발표 초안의 낡은 서술 4건을 코드·테스트 실행으로 정정 | [portfolio/frontend-draft.md](../portfolio/frontend-draft.md) "초안 정정 기록" |
+| 발표 초안의 낡은 서술 4건을 코드·테스트 실행으로 정정 | 발표 초안은 공개 docs 에서 내렸음 — `git show f2e8bc3:docs/presentation-frontend-draft.md` 의 "초안 정정 기록" |
 | 이식 중 nginx를 임의로 제거해 3중 방어가 깨졌던 일 → 인프라 변경 전 질문 규칙 | 루트 `CLAUDE.md` "Claude 작업 지침" |
 | 문서 폴더 재배치 (2026-10-31) | `git log -- docs` |

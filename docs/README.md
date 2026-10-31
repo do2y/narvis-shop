@@ -9,7 +9,7 @@
 2. [architecture/chat.md](architecture/chat.md) §0 — 한 번의 대화에 통신 경로 3개가 관여하는 이유 (이 프로젝트의 중심)
 3. [architecture/auth.md](architecture/auth.md) §0 — FE가 토큰을 볼 수 없게 된 뒤의 인증 구조
 4. [performance/ssr-measurement.md](performance/ssr-measurement.md) "결론" — Next.js 전환 효과를 수치로
-5. [portfolio/talking-points.md](portfolio/talking-points.md) §1 — 프론트가 실제로 판단한 것만 추린 소재 등급표
+5. [troubleshooting/stream-lifecycle-bugs.md](troubleshooting/stream-lifecycle-bugs.md) — 평소엔 안 보이는 결함을 고치고, 그 수정이 낳은 회귀까지 잡은 과정
 
 ## 상황별 바로가기
 
@@ -20,9 +20,8 @@
 | 로그인·권한·401 을 건드린다 | [architecture/auth.md](architecture/auth.md) |
 | 쿼리 키·캐시·SSR 을 건드린다 | [architecture/data.md](architecture/data.md) |
 | 상태를 어디에 둘지 정한다 | [architecture/state.md](architecture/state.md) |
-| 판매자 챗 계약을 확인한다 | [features/seller-chat-contract.md](features/seller-chat-contract.md) |
 | 배포를 만진다 | [migration/deploy-handoff.md](migration/deploy-handoff.md) |
-| 발표를 준비한다 | [portfolio/talking-points.md](portfolio/talking-points.md) |
+| 테스트를 추가한다 | [testing/contract-tests.md](testing/contract-tests.md) |
 
 ---
 
@@ -34,14 +33,11 @@ docs/
 ├── features/         무엇을 만들기로 했고 화면을 어떻게 만들었나 — 명세 · 계약 · 구현 노트
 ├── troubleshooting/  무엇이 잘못됐고 어떻게 판단했나 — 사고·판단 기록
 ├── performance/      측정과 최적화 — 가설이 측정으로 뒤집힌 기록 포함
+├── testing/          테스트 전략 — 무엇을 왜 고정했고 무엇이 비어 있나
 ├── migration/        Vite → Next.js 전환 — 계획 · 브라우저 검증 · 배포 인수인계
-├── portfolio/        발표 소재 선정 · 초안 · 대본
 ├── ai-development/   생성형 AI 활용 개발 기록 (과정만 적고 기술 내용은 링크)
 └── archive/          역할이 끝났지만 판단 근거가 남은 문서
 ```
-
-테스트만 다루는 문서는 아직 없다. 생기면 `testing/` 을 만든다
-(지금의 근거 위치는 아래 "포트폴리오 핵심 경험" 표 참조).
 
 ## architecture/ — 평상시 구조
 
@@ -61,18 +57,18 @@ docs/
 | 문서 | 확인할 수 있는 것 |
 |---|---|
 | [page-spec.md](features/page-spec.md) | 페이지 10개의 목적과 핵심 기능. 관리자 페이지는 범위 제외(2026-08-12) |
-| [seller-chat-contract.md](features/seller-chat-contract.md) | 판매자 챗 S-4 계약 원문 — 레인·패널 신호, HITL 2-스트림, 성공·실패 케이스 전수 |
 | [personalization-contract.md](features/personalization-contract.md) | 개인화 마이페이지 API 5종 확정 계약(2026-08-09) · `edgeId` 교체·`graphVersion`·409 두 종류 등 버그 나기 쉬운 지점 |
-| [ui-implementation-notes.md](features/ui-implementation-notes.md) | 방사형 그래프·판매자 차트·PDF 내보내기·마크다운 파서를 **라이브러리 없이** 만든 방식과 이유 |
+| [ui-implementation-notes.md](features/ui-implementation-notes.md) | 방사형 그래프·판매자 차트·PDF 내보내기·마크다운 파서·모바일 바텀시트를 **라이브러리 없이** 만든 방식과 이유 |
 
 ## troubleshooting/ — 사고·판단 기록
 
-표면 버그가 아니라 **구조적 문제**로 쓴 글. 포트폴리오용으로도 쓴다.
+표면 버그가 아니라 **구조적 문제**로 쓴 글.
 
 | 문서 | 확인할 수 있는 것 |
 |---|---|
 | [analytics-401-retry.md](troubleshooting/analytics-401-retry.md) | "재시도하지 않는다"는 코드에 401 하나만 예외를 둔 이유 · AT 만료 구간의 이벤트 배치가 통째로 사라지던 원인 |
 | [cart-event-migration.md](troubleshooting/cart-event-migration.md) | 장바구니 이벤트를 BE로 옮기다 FE 제거가 먼저 머지된 사고 · 플래그 대신 되돌리기를 고른 이유 |
+| [stream-lifecycle-bugs.md](troubleshooting/stream-lifecycle-bugs.md) | 깨진 SSE 프레임 · 언마운트 뒤 살아남은 스트림 · 업로드 경쟁 상태 3건과, 그 수정이 낳은 StrictMode 회귀·끊긴 스트림 후속 처리 |
 
 ## performance/ — 측정과 최적화
 
@@ -91,16 +87,11 @@ docs/
 | [nextjs-migration-qa.md](migration/nextjs-migration-qa.md) | 브라우저 검증 시나리오 9개 · **curl·빌드는 통과했지만 브라우저에서만 드러난 버그 5건** |
 | [deploy-handoff.md](migration/deploy-handoff.md) | 배포 담당자용 인수인계 — nginx + node 2프로세스 · 롤백 절차 · 배포 후 확인 항목 |
 
-## portfolio/ — 발표 자료
+## testing/ — 테스트
 
 | 문서 | 확인할 수 있는 것 |
 |---|---|
-| [talking-points.md](portfolio/talking-points.md) | **소재 등급표 · 프레이밍 · 말하면 안 되는 것** — 프론트 기여도 기준. 발표 준비의 출발점 |
-| [talk-candidates.md](portfolio/talk-candidates.md) | 소재를 고르기 위한 조사 — 후보 5선(멀티탭 세션 · 화면 context · 바텀시트 등)과 상위 3개 상세 |
-| [chat-session-design.md](portfolio/chat-session-design.md) | 채팅 세션 설계 통합본 — 멀티탭 중복 발급 방지 · 게스트→회원 승계 · 실패 UX |
-| [frontend-draft.md](portfolio/frontend-draft.md) | 발표 초안 전체 (슬라이드 15장 · 평가지표 6항목 대응표) |
-| [script-chat.md](portfolio/script-chat.md) | 발화 대본 — 채팅 3블록(스트림·탭·대화). 대사별 코드 근거 포함 |
-| [script-state.md](portfolio/script-state.md) | 발화 대본 — 상태 관리. AI 행동이 사용자 조작과 같은 갱신 경로로 합류 |
+| [contract-tests.md](testing/contract-tests.md) | 계약 문장을 테스트 제목으로 옮겨 상대 구현을 기다리지 않은 방식 · 시나리오별로 고정한 약속 · 비어 있는 곳(컴포넌트·통합·CI) |
 
 ## ai-development/ — AI 활용 개발 기록
 
@@ -114,27 +105,29 @@ docs/
 | 문서 | 확인할 수 있는 것 |
 |---|---|
 | [personalization/](archive/personalization/README.md) | 개인화 마이페이지 초안 기준 계획서 3종. 계약은 낡았지만 결정 기록이 남아 있어 보관 |
+| [contracts/](archive/contracts/README.md) | 판매자 챗 S-4 계약 감사 문서(2026-07-22). 현재 정본은 계약 타입 |
 
 ---
 
-## 포트폴리오 핵심 경험 — 근거 문서
+## 핵심 기술 경험 — 근거 문서
 
 | 경험 | 근거 |
 |---|---|
-| SSE 실시간 스트리밍 | [architecture/chat.md](architecture/chat.md) §1·§5·§6-1 · [portfolio/script-chat.md](portfolio/script-chat.md) 블록 1 |
-| 세션·스레드 구조 (멀티탭 · 게스트→회원 승계) | [architecture/chat.md](architecture/chat.md) §3·§8·§9 · [portfolio/chat-session-design.md](portfolio/chat-session-design.md) |
+| SSE 실시간 스트리밍 | [architecture/chat.md](architecture/chat.md) §1·§5·§6-1 · [troubleshooting/stream-lifecycle-bugs.md](troubleshooting/stream-lifecycle-bugs.md) |
+| 세션·스레드 구조 (멀티탭 · 게스트→회원 승계) | [architecture/chat.md](architecture/chat.md) §3·§8·§9 |
+| LLM 에 보내는 화면 맥락과 신뢰 경계 | [architecture/chat.md](architecture/chat.md) §11 |
 | Next.js 마이그레이션 | [migration/](migration/nextjs-migration-plan.md) 3종 |
 | SSR 성능 측정 | [performance/ssr-measurement.md](performance/ssr-measurement.md) |
 | 인증·API 통신 설계 | [architecture/auth.md](architecture/auth.md) · [troubleshooting/analytics-401-retry.md](troubleshooting/analytics-401-retry.md) |
-| 상태 관리 | [architecture/state.md](architecture/state.md) · [portfolio/script-state.md](portfolio/script-state.md) |
-| 실제 오류 분석·해결 | [performance/image-loading.md](performance/image-loading.md) · [architecture/data.md](architecture/data.md) §3 · [troubleshooting/cart-event-migration.md](troubleshooting/cart-event-migration.md) · [migration/nextjs-migration-qa.md](migration/nextjs-migration-qa.md) |
-| 테스트 자동화 | 전용 문서 없음 — [portfolio/frontend-draft.md](portfolio/frontend-draft.md) 슬라이드 8·10 · [portfolio/chat-session-design.md](portfolio/chat-session-design.md) §6 · 커밋 `889bc03` |
+| 상태 관리 | [architecture/state.md](architecture/state.md) · [architecture/data.md](architecture/data.md) |
+| 테스트 | [testing/contract-tests.md](testing/contract-tests.md) |
+| 실제 오류 분석·해결 | [troubleshooting/stream-lifecycle-bugs.md](troubleshooting/stream-lifecycle-bugs.md) · [performance/image-loading.md](performance/image-loading.md) · [architecture/data.md](architecture/data.md) §3 · [troubleshooting/cart-event-migration.md](troubleshooting/cart-event-migration.md) · [migration/nextjs-migration-qa.md](migration/nextjs-migration-qa.md) |
 | 라이브러리 없이 만든 UI | [features/ui-implementation-notes.md](features/ui-implementation-notes.md) |
 
 ## 문서를 쓸 때
 
 - **개조식(~함/~음)** 으로 쓴다. PR 본문도 같다.
-- 리뷰어 설득이 아니라 **미래의 나를 위한 기록** — "왜 이렇게 했는지"가 중심이다.
+- 무엇을 했는지보다 **왜 그렇게 했는지**가 중심이다 — 검토한 대안, 검증 방법, 남은 한계를 함께 적는다.
 - 사건 기록은 표면 버그가 아니라 **구조적 문제**로 쓴다. 정리할 건은 먼저 제안한다.
 - 되돌려질 위험이 있는 판단은 **"이걸 넓히지 말 것"** 을 명시한다
   (예: 401 재전송을 5xx 로 확대 금지).
