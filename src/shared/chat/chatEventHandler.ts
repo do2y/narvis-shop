@@ -2,11 +2,13 @@ import { resolveAnalysisReport } from "@/shared/chat/analysisReport";
 import { resolveChatErrorMessage } from "@/shared/chat/errorMessage";
 import { fetchChatListGroup } from "@/shared/chat/lists";
 import { resolveProgressText } from "@/shared/chat/progress";
-import type {
-  ChatAction,
-  ChatEvent,
-  SellerPanel,
-  SellerReport,
+import {
+  isCartMutatingAction,
+  isWishlistMutatingAction,
+  type ChatAction,
+  type ChatEvent,
+  type SellerPanel,
+  type SellerReport,
 } from "@/shared/types/chat";
 import { useChatStore } from "./store";
 
@@ -15,6 +17,11 @@ interface TurnHandlerOptions {
   onAction?: (action: ChatAction) => void;
   /** 스트림 정상 종료 시 우측 패널 조치(판매자 전용). error 로 끝나면 호출되지 않는다. */
   onDone?: (panel: SellerPanel | undefined) => void;
+  /**
+   * 이 턴이 아직 현재 턴인가(스토어 activeTurnId). 아니면 대화 상태를 바꾸지 않는다.
+   * 생략하면 항상 현재 턴으로 본다.
+   */
+  isCurrent?: () => boolean;
 }
 
 /**
@@ -27,7 +34,11 @@ interface TurnHandlerOptions {
  * 턴 단위로 만드는 이유: 아래 세 값은 스트림 1회 수명이다. 턴을 넘어 살아남으면
  * 이전 턴의 리포트·조회가 다음 턴 결과로 샌다.
  */
-export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
+export function createTurnHandler({
+  onAction,
+  onDone,
+  isCurrent = () => true,
+}: TurnHandlerOptions) {
   const {
     appendToLastAssistant,
     failLastAssistant,
@@ -63,6 +74,18 @@ export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
   let pendingReport: SellerReport | null = null;
 
   const onEvent = (e: ChatEvent) => {
+    if (!isCurrent()) {
+      // 끝난 턴 — 대화 상태(메시지·카드·칩·진행·레인·리포트·초안)는 건드리지 않는다.
+      // 다만 서버에서 실제로 끝난 장바구니·찜 변경은 캐시를 맞춰야 하므로 넘긴다.
+      // 실패 action·판매자 결과는 동기화할 서버 변화가 없거나 대화 UI(초안 카드) 몫이라 넘기지 않는다.
+      if (
+        e.type === "action" &&
+        (isCartMutatingAction(e.data) || isWishlistMutatingAction(e.data))
+      ) {
+        onAction?.(e.data);
+      }
+      return;
+    }
     switch (e.type) {
       case "meta":
         // 첫 프레임 — 레인으로 즉시 레이아웃·로딩 준비
@@ -120,6 +143,8 @@ export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
               fetchChatListGroup(id).catch(() => null),
             ),
           ).then((groups) => {
+            // 조회하는 사이 새 대화가 시작됐으면 버린다 — 이전 턴의 카드가 새 대화 패널에 들어오던 결함(A1)
+            if (!isCurrent()) return;
             const usable = groups.filter(
               (g): g is NonNullable<typeof g> =>
                 // 카드가 0개라도 드롭이 있었다면 넣는다 — "추천이 다 품절됐다"는

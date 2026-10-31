@@ -79,7 +79,8 @@ export function useChat({
     failLastAssistant,
     setConditions,
     setSessionId,
-    setStreaming,
+    beginTurn,
+    endTurn,
     setLane,
     setProgress,
     reset,
@@ -136,7 +137,7 @@ export function useChat({
   //
   // 없으면 화면을 떠난 뒤에도 fetch 리더가 계속 돌며 onEvent 가 스토어를 갱신한다.
   // 스토어는 모듈 전역(zustand)이라 언마운트로 사라지지 않으므로 조용히 살아남고,
-  // 특히 finally 의 setStreaming(false) 가 언마운트 뒤에 도착하는 경우가 문제다 —
+  // 특히 finally 의 스트리밍 정리가 언마운트 뒤에 도착하는 경우가 문제다 —
   // 다시 채팅에 들어오면 복원된 대화 위에 이전 턴의 token 이 이어붙거나
   // isStreaming 이 true 로 굳어 입력창이 막힌 채로 남는다.
   //
@@ -192,6 +193,11 @@ export function useChat({
     ) => {
       if (useChatStore.getState().isStreaming) return;
 
+      // 이 턴의 소유권. 새 대화(reset)가 비우면 이 턴의 남은 작업은 대화 상태에 쓰지 않는다 —
+      // 세션 확보 await·카드 조회·finally 가 새 대화의 말풍선·카드·로딩을 건드리던 결함(A1·A2).
+      const turnId = newId();
+      const isCurrent = () => useChatStore.getState().activeTurnId === turnId;
+
       if (userText !== null) {
         addMessage({
           id: newId(),
@@ -202,7 +208,7 @@ export function useChat({
       }
       // 스트리밍으로 채워질 빈 assistant 메시지 선 추가
       addMessage({ id: newId(), role: "assistant", text: "" });
-      setStreaming(true);
+      beginTurn(turnId);
       setLane(null);
       setProgress(null);
       // 이전 리포트는 유지(새 스트림이 analysis+replace로 끝날 때만 교체) — done에서 갱신
@@ -214,6 +220,8 @@ export function useChat({
         // 1) 티켓 확보(Spring REST) — 코디네이터가 캐시·락으로 탭 간 단일화해 돌려준다.
         //    sessionId 는 서버 발급값을 저장·사용(재발급도 같은 sessionId 를 돌려준다).
         const session = await acquireTicket();
+        // 확보를 기다리는 사이 새 대화가 시작됐으면 여기서 멈춘다 — 요청을 보내지 않는다
+        if (!isCurrent()) return;
         setSessionId(session.sessionId);
 
         // threadId(계약 CH-2): 대화 스레드(방) 식별자, 필수.
@@ -228,6 +236,7 @@ export function useChat({
         const turn = createTurnHandler({
           onAction: (action) => onActionRef.current?.(action),
           onDone: (panel) => onDoneRef.current?.(panel),
+          isCurrent,
         });
 
         // 2) llmSseUrl + streamTicket 으로 SSE 스트림 소비.
@@ -247,6 +256,7 @@ export function useChat({
           // 갱신된 티켓은 브로드캐스트로 다른 탭에도 공유된다.
           if (err instanceof StreamStartError && err.status === 401) {
             const fresh = await refreshTicket(channel, session.sessionId);
+            if (!isCurrent()) return;
             setSessionId(fresh.sessionId);
             await streamChat(
               fresh.llmSseUrl,
@@ -266,6 +276,14 @@ export function useChat({
         // 세션을 축출하는 일은 없으므로 "다른 곳에서 종료됨"이 아니라 단순 만료다.
         // 캐시를 비워 두면 다음 전송의 ensureSession 이 새로 발급한다 — 여기서 자동
         // 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지).
+        //
+        // 새 대화로 버려진 턴의 실패는 대화에 쓰지 않는다 — 지금의 마지막 말풍선은 새 대화의 것이다.
+        // 다만 "세션이 죽었다"는 사실은 탭이 공유하는 세션 캐시에 반영한다(대화 상태가 아닌 접속 정보).
+        // 안 비우면 새 대화의 다음 전송이 만료된 세션을 캐시에서 집어 한 번 더 실패한다.
+        if (!isCurrent()) {
+          if (isNotFound(err)) clearCachedSession(channel);
+          return;
+        }
         if (isAbortError(err)) {
           // 사용자가 스스로 끊은 것이다(새 대화·화면 이탈) — 오류가 아니므로
           // 말풍선에 실패를 남기지 않는다. 종전엔 startNewChat 의 abort 가 이 자리로
@@ -298,16 +316,18 @@ export function useChat({
           failLastAssistant("응답을 받지 못했어요. 다시 시도해 주세요.");
         }
       } finally {
-        setStreaming(false);
-        setProgress(null);
-        abortRef.current = null;
+        // 아직 현재 턴일 때만 정리한다 — 새 대화에서 이미 시작된 턴의 응답 중 상태를 풀지 않게
+        endTurn(turnId);
+        // 컨트롤러도 자기 것일 때만 비운다 — 새 턴의 것을 지우면 "새 대화"가 그 턴을 못 끊는다
+        if (abortRef.current === controller) abortRef.current = null;
       }
     },
     [
       addMessage,
       failLastAssistant,
       setSessionId,
-      setStreaming,
+      beginTurn,
+      endTurn,
       setLane,
       setProgress,
       acquireTicket,

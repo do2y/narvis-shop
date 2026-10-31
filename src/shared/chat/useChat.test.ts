@@ -476,6 +476,274 @@ describe("useChat — 턴 정리와 진입점", () => {
   });
 });
 
+/**
+ * 턴 소유권 — 개발자 시나리오 A(스트리밍 중 새 대화)에서 나온 결함 A1·A2.
+ * 끝난 턴(새 대화로 버려진 턴)은 새 대화의 메시지·카드·세션·로딩 상태를 바꾸면 안 된다.
+ * abort 는 네트워크만 끊고 이미 시작된 비동기 작업(세션 확보 await·카드 조회)은 막지 못하므로,
+ * "지금도 현재 턴인가"를 쓰기 직전에 확인하는 것으로 격리한다 — 타이밍에 기대지 않는다.
+ */
+describe("useChat — 턴 소유권", () => {
+  it("[A·수명] 전송하면 첫 await 전에 턴 id 가 생기고, 턴이 끝나면 비워진다 — isStreaming 과 같이 움직인다", async () => {
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result } = setup();
+
+    act(() => {
+      void result.current.send("질문");
+    });
+    expect(state().activeTurnId).toEqual(expect.any(String));
+    expect(state().isStreaming).toBe(true);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    stream.push(DONE);
+    stream.close();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(state().activeTurnId).toBeNull();
+  });
+
+  it("[A·수명] 티켓 401 재시도는 같은 턴이고, 다음 전송은 새 턴이다", async () => {
+    const seen: (string | null)[] = [];
+    const observe = (reply: Response) => () => {
+      seen.push(state().activeTurnId);
+      return reply;
+    };
+    replies.push(observe(rejected(401)), observe(sse(DONE)), observe(sse(DONE)));
+    const { result } = setup();
+
+    await act(() => result.current.send("첫 질문"));
+    await act(() => result.current.send("둘째 질문"));
+
+    expect(seen).toHaveLength(3);
+    expect(seen[0]).toEqual(expect.any(String));
+    expect(seen[1]).toBe(seen[0]);
+    expect(seen[2]).not.toBe(seen[0]);
+  });
+
+  it("[A·reset] 새 대화를 누르면 그 순간 이전 턴의 소유권이 사라진다", async () => {
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result } = setup();
+    act(() => {
+      void result.current.send("질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.startNewChat());
+
+    expect(state().activeTurnId).toBeNull();
+    expect(state().isStreaming).toBe(false);
+  });
+
+  it("[A·언마운트] 응답 도중 화면을 떠나면 그 턴이 스스로 정리한다 — 소유권이 남아 입력이 잠기지 않는다", async () => {
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result, unmount } = setup();
+    act(() => {
+      void result.current.send("질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    unmount();
+
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(state().activeTurnId).toBeNull();
+    expect(lastMessage().error).toBeUndefined();
+  });
+
+  it("[A1] 추천 카드 조회 중 새 대화를 시작하면, 늦게 온 카드는 새 대화에 들어오지 않는다", async () => {
+    let resolveGroup!: (g: ProductGroup) => void;
+    vi.mocked(fetchChatListGroup).mockReturnValue(
+      new Promise((r) => {
+        resolveGroup = r;
+      }),
+    );
+    replies.push(
+      sse(token("이전 답"), frame("products.ready", { listIds: ["list-1"] }), DONE),
+    );
+    const { result } = setup();
+    act(() => {
+      void result.current.send("이전 질문");
+    });
+    await waitFor(() => expect(fetchChatListGroup).toHaveBeenCalled());
+
+    act(() => result.current.startNewChat());
+    resolveGroup({
+      title: "이전 추천",
+      items: [],
+      recommendation: { listType: "PICK_ONE", itemsDropped: 1 },
+    });
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(state().results).toEqual([]);
+    expect(state().messages).toEqual([]);
+    expect(state().isStreaming).toBe(false);
+  });
+
+  it("[A2] 세션 확보 중 새 대화 후 새 질문 → 이전 턴이 뒤늦게 끝나도 새 턴의 응답 중 상태·말풍선을 건드리지 않는다", async () => {
+    let resolveOld!: (s: ChatSession) => void;
+    vi.mocked(ensureSession)
+      .mockReturnValueOnce(
+        new Promise((r) => {
+          resolveOld = r;
+        }),
+      )
+      .mockResolvedValue(session());
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result } = setup();
+
+    act(() => {
+      void result.current.send("이전 질문");
+    });
+    act(() => result.current.startNewChat());
+    act(() => {
+      void result.current.send("새 질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const newTurnId = state().activeTurnId;
+
+    // 이전 턴의 세션 확보가 이제야 끝난다
+    resolveOld(session());
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(state().isStreaming).toBe(true);
+    expect(state().activeTurnId).toBe(newTurnId);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // 이전 턴은 요청을 보내지 않았다
+
+    // 새 턴이 응답 중이므로 또 보내도 나가지 않는다(중복 전송 가드가 살아 있다)
+    act(() => {
+      void result.current.send("또 보냄");
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    stream.push(token("새 답"));
+    stream.push(DONE);
+    stream.close();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(state().messages.map((m) => m.text)).toEqual(["새 질문", "새 답"]);
+  });
+
+  it("[A2] 이전 턴의 세션 확보가 새 대화 뒤에 실패해도, 그 실패가 새 턴의 말풍선에 찍히지 않는다", async () => {
+    // 최초 발급은 404 를 던지지 않는다(코디네이터가 폴백) — 실제로 올라오는 건 네트워크·5xx 실패다
+    let rejectOld!: (e: unknown) => void;
+    vi.mocked(ensureSession)
+      .mockReturnValueOnce(
+        new Promise((_, reject) => {
+          rejectOld = reject;
+        }),
+      )
+      .mockResolvedValue(session());
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result } = setup();
+
+    act(() => {
+      void result.current.send("이전 질문");
+    });
+    act(() => result.current.startNewChat());
+    act(() => {
+      void result.current.send("새 질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    rejectOld(new ApiError({ code: "INTERNAL", message: "" }, 500));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(lastMessage().error).toBeUndefined(); // 새 턴의 응답 중 말풍선
+    expect(state().isStreaming).toBe(true);
+
+    stream.push(token("새 답"));
+    stream.push(DONE);
+    stream.close();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(state().messages.map((m) => [m.text, m.error])).toEqual([
+      ["새 질문", undefined],
+      ["새 답", undefined],
+    ]);
+  });
+
+  it("[A2] 티켓 재발급을 기다리는 사이 새 대화를 시작하면, 이전 턴의 재발급 결과가 새 대화의 세션에 쓰이지 않는다", async () => {
+    // 같은 탭의 재발급은 subscribeSession 으로 돌아오지 않는다(BroadcastChannel 은 보낸 객체에 전달하지 않음).
+    // 그래서 새 대화(reset → sessionId null)에 세션 값을 쓰는 주체는 이전 턴 자신뿐이다.
+    let resolveFresh!: (s: ChatSession) => void;
+    vi.mocked(refreshTicket).mockReturnValueOnce(
+      new Promise((r) => {
+        resolveFresh = r;
+      }),
+    );
+    replies.push(rejected(401, "TOKEN_EXPIRED"));
+    const { result } = setup();
+
+    act(() => {
+      void result.current.send("이전 질문");
+    });
+    await waitFor(() => expect(refreshTicket).toHaveBeenCalledTimes(1));
+    act(() => result.current.startNewChat());
+    expect(state().sessionId).toBeNull(); // 전제 — 새 대화는 세션 표시값을 비운다
+
+    resolveFresh(session("ticket-2"));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(state().sessionId).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1); // 이전 턴은 다시 열려고 시도하지도 않는다
+    expect(state().isStreaming).toBe(false);
+  });
+
+  it("[A2] 새 대화 뒤 이전 턴이 세션 만료(404)를 알게 되면, 대화에는 아무것도 쓰지 않되 만료된 세션 캐시는 비운다", async () => {
+    // 세션 캐시는 대화 상태가 아니라 탭이 공유하는 접속 정보다 — 서버 상태 동기화 쪽(개발자 결정).
+    // 비우지 않으면 새 대화의 다음 전송이 만료된 세션을 캐시에서 집어 한 번 더 실패한다.
+    let rejectFresh!: (e: unknown) => void;
+    vi.mocked(refreshTicket).mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectFresh = reject;
+      }),
+    );
+    replies.push(rejected(401, "TOKEN_EXPIRED"));
+    const { result } = setup();
+
+    act(() => {
+      void result.current.send("이전 질문");
+    });
+    await waitFor(() => expect(refreshTicket).toHaveBeenCalledTimes(1));
+    act(() => result.current.startNewChat());
+
+    rejectFresh(new ApiError({ code: "SESSION_NOT_FOUND", message: "" }, 404));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(clearCachedSession).toHaveBeenCalledWith("SHOPPING");
+    expect(state().messages).toEqual([]); // 실패 말풍선을 새 대화에 남기지 않는다
+    expect(state().sessionId).toBeNull();
+  });
+
+  it("[A3] 답변 수신 중 새 대화 + 곧바로 새 질문 → 이전 턴 정리가 새 턴을 풀지 않고, 새 대화를 다시 누르면 새 턴이 끊긴다", async () => {
+    const old = openStream();
+    const fresh = openStream();
+    replies.push(old.reply, fresh.reply);
+    const { result } = setup();
+    act(() => {
+      void result.current.send("이전 질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    old.push(token("이전 답 일부"));
+    await waitFor(() => expect(lastMessage().text).toBe("이전 답 일부"));
+
+    act(() => {
+      result.current.startNewChat();
+      void result.current.send("새 질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((r) => setTimeout(r, 20)); // 이전 턴의 abort·finally 가 끝날 시간
+
+    expect(state().isStreaming).toBe(true);
+    expect(state().messages.map((m) => m.text)).toEqual(["새 질문", ""]);
+
+    // 새 턴의 컨트롤러가 살아 있어야 "새 대화"가 그 턴을 끊을 수 있다
+    const freshSignal = fetchMock.mock.calls[1][1].signal as AbortSignal;
+    act(() => result.current.startNewChat());
+    expect(freshSignal.aborted).toBe(true);
+  });
+});
+
 describe("useChat — 마운트 생명주기", () => {
   it("[U1] StrictMode 의 가짜 언마운트가 마운트 직후 시작한 전송을 끊지 않는다 — ?q= 진입 경로", async () => {
     replies.push(sse(token("안녕하세요"), DONE));

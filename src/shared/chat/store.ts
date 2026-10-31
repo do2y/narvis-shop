@@ -90,6 +90,15 @@ interface ChatState {
   conditions: ConditionChip[]; // AI 추출 조건 칩(구매자) — (field, value)로 제거 왕복
   suggestions: SuggestionChip[]; // 완화·되돌리기 제안 칩(구매자)
   isStreaming: boolean;
+  /**
+   * 지금 대화 상태에 쓸 권한이 있는 턴(스트림 1회)의 id. isStreaming 과 항상 같이 바뀐다.
+   *
+   * 새 대화(reset)가 이 값을 비우는 순간 이전 턴은 더 이상 현재 턴이 아니다 — 그 턴의
+   * 남은 비동기 작업(세션 확보 await·카드 조회·finally)이 새 대화를 건드리지 못하게 하는 기준이다.
+   * abort 는 네트워크만 끊을 뿐 이미 시작된 작업이 스토어에 쓰는 것은 막지 못한다.
+   * 저장하지 않는다(chatPersistence 대상 아님).
+   */
+  activeTurnId: string | null;
   lane: SellerLane | null; // 판매자 챗 화면 전환 신호 — 첫 프레임 meta.lane
   /**
    * 진행 표시 문구(최종 답변 아님, 로딩 표시용). 구매자·판매자 공용 슬롯이다 —
@@ -130,7 +139,10 @@ interface ChatState {
   dropDraft: (draftId: string) => void;
   setConditions: (chips: ConditionChip[]) => void;
   setSuggestions: (chips: SuggestionChip[]) => void;
-  setStreaming: (v: boolean) => void;
+  /** 턴 시작 — 소유권과 스트리밍 상태를 함께 켠다 */
+  beginTurn: (turnId: string) => void;
+  /** 턴 종료 — 그 턴이 아직 현재 턴일 때만 소유권·스트리밍·진행 표시를 함께 끈다 */
+  endTurn: (turnId: string) => void;
   setLane: (lane: SellerLane | null) => void;
   setProgress: (text: string | null) => void;
   setAnalysisReport: (report: AnalysisReportView | null) => void;
@@ -154,6 +166,7 @@ const initial = {
   conditions: [],
   suggestions: [],
   isStreaming: false,
+  activeTurnId: null,
   lane: null,
   progress: null,
   analysisReport: null,
@@ -234,7 +247,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })),
   setConditions: (conditions) => set({ conditions }),
   setSuggestions: (suggestions) => set({ suggestions }),
-  setStreaming: (isStreaming) => set({ isStreaming }),
+  beginTurn: (turnId) => set({ activeTurnId: turnId, isStreaming: true }),
+  endTurn: (turnId) =>
+    set((s) =>
+      s.activeTurnId === turnId
+        ? { activeTurnId: null, isStreaming: false, progress: null }
+        : {},
+    ),
   setLane: (lane) => set({ lane }),
   setProgress: (progress) => set({ progress }),
   setAnalysisReport: (analysisReport) => set({ analysisReport }),
