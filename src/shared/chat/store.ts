@@ -200,7 +200,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const messages = [...get().messages];
     // 마지막이 실패한 assistant면 그것과 직전 user를 제거하고 user 발화를 반환
     const last = messages[messages.length - 1];
-    if (last?.role !== "assistant") return null;
+    // 실패가 아니면 손대지 않는다 — 응답 중인 턴을 지우면 그 턴의 토큰이 이전 답에 붙는다
+    if (last?.role !== "assistant" || !last.error) return null;
     messages.pop();
     const prev = messages[messages.length - 1];
     const dropped = prev?.role === "user" ? prev : null;

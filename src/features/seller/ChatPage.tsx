@@ -304,7 +304,8 @@ export default function SellerChatPage() {
       onConfirmDraft={confirmDraft}
       onCancelDraft={cancelDraft}
       streamError={streamError}
-      onRetry={retry}
+      // 카드의 오류 상태는 마지막 말풍선의 error 에서 나온다(streamError) — 대상도 그 말풍선이다
+      onRetry={() => lastMessage && retry(lastMessage.id)}
     />
   );
 

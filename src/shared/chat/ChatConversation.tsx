@@ -8,7 +8,7 @@ import { useChatStore } from "./store";
 
 interface ChatConversationProps {
   onSend: (message: string, imageUrls?: string[]) => void;
-  onRetry: () => void;
+  onRetry: (messageId: string) => void;
   isStreaming: boolean;
   placeholder?: string;
   /** 이미지 첨부 허용(판매자 상품 등록). 구매자 챗은 쓸 곳이 없어 기본 꺼짐 */

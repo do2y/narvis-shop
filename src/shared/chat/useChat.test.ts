@@ -446,7 +446,7 @@ describe("useChat — 턴 정리와 진입점", () => {
     expect(lastMessage().error).toBeDefined();
 
     await act(async () => {
-      result.current.retry();
+      result.current.retry(lastMessage().id);
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
       await waitFor(() => expect(state().isStreaming).toBe(false));
     });
@@ -516,6 +516,137 @@ describe("useChat — 마운트 생명주기", () => {
 });
 
 /**
+ * 재시도는 "마지막 실패 턴"에만 — 개발자 시나리오 B(재시도 연속 클릭)에서 나온 결함 B1~B4.
+ * 종전 retry() 는 대상을 모른 채 "마지막 교환"을 지우고 다시 보내서, 연타·응답 중 재시도·
+ * 위쪽 실패 말풍선의 재시도가 엉뚱한 턴을 지우거나 재전송했다.
+ */
+describe("useChat — 재시도 대상", () => {
+  it("[B1] 같은 실패를 연달아 재시도해도 한 번만 다시 보내고, 다시 보낸 턴의 말풍선을 지우지 않는다", async () => {
+    replies.push(rejected(500), sse(token("다시 받은 답"), DONE));
+    const { result } = setup();
+    await act(() => result.current.send("질문"));
+    const failedId = lastMessage().id;
+
+    await act(async () => {
+      result.current.retry(failedId);
+      result.current.retry(failedId);
+      await waitFor(() => expect(state().isStreaming).toBe(false));
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(state().messages.map((m) => [m.role, m.text, m.error])).toEqual([
+      ["user", "질문", undefined],
+      ["assistant", "다시 받은 답", undefined],
+    ]);
+  });
+
+  it("[B2·B3] 재시도한 턴이 응답 중일 때 다시 눌러도 아무 일 없다 — 진행 중 말풍선이 지워지거나 답이 이전 말풍선에 붙지 않는다", async () => {
+    const stream = openStream();
+    replies.push(sse(token("첫 답"), DONE), rejected(500), stream.reply);
+    const { result } = setup();
+    await act(() => result.current.send("첫 질문"));
+    await act(() => result.current.send("둘째 질문"));
+    const failedId = lastMessage().id;
+
+    act(() => result.current.retry(failedId));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const inFlightId = lastMessage().id;
+    // 이미 사라진 실패 말풍선 id 로도, 응답 중인 말풍선 id 로도 다시 눌러 본다
+    act(() => {
+      result.current.retry(failedId);
+      result.current.retry(inFlightId);
+    });
+    stream.push(token("둘째 답"));
+    stream.push(DONE);
+    stream.close();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(state().messages.map((m) => m.text)).toEqual([
+      "첫 질문",
+      "첫 답",
+      "둘째 질문",
+      "둘째 답",
+    ]);
+  });
+
+  it("[B4] 위쪽 실패 말풍선의 재시도는 아무것도 보내지 않는다 — 마지막 성공 질문이 대신 재전송되면 담기가 두 번 된다", async () => {
+    replies.push(rejected(500), sse(token("둘째 답"), DONE));
+    const { result } = setup();
+    await act(() => result.current.send("첫 질문"));
+    const oldFailedId = lastMessage().id;
+    await act(() => result.current.send("둘째 질문"));
+    const before = state().messages;
+
+    await act(async () => {
+      result.current.retry(oldFailedId);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // 위쪽 실패 말풍선도 지우지 않는다 — 실패했다는 사실은 화면에 남아야 한다
+    expect(state().messages).toEqual(before);
+  });
+
+  it("[B1] 실패가 표시됐어도 턴이 아직 끝나지 않았으면(카드 조회 대기) 재시도하지 않는다", async () => {
+    // SSE error 로 말풍선은 이미 실패인데, 앞서 온 products.ready 의 카드 조회를 기다리느라
+    // 턴은 아직 열려 있다 — 이 구간에도 마지막 실패 말풍선이라 버튼이 보인다.
+    let resolveGroup!: (g: ProductGroup) => void;
+    vi.mocked(fetchChatListGroup).mockReturnValue(
+      new Promise((r) => {
+        resolveGroup = r;
+      }),
+    );
+    replies.push(
+      sse(
+        frame("products.ready", { listIds: ["list-1"] }),
+        frame("error", { code: "INTERNAL", message: "", retryable: true }),
+      ),
+    );
+    const { result } = setup();
+    act(() => {
+      void result.current.send("질문");
+    });
+    await waitFor(() => expect(lastMessage().error).toBeDefined());
+    expect(state().isStreaming).toBe(true); // 전제 — 실패 표시와 진행 중이 겹친 구간
+
+    act(() => result.current.retry(lastMessage().id));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(state().messages.map((m) => m.role)).toEqual(["user", "assistant"]);
+    resolveGroup({
+      title: "추천",
+      items: [],
+      recommendation: { listType: "PICK_ONE", itemsDropped: 1 },
+    });
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+  });
+
+  it("[B4] 실패가 연달아 있을 때 위쪽 실패의 id 로 재시도하면 아무것도 보내지 않는다 — 마지막 실패가 대신 나가면 안 된다", async () => {
+    replies.push(rejected(500), rejected(500));
+    const { result } = setup();
+    await act(() => result.current.send("첫 질문"));
+    const oldFailedId = lastMessage().id;
+    await act(() => result.current.send("둘째 질문"));
+    const before = state().messages;
+
+    await act(async () => {
+      result.current.retry(oldFailedId);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(state().messages).toEqual(before);
+  });
+
+  it("[B] dropLastExchange 는 마지막 말풍선이 실패가 아니면 아무것도 지우지 않는다 — 응답 중인 턴을 지키는 마지막 방어선", () => {
+    state().addMessage({ id: "u", role: "user", text: "질문" });
+    state().addMessage({ id: "a", role: "assistant", text: "응답 중" });
+
+    expect(state().dropLastExchange()).toBeNull();
+    expect(state().messages.map((m) => m.id)).toEqual(["u", "a"]);
+  });
+});
+
+/**
  * 결함 의심 H1 — 수정 전 **현재 동작**을 기록한다(정답으로 고정하는 것이 아니다).
  * 사용자 말풍선이 없는 턴(칩 제거·판매자 승인)이 실패하면 재시도 버튼이 보이지만,
  * 눌러도 재전송 없이 실패 말풍선만 사라진다. 수정 여부는 별도 결정 —
@@ -538,7 +669,7 @@ describe("[H1 재현] 말풍선 없는 턴의 재시도 — 현재 동작", () =
     expect(lastMessage()).toMatchObject({ role: "assistant", retryable: true });
     expect(lastMessage().error).toBeDefined();
 
-    act(() => result.current.retry());
+    act(() => result.current.retry(lastMessage().id));
 
     expect(fetchMock).toHaveBeenCalledTimes(2); // 재전송 없음
     expect(state().messages.map((m) => m.text)).toEqual(["셔츠 추천", "추천 결과"]);
@@ -553,7 +684,7 @@ describe("[H1 재현] 말풍선 없는 턴의 재시도 — 현재 동작", () =
     await act(() => result.current.confirm("draft-1"));
     expect(lastMessage()).toMatchObject({ role: "assistant", retryable: true });
 
-    act(() => result.current.retry());
+    act(() => result.current.retry(lastMessage().id));
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(state().messages.map((m) => m.text)).toEqual([

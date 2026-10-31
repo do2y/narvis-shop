@@ -389,7 +389,15 @@ export function useChat({
 
   // 실패한 응답 재시도 — 에러난 (user, assistant) 쌍을 제거하고 같은 발화로 다시 전송.
   // 이미지도 그대로 다시 싣는다(실패한 턴은 서버에 닿지 않아 재분석 우려가 없다).
-  const retry = useCallback(() => {
+  //
+  // 대상은 버튼이 달린 말풍선 id 로 받고, 그것이 **마지막 실패 말풍선일 때만** 진행한다.
+  // 종전엔 대상 없이 "마지막 교환"을 지웠다 — 위쪽 실패 말풍선을 누르면 마지막 성공 질문이
+  // 다시 나갔고(담기 중복), 연타·응답 중 재시도는 진행 중인 턴을 지웠다.
+  const retry = useCallback((messageId: string) => {
+    const { isStreaming, messages } = useChatStore.getState();
+    const last = messages[messages.length - 1];
+    if (isStreaming) return;
+    if (last?.id !== messageId || !last.error || last.retryable === false) return;
     const dropped = useChatStore.getState().dropLastExchange();
     if (dropped?.text) {
       send(dropped.text, undefined, { imageUrls: dropped.imageUrls });

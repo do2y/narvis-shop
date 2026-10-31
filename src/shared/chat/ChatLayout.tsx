@@ -10,7 +10,7 @@ import {
 
 interface ChatLayoutProps {
   onSend: (message: string) => void;
-  onRetry: () => void;
+  onRetry: (messageId: string) => void;
   isStreaming: boolean;
   placeholder?: string;
   showUserAvatar?: boolean;
@@ -81,9 +81,9 @@ export function ChatLayout({
               setSheetExpanded(true);
               onSend(message);
             }}
-            onRetry={() => {
+            onRetry={(messageId) => {
               setSheetExpanded(true);
-              onRetry();
+              onRetry(messageId);
             }}
             isStreaming={isStreaming}
             placeholder={placeholder}
