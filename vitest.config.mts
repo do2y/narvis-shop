@@ -9,9 +9,10 @@ import { defineConfig } from "vitest/config";
  * .mts 확장자인 이유: 이 프로젝트는 package.json 에 type:module 이 없어
  * .ts 설정 파일이 CommonJS 로 로드돼 경고가 난다.
  *
- * @vitejs/plugin-react 는 넣지 않았다 — babel 8 을 요구해 기존 의존성과 충돌하고,
- * 지금 테스트 대상이 전부 순수 모듈이라 JSX 변환이 필요 없다.
- * 컴포넌트 렌더 테스트가 필요해지면 그때 플러그인과 @testing-library/react 를 함께 도입한다.
+ * @vitejs/plugin-react 는 넣지 않았다 — babel 8 을 요구해 기존 의존성과 충돌한다.
+ * 컴포넌트 렌더 테스트에도 필요 없다: JSX 는 Vite 내장 변환기(esbuild)가 tsconfig 의
+ * `jsx: react-jsx` 를 따라 처리한다(2026-10-31 MessageList 렌더로 확인). 플러그인이 주는 건
+ * Fast Refresh 등 개발 서버 기능이라 테스트와 무관하다.
  */
 export default defineConfig({
   resolve: {
@@ -21,7 +22,7 @@ export default defineConfig({
   test: {
     // localStorage·sessionStorage·window 이벤트를 쓰는 모듈이 대상이라 DOM 환경이 필요하다
     environment: "jsdom",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     // 테스트 간 mock 이 새는 것을 막는다
     restoreMocks: true,
   },
