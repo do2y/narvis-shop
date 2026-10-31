@@ -34,10 +34,41 @@ import {
   isNotFound,
 } from "./chatErrors";
 import { removeChip } from "./conditionRemoval";
-import { useChatStore } from "./store";
+import { canRetry, isResend } from "./retryPolicy";
+import { type Resend, useChatStore } from "./store";
 
 function newId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * 판매자 승인 요청을 보낸 뒤 실패했을 때의 안내.
+ * 요청이 나간 이상 서버가 승인을 실행했는지 알 수 없다 — 다시 보내면 두 번 등록될 수 있어
+ * 재시도 대신 확인을 권한다(개발자 결정 2026-10-31: 서버 멱등성 미확인).
+ */
+const CONFIRM_UNKNOWN =
+  "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.";
+
+/**
+ * 말풍선 없는 턴이 실패로 끝났을 때 재전송 정보를 남길지 정한다.
+ *
+ * - 승인: 요청을 **시작하지 않았을 때만** 남긴다. fetch 를 한 번이라도 불렀으면 응답 상태 코드와
+ *   무관하게 서버 처리 여부를 알 수 없다고 본다(4xx 가 "처리 전 거부"라는 근거가 계약 문서뿐이다).
+ *   SSE error 의 retryable:true 도 같은 이유로 따르지 않는다.
+ * - 칩 제거: 조건 제거는 계약상 멱등이라 재시도 가능한 실패면 남긴다.
+ */
+function settleResend(resend: Resend, requestStarted: boolean): void {
+  const { messages, failLastAssistant, setLastResend } = useChatStore.getState();
+  const last = messages[messages.length - 1];
+  if (last?.role !== "assistant" || !last.error) return; // 실패가 아니면(중단 포함) 할 일 없음
+  if (resend.kind === "confirm" && requestStarted) {
+    failLastAssistant(CONFIRM_UNKNOWN, {
+      retryable: false,
+      requestId: last.requestId,
+    });
+    return;
+  }
+  if (last.retryable !== false) setLastResend(resend);
 }
 
 interface UseChatOptions {
@@ -190,6 +221,8 @@ export function useChat({
        * 서버가 되돌려주지 않으므로 여기서 넣어 두지 않으면 화면에서 사라진다.
        */
       userImageUrls?: string[],
+      /** 사용자 말풍선이 없는 턴(칩 제거·승인)이 실패하면 다시 보낼 정보 — settleResend 가 판정 */
+      resend?: Resend,
     ) => {
       if (useChatStore.getState().isStreaming) return;
 
@@ -215,6 +248,8 @@ export function useChat({
 
       const controller = new AbortController();
       abortRef.current = controller;
+      // AI 서버로 요청을 내보냈는가 — 한 번이라도 fetch 를 불렀으면 이후 실패는 서버 처리 여부 불명
+      let requestStarted = false;
 
       try {
         // 1) 티켓 확보(Spring REST) — 코디네이터가 캐시·락으로 탭 간 단일화해 돌려준다.
@@ -244,6 +279,7 @@ export function useChat({
         //    토큰 수신이 시작된 뒤의 오류는 SSE error 이벤트로 오므로 여기서 재시도하지 않는다
         //    (중복 담기 방지). 재발급도 실패하면 catch 로 떨어진다.
         try {
+          requestStarted = true;
           await streamChat(
             session.llmSseUrl,
             session.streamTicket,
@@ -271,6 +307,9 @@ export function useChat({
         }
 
         await turn.settle();
+        // 스트림은 정상 종료됐지만 SSE error 로 실패가 표시됐을 수 있다.
+        // 카드 조회를 기다리는 사이 새 대화가 시작됐다면 마지막 말풍선은 새 대화의 것이다 — 쓰지 않는다
+        if (resend && isCurrent()) settleResend(resend, requestStarted);
       } catch (err) {
         // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라 다른 탭이
         // 세션을 축출하는 일은 없으므로 "다른 곳에서 종료됨"이 아니라 단순 만료다.
@@ -315,6 +354,7 @@ export function useChat({
           // 세션 발급·티켓 재발급 실패(axios 경로) 등 나머지
           failLastAssistant("응답을 받지 못했어요. 다시 시도해 주세요.");
         }
+        if (resend) settleResend(resend, requestStarted);
       } finally {
         // 아직 현재 턴일 때만 정리한다 — 새 대화에서 이미 시작된 턴의 응답 중 상태를 풀지 않게
         endTurn(turnId);
@@ -386,6 +426,10 @@ export function useChat({
         // (판매자 confirm 과 동일 처리, 계약 CH-2).
         trimmed || null,
         opts?.imageUrls,
+        // 말풍선이 없으니 실패하면 다시 보낼 내용을 따로 남긴다(H1)
+        !trimmed && conditionActions?.length
+          ? { kind: "conditions", actions: conditionActions }
+          : undefined,
       );
     },
     [run],
@@ -402,6 +446,8 @@ export function useChat({
           draftId,
         }),
         null, // 승인은 사용자 말풍선을 남기지 않는다
+        undefined,
+        { kind: "confirm", draftId },
       );
     },
     [run],
@@ -413,16 +459,28 @@ export function useChat({
   // 대상은 버튼이 달린 말풍선 id 로 받고, 그것이 **마지막 실패 말풍선일 때만** 진행한다.
   // 종전엔 대상 없이 "마지막 교환"을 지웠다 — 위쪽 실패 말풍선을 누르면 마지막 성공 질문이
   // 다시 나갔고(담기 중복), 연타·응답 중 재시도는 진행 중인 턴을 지웠다.
-  const retry = useCallback((messageId: string) => {
-    const { isStreaming, messages } = useChatStore.getState();
-    const last = messages[messages.length - 1];
-    if (isStreaming) return;
-    if (last?.id !== messageId || !last.error || last.retryable === false) return;
-    const dropped = useChatStore.getState().dropLastExchange();
-    if (dropped?.text) {
-      send(dropped.text, undefined, { imageUrls: dropped.imageUrls });
-    }
-  }, [send]);
+  //
+  // 판정은 버튼 노출과 같은 canRetry 를 쓴다 — 보이는 버튼과 실제 동작이 어긋나지 않게(I-4).
+  // 말풍선 없는 턴은 남겨 둔 재전송 정보로 원래 진입점을 다시 탄다(H1): 칩은 send("", actions)
+  // (수집 없음·말풍선 없음·낙관적 제거 재적용 없음), 승인은 confirm(draftId).
+  const retry = useCallback(
+    (messageId: string) => {
+      const { isStreaming, messages } = useChatStore.getState();
+      if (!canRetry(messages, isStreaming, messageId)) return;
+      const resend = messages[messages.length - 1].resend;
+      if (isResend(resend)) {
+        useChatStore.getState().dropLastFailure();
+        if (resend.kind === "conditions") send("", resend.actions);
+        else confirm(resend.draftId);
+        return;
+      }
+      const dropped = useChatStore.getState().dropLastExchange();
+      if (dropped?.text) {
+        send(dropped.text, undefined, { imageUrls: dropped.imageUrls });
+      }
+    },
+    [send, confirm],
+  );
 
   // 조건 칩 제거 — conditionActions 배열로 보낸다(계약 CH-2 #84, 규약 문자열 방식은 폐기).
   // 어떤 칩을 지웠는지는 UI만 아는 사실이라 발화만으로는 서버가 복원할 수 없다.

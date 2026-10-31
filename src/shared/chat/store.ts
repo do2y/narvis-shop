@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type {
   ChatAction,
   ChatResult,
+  ConditionAction,
   ConditionChip,
   SellerLane,
   SellerReport,
@@ -49,7 +50,20 @@ export interface ChatMessage {
   retryable?: boolean;
   /** 서버 로그 추적용 id. 사용자 신고 시 이 값으로 요청을 찾는다. */
   requestId?: string;
+  /**
+   * 사용자 말풍선이 없는 턴(칩 제거·판매자 승인)이 실패했을 때 **다시 보낼 최소 정보**.
+   *
+   * 일반 발화는 바로 앞 user 말풍선이 곧 재전송 내용이지만, 이 두 턴은 말풍선이 없어
+   * 여기 남기지 않으면 재시도할 것이 없다. 다시 보내도 안전하다고 판정된 실패에만 남는다
+   * (retryPolicy.ts). sessionId·티켓·화면 맥락은 담지 않는다 — 재시도 시점에 새로 구한다.
+   * 대화와 함께 저장·복원되므로 읽을 때는 isResend 로 형식을 확인한다.
+   */
+  resend?: Resend;
 }
+
+export type Resend =
+  | { kind: "conditions"; actions: ConditionAction[] }
+  | { kind: "confirm"; draftId: string };
 
 /**
  * 로그인 승계(CH-7) 실패 상태 — 게스트 대화를 회원으로 넘기지 못했을 때.
@@ -133,6 +147,10 @@ interface ChatState {
    * 이미지도 함께 돌려준다 — 실패한 턴은 서버에 닿지 않았으므로 재시도가 곧 그 턴이다.
    */
   dropLastExchange: () => { text: string; imageUrls?: string[] } | null;
+  /** 마지막 실패 말풍선 하나만 지운다 — 말풍선 없는 턴의 재시도(지울 user 말풍선이 없다) */
+  dropLastFailure: () => void;
+  /** 마지막 실패 말풍선에 재전송 정보를 붙인다 */
+  setLastResend: (resend: Resend) => void;
   setResults: (results: ChatResult[]) => void;
   addResult: (result: ChatResult) => void;
   settleDraft: (draftId: string, action: ChatAction) => void;
@@ -226,6 +244,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // 텍스트만 돌려주면 재시도가 사진 없이 나가 초안이 이미지 없이 만들어진다.
     return { text: dropped.text, imageUrls: dropped.imageUrls };
   },
+  dropLastFailure: () =>
+    set((s) => {
+      const last = s.messages[s.messages.length - 1];
+      if (last?.role !== "assistant" || !last.error) return {};
+      return { messages: s.messages.slice(0, -1) };
+    }),
+  setLastResend: (resend) =>
+    set((s) => {
+      const messages = [...s.messages];
+      const last = messages[messages.length - 1];
+      if (last?.role !== "assistant" || !last.error) return {};
+      messages[messages.length - 1] = { ...last, resend };
+      return { messages };
+    }),
   setResults: (results) => set({ results }),
   addResult: (result) => set((s) => ({ results: [...s.results, result] })),
   // 수정 확인/실패 결과가 오면 해당 diff 카드를 처리 완료 상태로 잠근다

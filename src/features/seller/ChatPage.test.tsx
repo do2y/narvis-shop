@@ -132,52 +132,55 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-describe("판매자 등록 카드 — 다시 시도 연결", () => {
-  // 카드가 오류 상태로 보이는 실제 경로는 "등록 승인 실패"뿐이다. 수정 요청은 입력창 전송이
-  // 패널을 "auto"로 돌려 카드가 가려지므로(07-issues I-3과 같은 원인) 카드 버튼에 닿지 않는다.
-  it("[B·카드] 등록 승인이 실패하면 카드의 '다시 시도'는 마지막 실패 말풍선을 대상으로 재시도한다 — H1 수정 전: 실패 표시만 걷히고 재전송은 없다", async () => {
+// 초안 턴은 프레임을 **한 청크**로 보낸다. 청크가 나뉘면 draft 와 done 사이에 렌더가 끼어
+// done{replace} 가 카드를 가린다 — 별도 결함(07-issues I-3)이라 이 테스트의 관심(재시도)과 분리한다.
+const draftTurn = () =>
+  sse(
+    [
+      frame("meta", { lane: "product" }),
+      frame("token", { text: "초안을 만들었어요." }),
+      frame("draft", draft),
+      frame("done", { finishReason: "stop", panel: "replace" }),
+    ].join(""),
+  );
+
+/** 초안을 받고 카드의 "상품 등록"을 누른 뒤, 오류 상태가 된 카드의 영역을 돌려준다 */
+async function confirmFromCard() {
+  sendFromInput("이 셔츠 등록해 줘");
+  await screen.findByText("코튼 오버핏 셔츠");
+  fireEvent.click(screen.getByRole("button", { name: /상품 등록/ }));
+  await waitFor(() =>
+    expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
+  );
+  const error = useChatStore.getState().messages.slice(-1)[0].error!;
+  // 같은 문구가 좌측 말풍선(span)과 카드(p)에 함께 뜬다
+  const cardMessage = (await screen.findAllByText(error)).find(
+    (el) => el.tagName === "P",
+  );
+  expect(cardMessage).toBeDefined(); // 전제 — 카드가 오류 상태로 바뀌었다
+  return cardMessage!.parentElement!;
+}
+
+// 카드가 오류 상태로 보이는 실제 경로는 "등록 승인 실패"뿐이다. 수정 요청은 입력창 전송이
+// 패널을 "auto"로 돌려 카드가 가려지므로(07-issues I-3과 같은 원인) 카드 버튼에 닿지 않는다.
+// 서버가 등록 실패를 action 으로 알리는 경우도 done{keep} 이 패널을 목록으로 돌려 카드가 보이지 않는다.
+describe("판매자 등록 카드 — 다시 시도 (H1)", () => {
+  it("[H1·카드] 승인 요청이 나가기 전에 실패하면(세션 확보 실패) 카드의 다시 시도가 같은 초안을 다시 승인한다", async () => {
+    vi.mocked(ensureSession)
+      .mockResolvedValueOnce(session)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValue(session);
     replies.push(
-      // 초안 턴은 프레임을 **한 청크**로 보낸다. 청크가 나뉘면 draft 와 done 사이에 렌더가 끼어
-      // done{replace} 가 카드를 가린다 — 별도 결함(07-issues I-3)이라 이 테스트의 관심(재시도 배선)과 분리한다.
-      sse(
-        [
-          frame("meta", { lane: "product" }),
-          frame("token", { text: "초안을 만들었어요." }),
-          frame("draft", draft),
-          frame("done", { finishReason: "stop", panel: "replace" }),
-        ].join(""),
-      ),
-      rejected(500),
+      draftTurn(),
+      sse(frame("done", { finishReason: "stop", panel: "refresh" })),
     );
     renderPage();
 
-    sendFromInput("이 셔츠 등록해 줘");
-    await screen.findByText("코튼 오버핏 셔츠");
+    const card = await confirmFromCard();
+    expect(aiCalls).toHaveLength(1); // 전제 — 승인 요청은 나가지 못했다
+    fireEvent.click(within(card).getByRole("button", { name: /다시 시도/ }));
 
-    fireEvent.click(screen.getByRole("button", { name: /상품 등록/ }));
     await waitFor(() => expect(aiCalls).toHaveLength(2));
     expect(aiBody(1)).toMatchObject({ action: "confirm", draftId: "draft-1" });
-    await waitFor(() =>
-      expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
-    );
-    const failedId = useChatStore.getState().messages.slice(-1)[0].id;
-    const error = useChatStore.getState().messages.slice(-1)[0].error!;
-
-    // 같은 문구가 좌측 말풍선(span)과 카드(p)에 함께 뜬다 — 카드 쪽 버튼을 누른다
-    const cardMessage = (await screen.findAllByText(error)).find(
-      (el) => el.tagName === "P",
-    );
-    expect(cardMessage).toBeDefined(); // 전제 — 카드가 오류 상태로 바뀌었다
-    fireEvent.click(
-      within(cardMessage!.parentElement!).getByRole("button", { name: /다시 시도/ }),
-    );
-
-    // 배선 확인 — retry 가 마지막 실패 말풍선 id 로 불려 가드를 통과했다(통과 못 하면 말풍선이 남는다)
-    await waitFor(() =>
-      expect(useChatStore.getState().messages.map((m) => m.id)).not.toContain(failedId),
-    );
-    // H1 — 승인 턴은 user 말풍선이 없어 재전송할 발화가 없다. 카드는 검토 상태로 돌아간다
-    expect(aiCalls).toHaveLength(2);
-    expect(screen.getByRole("button", { name: /상품 등록/ })).toBeTruthy();
   });
 });

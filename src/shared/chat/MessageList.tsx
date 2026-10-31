@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { MessageMarkdown } from "./MessageMarkdown";
+import { canRetry } from "./retryPolicy";
 import type { ChatMessage } from "./store";
 
 interface MessageListProps {
@@ -102,8 +103,9 @@ export function MessageList({
                 <span className="text-sm text-destructive">{msg.error}</span>
                 {/* 재시도해도 같은 결과가 뻔한 실패(권한·과다 요청 등)에는 버튼을 주지 않는다 —
                     누를수록 상황이 나빠지거나 무의미하다. 판단은 서버 retryable 을 따른다.
-                    마지막 말풍선에만 준다 — 위쪽 실패는 사실만 남긴다(재시도는 마지막 턴 기준). */}
-                {isLast && msg.retryable !== false && (
+                    마지막 말풍선에만 준다 — 위쪽 실패는 사실만 남긴다(재시도는 마지막 턴 기준).
+                    노출 판정은 훅의 retry 와 같은 canRetry 다 — 보이는데 눌러도 안 되는 버튼을 만들지 않는다. */}
+                {canRetry(messages, isStreaming, msg.id) && (
                   <button
                     type="button"
                     onClick={() => onRetry(msg.id)}

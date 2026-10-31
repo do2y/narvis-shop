@@ -915,49 +915,274 @@ describe("useChat — 재시도 대상", () => {
 });
 
 /**
- * 결함 의심 H1 — 수정 전 **현재 동작**을 기록한다(정답으로 고정하는 것이 아니다).
- * 사용자 말풍선이 없는 턴(칩 제거·판매자 승인)이 실패하면 재시도 버튼이 보이지만,
- * 눌러도 재전송 없이 실패 말풍선만 사라진다. 수정 여부는 별도 결정 —
- * 고치면 이 테스트를 "다시 보낸다"로 뒤집는다.
+ * H1 — 사용자 말풍선이 없는 턴(칩 제거·판매자 승인)의 재시도.
+ *
+ * 재시도는 "무엇을 다시 보낼지"가 있을 때만 가능하다. 말풍선 없는 턴은 실패한 말풍선에
+ * 최소 재전송 정보(resend)를 남기고, 요청 유형별로 다시 보내도 안전할 때만 남긴다:
+ * - 판매자 승인: 요청을 **시작하지 않았음이 확실한 실패**에서만. fetch 를 한 번이라도 불렀으면
+ *   서버 처리 여부를 알 수 없으므로 재전송하지 않고 확인을 안내한다(개발자 결정 2026-10-31).
+ * - 칩 제거: 조건 제거는 계약상 멱등이라 retryable 이 거짓이 아니면 남긴다.
+ * 버튼 노출과 실제 재시도 가능 여부는 같은 조건을 쓴다(I-4).
  */
-describe("[H1 재현] 말풍선 없는 턴의 재시도 — 현재 동작", () => {
-  it("칩 제거 턴이 실패한 뒤 다시 시도하면 재전송 없이 실패 말풍선만 사라진다", async () => {
-    replies.push(sse(token("추천 결과"), DONE), rejected(500));
-    useChatStore.setState({
-      conditions: [{ field: "category", label: "카테고리 · 상의", value: "상의" }],
-    });
-    const { result } = setup();
-    await act(() => result.current.send("셔츠 추천"));
+const CONFIRM_UNKNOWN =
+  "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.";
 
+describe("useChat — 말풍선 없는 턴의 재시도 (H1)", () => {
+  const chip = { field: "category" as const, label: "카테고리 · 상의", value: "상의" };
+  const otherChip = { field: "brand" as const, label: "브랜드 · 무명", value: "무명" };
+
+  /** 이전 턴 하나를 성공시키고, 그 뒤 칩 제거 턴을 실행한다 */
+  async function chipTurn(result: { current: ReturnType<typeof useChat> }) {
+    await act(() => result.current.send("셔츠 추천"));
+    useChatStore.setState({ conditions: [chip, otherChip] });
     await act(async () => {
       result.current.removeCondition("category", "상의");
       await waitFor(() => expect(state().isStreaming).toBe(false));
     });
-    // 재시도 버튼이 보이는 상태다(MessageList 는 retryable !== false 일 때 버튼을 그린다)
-    expect(lastMessage()).toMatchObject({ role: "assistant", retryable: true });
-    expect(lastMessage().error).toBeDefined();
+  }
 
-    act(() => result.current.retry(lastMessage().id));
+  it("[H1] 칩 제거가 요청 전에 실패하면(세션 확보 실패) 다시 시도로 같은 조건 제거를 보낸다 — 말풍선·수집 없이, 다른 칩은 그대로", async () => {
+    replies.push(sse(token("추천 결과"), DONE), sse(DONE));
+    vi.mocked(ensureSession)
+      .mockResolvedValueOnce(session())
+      .mockRejectedValueOnce(new ApiError({ code: "INTERNAL", message: "" }, 500))
+      .mockResolvedValue(session());
+    const { result } = setup();
+    await chipTurn(result);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // 전제 — 칩 제거 요청은 나가지 못했다
+    const failedId = lastMessage().id;
+    vi.mocked(track).mockClear();
 
-    expect(fetchMock).toHaveBeenCalledTimes(2); // 재전송 없음
-    expect(state().messages.map((m) => m.text)).toEqual(["셔츠 추천", "추천 결과"]);
-    expect(state().conditions).toHaveLength(0); // 서버엔 적용 안 됐는데 화면에선 지워진 채
+    await act(async () => {
+      result.current.retry(failedId);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(state().isStreaming).toBe(false));
+    });
+
+    expect(requestBody(1)).toMatchObject({
+      message: "",
+      conditionActions: [{ op: "remove", field: "category", value: "상의" }],
+    });
+    expect(state().messages.map((m) => m.role)).toEqual(["user", "assistant", "assistant"]);
+    expect(state().messages.some((m) => m.error)).toBe(false);
+    expect(state().conditions).toEqual([otherChip]);
+    expect(track).not.toHaveBeenCalled();
   });
 
-  it("판매자 승인 턴이 실패한 뒤 다시 시도하면 재전송 없이 실패 말풍선만 사라진다", async () => {
-    replies.push(sse(token("초안입니다"), DONE), rejected(500));
-    const { result } = setup({ channel: "SELLER" });
-    await act(() => result.current.send("상품 등록해줘"));
+  it("[H1] 칩 제거는 요청이 나간 뒤 실패해도(500) 다시 보낸다 — 조건 제거는 멱등", async () => {
+    replies.push(sse(token("추천 결과"), DONE), rejected(500), sse(DONE));
+    const { result } = setup();
+    await chipTurn(result);
 
-    await act(() => result.current.confirm("draft-1"));
-    expect(lastMessage()).toMatchObject({ role: "assistant", retryable: true });
+    await act(async () => {
+      result.current.retry(lastMessage().id);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    });
+
+    expect(requestBody(2)).toMatchObject({
+      conditionActions: [{ op: "remove", field: "category", value: "상의" }],
+    });
+  });
+
+  it("[H1] 칩 제거가 다시 해도 같은 결과인 실패(409)면 재시도하지 않는다", async () => {
+    replies.push(sse(token("추천 결과"), DONE), rejected(409));
+    const { result } = setup();
+    await chipTurn(result);
+    const before = state().messages;
 
     act(() => result.current.retry(lastMessage().id));
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(state().messages.map((m) => m.text)).toEqual([
-      "상품 등록해줘",
-      "초안입니다",
-    ]);
+    expect(state().messages).toEqual(before);
+  });
+
+  it("[H1] 판매자 승인이 요청 전에 실패하면(세션 확보 실패) 다시 시도로 같은 초안을 승인한다", async () => {
+    replies.push(sse(token("초안입니다"), DONE), sse(DONE));
+    vi.mocked(ensureSession)
+      .mockResolvedValueOnce(session())
+      .mockRejectedValueOnce(new ApiError({ code: "INTERNAL", message: "" }, 500))
+      .mockResolvedValue(session());
+    const { result } = setup({ channel: "SELLER" });
+    await act(() => result.current.send("상품 등록해줘"));
+    await act(() => result.current.confirm("draft-1"));
+    expect(fetchMock).toHaveBeenCalledTimes(1); // 전제 — 승인 요청은 나가지 못했다
+    expect(lastMessage().retryable).not.toBe(false);
+
+    await act(async () => {
+      result.current.retry(lastMessage().id);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(state().isStreaming).toBe(false));
+    });
+
+    expect(requestBody(1)).toMatchObject({ action: "confirm", draftId: "draft-1" });
+    expect(state().messages.map((m) => m.text)).toEqual(["상품 등록해줘", "초안입니다", ""]);
+  });
+
+  it.each([
+    ["시작 거부 500", () => [rejected(500)]],
+    ["시작 거부 403", () => [rejected(403)]],
+    ["재발급 뒤에도 401", () => [rejected(401), rejected(401)]],
+    ["종결 없이 끊김", () => [sse(token("처리 중…"))]],
+    [
+      "SSE error (서버가 retryable:true 라고 해도)",
+      () => [sse(frame("error", { code: "INTERNAL", message: "", retryable: true }))],
+    ],
+  ])(
+    "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(%s) 다시 보내지 않고 반영 여부 확인을 안내한다",
+    async (_label, failure) => {
+      replies.push(sse(token("초안입니다"), DONE), ...failure());
+      const { result } = setup({ channel: "SELLER" });
+      await act(() => result.current.send("상품 등록해줘"));
+      await act(() => result.current.confirm("draft-1"));
+      const calls = fetchMock.mock.calls.length;
+
+      expect(lastMessage()).toMatchObject({ error: CONFIRM_UNKNOWN, retryable: false });
+      expect(lastMessage().resend).toBeUndefined();
+
+      act(() => result.current.retry(lastMessage().id));
+      expect(fetchMock).toHaveBeenCalledTimes(calls);
+    },
+  );
+
+  it("[H1] 판매자 승인이 요청을 보낸 뒤 네트워크 오류로 실패해도 다시 보내지 않는다", async () => {
+    replies.push(sse(token("초안입니다"), DONE));
+    const { result } = setup({ channel: "SELLER" });
+    await act(() => result.current.send("상품 등록해줘"));
+    fetchMock.mockImplementationOnce(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+
+    await act(() => result.current.confirm("draft-1"));
+
+    expect(lastMessage()).toMatchObject({ error: CONFIRM_UNKNOWN, retryable: false });
+    expect(lastMessage().resend).toBeUndefined();
+  });
+
+  it("[H1] 판매자 승인이 성공하면 실패 표시도 재전송 정보도 남지 않는다 — 요청을 보낸 턴이라도 성공은 성공이다", async () => {
+    replies.push(
+      sse(token("초안입니다"), DONE),
+      sse(
+        frame("action", { type: "PRODUCT_UPDATED", message: "등록됐어요", productId: "7" }),
+        frame("done", { finishReason: "stop", panel: "refresh" }),
+      ),
+    );
+    const { result } = setup({ channel: "SELLER" });
+    await act(() => result.current.send("상품 등록해줘"));
+
+    await act(() => result.current.confirm("draft-1"));
+
+    expect(lastMessage()).toMatchObject({ role: "assistant", text: "\n\n등록됐어요" });
+    expect(lastMessage().error).toBeUndefined();
+    expect(lastMessage().resend).toBeUndefined();
+  });
+
+  it("[H1] 재전송 정보는 다시 시도할 수 있는 실패에만 남긴다 — 409 처럼 버튼이 없는 실패엔 저장하지 않는다", async () => {
+    replies.push(sse(token("추천 결과"), DONE), rejected(409));
+    const { result } = setup();
+    await chipTurn(result);
+
+    expect(lastMessage()).toMatchObject({ retryable: false });
+    expect(lastMessage().resend).toBeUndefined();
+  });
+
+  it("[H1·A] 새 대화로 버려진 칩 제거 턴이 뒤늦게 끝나도, 새 대화의 실패 말풍선에 재전송 정보를 붙이지 않는다", async () => {
+    // 이전 턴: 칩 제거 → products.ready → 카드 조회를 기다리는 중(턴이 아직 안 끝남)
+    let resolveGroup!: (g: ProductGroup) => void;
+    vi.mocked(fetchChatListGroup).mockReturnValue(
+      new Promise((r) => {
+        resolveGroup = r;
+      }),
+    );
+    replies.push(
+      sse(token("추천 결과"), DONE),
+      sse(frame("products.ready", { listIds: ["list-1"] }), DONE),
+      rejected(500), // 새 대화의 질문은 실패한다
+      sse(DONE),
+    );
+    const { result } = setup();
+    await act(() => result.current.send("셔츠 추천"));
+    useChatStore.setState({ conditions: [chip] });
+    act(() => result.current.removeCondition("category", "상의"));
+    await waitFor(() => expect(fetchChatListGroup).toHaveBeenCalled());
+
+    act(() => result.current.startNewChat());
+    await act(() => result.current.send("새 질문"));
+    expect(lastMessage().error).toBeDefined(); // 전제 — 새 대화의 마지막 말풍선이 실패
+
+    resolveGroup({
+      title: "이전 추천",
+      items: [],
+      recommendation: { listType: "PICK_ONE", itemsDropped: 1 },
+    });
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(lastMessage().resend).toBeUndefined();
+    await act(async () => {
+      result.current.retry(lastMessage().id);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    });
+    expect(requestBody(3)).toMatchObject({ message: "새 질문" });
+    expect(requestBody(3).conditionActions).toBeUndefined();
+  });
+
+  it("[H1] 성공한 턴에는 재전송 정보를 남기지 않는다", async () => {
+    replies.push(sse(token("추천 결과"), DONE), sse(DONE));
+    const { result } = setup();
+    await chipTurn(result);
+
+    expect(state().messages.every((m) => m.resend === undefined)).toBe(true);
+  });
+
+  it("[H1] 새로고침으로 복원된 재전송 정보로도 다시 시도할 수 있다", async () => {
+    replies.push(sse(DONE));
+    useChatStore.setState({
+      messages: [
+        { id: "u", role: "user", text: "셔츠 추천" },
+        { id: "a1", role: "assistant", text: "추천 결과" },
+        {
+          id: "a2",
+          role: "assistant",
+          text: "",
+          error: "응답을 받지 못했어요.",
+          retryable: true,
+          resend: { kind: "conditions", actions: [{ op: "remove", field: "category", value: "상의" }] },
+        },
+      ],
+    });
+    const { result } = setup();
+
+    await act(async () => {
+      result.current.retry("a2");
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    });
+
+    expect(requestBody(0)).toMatchObject({
+      conditionActions: [{ op: "remove", field: "category", value: "상의" }],
+    });
+  });
+
+  it.each([
+    ["재전송 정보가 없는 옛 저장분", undefined],
+    ["형식이 깨진 재전송 정보", { kind: "confirm" }],
+  ])("[H1] %s 이면 다시 보내지도, 실패 말풍선을 지우지도 않는다", (_label, resend) => {
+    const messages = [
+      { id: "u", role: "user" as const, text: "상품 등록해줘" },
+      { id: "a1", role: "assistant" as const, text: "초안입니다" },
+      {
+        id: "a2",
+        role: "assistant" as const,
+        text: "",
+        error: "응답을 받지 못했어요.",
+        retryable: true,
+        ...(resend ? { resend } : {}),
+      },
+    ];
+    useChatStore.setState({ messages: messages as never });
+    const { result } = setup({ channel: "SELLER" });
+
+    act(() => result.current.retry("a2"));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(state().messages.map((m) => m.id)).toEqual(["u", "a1", "a2"]);
   });
 });
