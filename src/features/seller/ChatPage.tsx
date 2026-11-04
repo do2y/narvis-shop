@@ -6,13 +6,14 @@ import { useQueryParams } from "@/shared/hooks/useQueryParams";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChatConversation } from "@/shared/chat/ChatConversation";
 import { NewChatButton } from "@/shared/chat/NewChatButton";
+import { acknowledgeUnresolved, hasDuplicateRisk } from "@/shared/chat/draftApproval";
 import { canRetry } from "@/shared/chat/retryPolicy";
 import { SuggestedQuestions } from "@/shared/chat/SuggestedQuestions";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { cn } from "@/lib/utils";
-import type { SellerPanel } from "@/shared/types/chat";
+import type { SellerDraft, SellerPanel } from "@/shared/types/chat";
 import { SellerHeader } from "./components/SellerHeader";
 import { SellerWorkspace } from "./components/SellerWorkspace";
 import { SELLER_SUGGESTED_QUESTIONS } from "./suggestedQuestions";
@@ -182,6 +183,14 @@ export default function SellerChatPage() {
 
   // draft 승인/취소 — confirm은 최상위 action/draftId로, 취소는 서버 호출 없이 카드만 닫음
   const confirmDraft = (draftId: string) => confirm(draftId);
+  // 이전 승인의 처리 여부가 불명확하면 경고한다. 같은 계정의 기록만 본다.
+  // 알리는 절차일 뿐 중복 실행을 막지 못한다 — 사용자가 확인하면 그대로 나간다.
+  const unresolvedApprovals = useChatStore((s) => s.unresolvedApprovals);
+  const ownerId = useAuthStore((s) => s.user?.id ?? null);
+  const acknowledgeDraft = (draft: SellerDraft) => {
+    acknowledgeUnresolved(draft);
+    confirm(draft.draftId);
+  };
   const cancelDraft = (draftId: string) => {
     dropDraft(draftId);
     // 취소한 것이 검토 중이던 등록 초안이면 입력창도 평상시로 되돌린다
@@ -304,6 +313,10 @@ export default function SellerChatPage() {
       onBackToList={() => setPanelIntent("list")}
       onConfirmDraft={confirmDraft}
       onCancelDraft={cancelDraft}
+      hasDuplicateRisk={(draft) =>
+        hasDuplicateRisk(unresolvedApprovals, draft, ownerId)
+      }
+      onAcknowledgeDraft={acknowledgeDraft}
       streamError={streamError}
       // 카드의 오류 상태는 마지막 말풍선의 error 에서 나온다(streamError) — 대상도 그 말풍선이다.
       // 재시도할 수 없으면 버튼 자체를 주지 않는다(카드는 onRetry 가 있으면 버튼을 그린다, I-4)

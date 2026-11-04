@@ -1,9 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { ArrowRight, Check, CircleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hoverMuted, numeric, pressable } from "../interaction";
+import {
+  DraftApprovalNotice,
+  DuplicateRiskConfirm,
+  DuplicateRiskWarning,
+  isApprovalLocked,
+} from "./DraftApprovalNotice";
 import type {
+  DraftApproval,
   ChatAction,
   SellerDraft,
   SellerDraftField,
@@ -13,6 +21,11 @@ interface ProductDiffCardProps {
   draft: SellerDraft;
   /** 확정된 결과(수정 완료·실패). 있으면 확인 버튼 대신 결과를 표시한다. */
   settled?: ChatAction;
+  approval?: DraftApproval;
+  approvalMessage?: string;
+  /** 이전 승인의 처리 여부가 불명확한 대상 — 경고하고 한 번 더 확인받는다 */
+  duplicateRisk?: boolean;
+  onAcknowledge?: (draftId: string) => void;
   onConfirm: (draftId: string) => void;
   onCancel: (draftId: string) => void;
   disabled?: boolean;
@@ -59,11 +72,16 @@ function formatValue(field: string, v: string | number): string {
 export function ProductDiffCard({
   draft,
   settled,
+  approval,
+  approvalMessage,
+  duplicateRisk,
+  onAcknowledge,
   onConfirm,
   onCancel,
   disabled,
 }: ProductDiffCardProps) {
   const failed = settled?.type === "PRODUCT_UPDATE_FAILED";
+  const [asking, setAsking] = useState(false);
 
   return (
     <section className="flex flex-col gap-4 rounded-sm border bg-background p-4 sm:p-6">
@@ -124,15 +142,34 @@ export function ProductDiffCard({
           )}
           <span className="font-medium">{settled.message}</span>
         </div>
+      ) : approval && isApprovalLocked(approval) ? (
+        <div className="border-t pt-4">
+          <DraftApprovalNotice
+            approval={approval}
+            message={approvalMessage}
+            onClose={() => onCancel(draft.draftId)}
+          />
+        </div>
+      ) : duplicateRisk && asking ? (
+        <div className="flex flex-col gap-3 border-t pt-4">
+          <DuplicateRiskWarning />
+          <DuplicateRiskConfirm
+            onAcknowledge={() => onAcknowledge?.(draft.draftId)}
+            onBack={() => setAsking(false)}
+          />
+        </div>
       ) : (
         <div className="flex flex-col gap-3 border-t pt-4">
+          {duplicateRisk && <DuplicateRiskWarning />}
           <p className="text-sm text-muted-foreground">
             위 내용으로 진행할까요?
           </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => onConfirm(draft.draftId)}
+              onClick={() =>
+                duplicateRisk ? setAsking(true) : onConfirm(draft.draftId)
+              }
               disabled={disabled}
               className={cn(
                 "inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground",

@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalysisReportView } from "@/shared/chat/store";
-import type { ChatResult } from "@/shared/types/chat";
+import type { ChatResult, SellerDraft } from "@/shared/types/chat";
 import type {
   SellerOrderTab,
   SellerProductSort,
@@ -39,6 +39,10 @@ interface SellerWorkspaceProps {
   onBackToList: () => void;
   onConfirmDraft: (draftId: string) => void;
   onCancelDraft: (draftId: string) => void;
+  /** 이 초안이 처리 여부 불명인 이전 승인과 중복될 수 있는가 */
+  hasDuplicateRisk?: (draft: SellerDraft) => boolean;
+  /** 경고를 확인하고 승인 */
+  onAcknowledgeDraft?: (draft: SellerDraft) => void;
   /**
    * 이번 턴이 오류로 끝났으면 그 문구. 좌측 말풍선의 실패를 우측 검토 패널에도
    * 반영한다 — 없으면 "통신 실패" 아래에서 [등록]이 눌리는 모순된 화면이 된다.
@@ -82,6 +86,8 @@ export function SellerWorkspace({
   onBackToList,
   onConfirmDraft,
   onCancelDraft,
+  hasDuplicateRisk,
+  onAcknowledgeDraft,
   streamError,
   onRetry,
 }: SellerWorkspaceProps) {
@@ -175,6 +181,10 @@ export function SellerWorkspace({
                     <ProductCreateCard
                       draft={r.draft}
                       settled={r.settled}
+                      approval={r.approval}
+                      approvalMessage={r.approvalMessage}
+                      duplicateRisk={hasDuplicateRisk?.(r.draft)}
+                      onAcknowledge={() => onAcknowledgeDraft?.(r.draft)}
                       onConfirm={onConfirmDraft}
                       onCancel={onCancelDraft}
                       disabled={isStreaming}
@@ -185,6 +195,10 @@ export function SellerWorkspace({
                     <ProductDiffCard
                       draft={r.draft}
                       settled={r.settled}
+                      approval={r.approval}
+                      approvalMessage={r.approvalMessage}
+                      duplicateRisk={hasDuplicateRisk?.(r.draft)}
+                      onAcknowledge={() => onAcknowledgeDraft?.(r.draft)}
                       onConfirm={onConfirmDraft}
                       onCancel={onCancelDraft}
                       disabled={isStreaming}

@@ -1,4 +1,5 @@
 import { resolveAnalysisReport } from "@/shared/chat/analysisReport";
+import { closeApproval, draftResultOf } from "@/shared/chat/draftApproval";
 import { resolveChatErrorMessage } from "@/shared/chat/errorMessage";
 import { fetchChatListGroup } from "@/shared/chat/lists";
 import { resolveProgressText } from "@/shared/chat/progress";
@@ -22,6 +23,8 @@ interface TurnHandlerOptions {
    * 생략하면 항상 현재 턴으로 본다.
    */
   isCurrent?: () => boolean;
+  /** 이 턴이 판매자 승인이면 그 초안 — 승인 결과를 기록할 대상 */
+  confirmingDraftId?: string;
 }
 
 /**
@@ -38,13 +41,14 @@ export function createTurnHandler({
   onAction,
   onDone,
   isCurrent = () => true,
+  confirmingDraftId,
 }: TurnHandlerOptions) {
   const {
     appendToLastAssistant,
     failLastAssistant,
     setResults,
     addResult,
-    settleDraft,
+    setDraftApproval,
     setConditions,
     setSuggestions,
     setLane,
@@ -196,35 +200,20 @@ export function createTurnHandler({
         // 문구를 하드코딩하거나 파싱하지 않는다. 분기는 type·reason 으로만.
         const action = e.data;
         appendToLastAssistant(`\n\n${action.message}`);
-        // 수정 결과면 해당 draft 카드를 확정 상태로 잠금
-        if (
-          action.type === "PRODUCT_UPDATED" ||
-          action.type === "PRODUCT_UPDATE_FAILED"
-        ) {
-          const drafts = useChatStore
-            .getState()
-            .results.filter((r) => r.kind === "draft" && !r.settled);
-          // 등록 초안은 productId 가 null 이다(아직 상품이 없으니까) —
-          // productId 로만 찾으면 등록 결과가 카드에 영원히 반영되지 않는다.
-          // 등록은 확정 대기 중인 create 초안을 대상으로 잡는다.
-          const pending =
-            drafts.find(
-              (r) =>
-                r.kind === "draft" &&
-                r.draft.productId === action.productId,
-            ) ??
-            drafts.find(
-              (r) => r.kind === "draft" && r.draft.op === "create",
-            );
-          if (pending?.kind === "draft") {
-            settleDraft(pending.draft.draftId, action);
-            // 등록이 끝났으면 초안 모드를 푼다(실패면 계속 고칠 수 있게 유지)
-            if (
-              pending.draft.op === "create" &&
-              action.type === "PRODUCT_UPDATED"
-            ) {
+        // 판매자 결과는 **이번에 승인한 초안**에만 기록한다. action 에 draftId 가 없어 다른 상품·다른 턴의
+        // 결과가 등록 초안을 "완료"로 만들던 결함(I-7) — 대상은 요청을 보낸 쪽이 안다.
+        //
+        // 성공 action 도 성공으로 확정하지 않는다: 이 초안의 성공을 보장하는 이벤트가 아니다(draftApproval.ts).
+        // 서버 문구는 위에서 말풍선에 붙었다.
+        if (confirmingDraftId) {
+          if (action.type === "PRODUCT_UPDATED") {
+            closeApproval(confirmingDraftId);
+            // 승인이 끝났으니 초안 모드는 푼다(실패면 계속 고칠 수 있게 유지)
+            if (draftResultOf(confirmingDraftId)?.draft.op === "create") {
               setActiveDraft(null);
             }
+          } else if (action.type === "PRODUCT_UPDATE_FAILED") {
+            setDraftApproval(confirmingDraftId, "rejected", action.message);
           }
         }
         // 이 경로에서는 행동 이벤트를 쏘지 않는다.

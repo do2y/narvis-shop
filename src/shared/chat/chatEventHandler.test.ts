@@ -226,17 +226,21 @@ describe("createTurnHandler", () => {
       expect(onAction).toHaveBeenCalledWith(action);
     });
 
-    it("등록 성공은 productId 가 없는 create 초안을 확정하고 초안 모드를 푼다", () => {
-      const { feed } = startTurn();
-      feed({ type: "draft", data: draft("create", "c1") });
-      expect(useChatStore.getState().activeDraft?.draftId).toBe("c1");
+    it("[I-5] 승인 턴의 성공 action 은 성공으로 확정하지 않고 closed 로 두며, 초안 모드는 푼다", () => {
+      useChatStore.setState({
+        results: [{ kind: "draft", draft: draft("create", "d1") }],
+      });
+      useChatStore.getState().setActiveDraft("d1");
+      const { feed } = startTurn({ confirmingDraftId: "d1" });
 
       feed({
         type: "action",
         data: { type: "PRODUCT_UPDATED", message: "등록했어요", productId: "77" },
       });
-      const [card] = useChatStore.getState().results;
-      expect(card?.kind === "draft" && card.settled?.type).toBe("PRODUCT_UPDATED");
+
+      const card = useChatStore.getState().results[0];
+      expect(card).toMatchObject({ kind: "draft", approval: "closed" });
+      expect(card?.kind === "draft" && card.settled).toBeUndefined();
       expect(useChatStore.getState().activeDraft).toBeNull();
     });
   });

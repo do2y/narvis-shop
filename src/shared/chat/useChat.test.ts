@@ -11,7 +11,13 @@ import {
   refreshTicket,
   SessionClaimPendingError,
 } from "@/shared/chat/sessionCoordinator";
-import type { ChatSession, ProductGroup } from "@/shared/types/chat";
+import { useAuthStore } from "@/shared/stores/authStore";
+import type {
+  ChatResult,
+  ChatSession,
+  ProductGroup,
+  SellerDraft,
+} from "@/shared/types/chat";
 import { useChatStore } from "./store";
 import { useChat } from "./useChat";
 
@@ -132,6 +138,8 @@ function setup(options: Partial<Parameters<typeof useChat>[0]> = {}) {
 
 beforeEach(() => {
   state().reset();
+  useChatStore.setState({ unresolvedApprovals: [] }); // 새 대화(reset)가 일부러 지우지 않는 값
+  useAuthStore.setState({ user: null });
   sessionStorage.clear();
   replies = [];
   fetchMock.mockClear();
@@ -1304,5 +1312,340 @@ describe("useChat — 판매자 승인의 티켓과 401 (I-6)", () => {
     expect(refreshTicket).toHaveBeenCalledTimes(1);
     expect(requestBody(1)).toEqual(requestBody(0));
     expect(lastMessage().error).toBeUndefined();
+  });
+});
+
+/**
+ * I-5 · I-7 — 판매자 승인 상태는 초안(draftId)별로 추적한다.
+ * 현재 계약의 action 에는 draftId 가 없고 서버 발행도 확인되지 않아, 어떤 이벤트도 "이 초안의 성공"을
+ * 보장하지 못한다 → 성공(settled)으로 표시하지 않고, 결과를 확인할 수 없으면 같은 초안을 다시 승인하지 못한다.
+ */
+describe("useChat — 초안별 승인 상태 (I-5 · I-7)", () => {
+  const createDraft: SellerDraft = { draftId: "d-create", op: "create", productId: null, changes: [], summary: "" };
+  const updateDraft: SellerDraft = { draftId: "d-update", op: "update", productId: "7", changes: [], summary: "" };
+  const deleteDraft: SellerDraft = { draftId: "d-delete", op: "delete", productId: "7", changes: [], summary: "" };
+  const CONFIRM_MESSAGE =
+    "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.";
+
+  function seed(...drafts: SellerDraft[]) {
+    useChatStore.setState({
+      results: drafts.map((draft) => ({ kind: "draft" as const, draft })),
+      messages: [
+        { id: "u", role: "user", text: "초안 만들어 줘" },
+        { id: "a", role: "assistant", text: "초안입니다" },
+      ],
+    });
+  }
+  const resultOf = (draftId: string) =>
+    state().results.find((r) => r.kind === "draft" && r.draft.draftId === draftId) as
+      | Extract<ChatResult, { kind: "draft" }>
+      | undefined;
+  const unresolvedIds = () => state().unresolvedApprovals.map((u) => u.draftId);
+  const updated = (productId: string) =>
+    frame("action", { type: "PRODUCT_UPDATED", message: "처리됐어요", productId });
+
+  it.each([
+    ["등록", createDraft, "1"],
+    ["수정", updateDraft, "7"],
+    ["삭제", deleteDraft, "7"],
+  ] as const)(
+    "[I-5] %s 승인은 진행 중 pending 이고, 성공 action 을 받아도 성공으로 확정하지 않는다 — 이벤트가 이 초안을 보장하지 못한다",
+    async (_label, draft, productId) => {
+      seed(draft);
+      const stream = openStream();
+      replies.push(stream.reply);
+      const { result } = setup({ channel: "SELLER" });
+
+      act(() => {
+        void result.current.confirm(draft.draftId);
+      });
+      expect(resultOf(draft.draftId)?.approval).toBe("pending");
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      stream.push(updated(productId));
+      stream.push(frame("done", { finishReason: "stop", panel: "refresh" }));
+      stream.close();
+      await waitFor(() => expect(state().isStreaming).toBe(false));
+
+      expect(resultOf(draft.draftId)).toMatchObject({ approval: "closed" });
+      expect(resultOf(draft.draftId)?.settled).toBeUndefined();
+      expect(unresolvedIds()).toEqual([draft.draftId]);
+      expect(lastMessage().text).toContain("처리됐어요"); // 서버 문구는 그대로 보인다
+    },
+  );
+
+  it("[I-5] 요청을 보내기 전에 실패하면 상태를 지워 다시 승인할 수 있다", async () => {
+    seed(updateDraft);
+    vi.mocked(ensureSession).mockRejectedValueOnce(
+      new ApiError({ code: "INTERNAL", message: "" }, 500),
+    );
+    replies.push(sse(DONE));
+    const { result } = setup({ channel: "SELLER" });
+
+    await act(() => result.current.confirm("d-update"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(resultOf("d-update")?.approval).toBeUndefined();
+    expect(unresolvedIds()).toEqual([]);
+
+    await act(() => result.current.confirm("d-update"));
+    expect(requestBody(0)).toMatchObject({ action: "confirm", draftId: "d-update" });
+  });
+
+  it.each([
+    ["500", () => rejected(500)],
+    ["401", () => rejected(401)],
+    ["끊김", () => sse(token("처리 중"))],
+    ["SSE error", () => sse(frame("error", { code: "INTERNAL", message: "", retryable: true }))],
+  ])(
+    "[I-5] 요청을 보낸 뒤 실패하면(%s) unknown 이고, 같은 초안은 다시 승인되지 않는다",
+    async (_label, failure) => {
+      seed(updateDraft);
+      replies.push(failure(), sse(DONE));
+      const { result } = setup({ channel: "SELLER" });
+
+      await act(() => result.current.confirm("d-update"));
+      expect(resultOf("d-update")?.approval).toBe("unknown");
+      expect(unresolvedIds()).toEqual(["d-update"]);
+
+      await act(async () => {
+        await result.current.confirm("d-update");
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("[I-5] 요청을 보낸 뒤 네트워크 오류로 실패해도 unknown 이다", async () => {
+    seed(updateDraft);
+    const { result } = setup({ channel: "SELLER" });
+    fetchMock.mockImplementationOnce(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+
+    await act(() => result.current.confirm("d-update"));
+
+    expect(resultOf("d-update")?.approval).toBe("unknown");
+  });
+
+  it.each([
+    ["keep", { finishReason: "stop", panel: "keep" }],
+    ["refresh", { finishReason: "stop", panel: "refresh" }],
+    ["패널 없음", { finishReason: "stop" }],
+  ])(
+    "[I-5] action 없이 정상 종료(%s)하면 closed 다 — 성공으로 표시하지 않고 다시 승인되지 않는다",
+    async (_label, done) => {
+      seed(createDraft);
+      replies.push(sse(token("이미 처리된 승인 요청입니다"), frame("done", done)), sse(DONE));
+      const { result } = setup({ channel: "SELLER" });
+
+      await act(() => result.current.confirm("d-create"));
+
+      expect(resultOf("d-create")?.approval).toBe("closed");
+      expect(resultOf("d-create")?.settled).toBeUndefined();
+      expect(lastMessage().error).toBeUndefined();
+      expect(unresolvedIds()).toEqual(["d-create"]);
+
+      await act(async () => {
+        await result.current.confirm("d-create");
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("[I-5] 결과 action 뒤에 error 가 와도 서버 오류 문구를 '확인하지 못했어요'로 덮지 않고, 성공으로 표시하지도 않는다", async () => {
+    seed(createDraft);
+    replies.push(
+      sse(updated("1"), frame("error", { code: "INTERNAL", message: "", retryable: true })),
+    );
+    const { result } = setup({ channel: "SELLER" });
+
+    await act(() => result.current.confirm("d-create"));
+
+    expect(lastMessage().error).toBeDefined();
+    expect(lastMessage().error).not.toBe(CONFIRM_MESSAGE);
+    expect(lastMessage()).toMatchObject({ retryable: false });
+    expect(lastMessage().resend).toBeUndefined();
+    expect(resultOf("d-create")?.approval).toBe("closed");
+    expect(resultOf("d-create")?.settled).toBeUndefined();
+  });
+
+  it("[I-5] 서버가 실패 action 을 보내면 rejected 이고 문구를 남기며, 미해결로 세지 않고 다시 승인되지 않는다", async () => {
+    seed(updateDraft);
+    replies.push(
+      sse(
+        frame("action", { type: "PRODUCT_UPDATE_FAILED", message: "반영하지 못했어요", productId: "7" }),
+        frame("done", { finishReason: "stop", panel: "keep" }),
+      ),
+      sse(DONE),
+    );
+    const { result } = setup({ channel: "SELLER" });
+
+    await act(() => result.current.confirm("d-update"));
+
+    expect(resultOf("d-update")).toMatchObject({
+      approval: "rejected",
+      approvalMessage: "반영하지 못했어요",
+    });
+    expect(resultOf("d-update")?.settled).toBeUndefined();
+    expect(unresolvedIds()).toEqual([]);
+
+    await act(async () => {
+      await result.current.confirm("d-update");
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("[I-7] 일반 턴에서 온 다른 상품의 성공 action 은 등록 초안을 바꾸지 않는다", async () => {
+    seed(createDraft);
+    replies.push(sse(updated("999"), DONE));
+    const { result } = setup({ channel: "SELLER" });
+
+    await act(() => result.current.send("다른 질문"));
+
+    expect(resultOf("d-create")?.approval).toBeUndefined();
+    expect(resultOf("d-create")?.settled).toBeUndefined();
+    expect(unresolvedIds()).toEqual([]);
+  });
+
+  it("[I-7] 초안이 둘일 때 승인 턴의 결과는 승인한 초안에만 기록된다", async () => {
+    seed(createDraft, updateDraft);
+    replies.push(sse(updated("999"), DONE));
+    const { result } = setup({ channel: "SELLER" });
+
+    await act(() => result.current.confirm("d-update"));
+
+    expect(resultOf("d-update")?.approval).toBe("closed");
+    expect(resultOf("d-create")?.approval).toBeUndefined();
+    expect(resultOf("d-create")?.settled).toBeUndefined();
+  });
+
+  it("[I-5] 같은 초안을 연달아 눌러도 승인 요청은 한 번만 나간다", async () => {
+    seed(updateDraft);
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result } = setup({ channel: "SELLER" });
+
+    act(() => {
+      void result.current.confirm("d-update");
+      void result.current.confirm("d-update");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    stream.push(DONE);
+    stream.close();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(state().messages.filter((m) => m.role === "assistant")).toHaveLength(2);
+  });
+
+  it("[I-5] 다른 초안의 승인이 진행 중이면 이 초안은 상태가 바뀌지 않고, 끝난 뒤 독립적으로 승인된다", async () => {
+    seed(createDraft, updateDraft);
+    const stream = openStream();
+    replies.push(stream.reply, rejected(500));
+    const { result } = setup({ channel: "SELLER" });
+
+    act(() => {
+      void result.current.confirm("d-create");
+    });
+    act(() => {
+      void result.current.confirm("d-update");
+    });
+    expect(resultOf("d-update")?.approval).toBeUndefined();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    stream.push(frame("done", { finishReason: "stop", panel: "keep" }));
+    stream.close();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(resultOf("d-create")?.approval).toBe("closed");
+    expect(resultOf("d-update")?.approval).toBeUndefined();
+
+    await act(() => result.current.confirm("d-update"));
+
+    expect(requestBody(1)).toMatchObject({ draftId: "d-update" });
+    expect(resultOf("d-update")?.approval).toBe("unknown");
+    expect(resultOf("d-create")?.approval).toBe("closed");
+  });
+
+  it("[I-5] 요청을 보낸 뒤 새 대화를 시작하면 초안은 사라져도 미해결 기록은 남는다 — 처리 여부가 확인된 게 아니다", async () => {
+    seed(updateDraft);
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result } = setup({ channel: "SELLER" });
+    act(() => {
+      void result.current.confirm("d-update");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    act(() => result.current.startNewChat());
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(state().results).toEqual([]);
+    expect(state().messages).toEqual([]);
+    expect(unresolvedIds()).toEqual(["d-update"]);
+  });
+
+  it("[I-5] 요청을 보내기 전에 새 대화로 멈춘 승인은 미해결로 남기지 않는다", async () => {
+    seed(updateDraft);
+    let resolveTicket!: (s: ChatSession) => void;
+    vi.mocked(ensureSession).mockReturnValueOnce(
+      new Promise((r) => {
+        resolveTicket = r;
+      }),
+    );
+    const { result } = setup({ channel: "SELLER" });
+    act(() => {
+      void result.current.confirm("d-update");
+    });
+
+    act(() => result.current.startNewChat());
+    resolveTicket(session());
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(unresolvedIds()).toEqual([]);
+  });
+
+  it("[I-5] 승인 중 화면을 떠나면 unknown 으로 남고, 재진입의 새 대화 뒤에도 미해결 기록은 유지된다", async () => {
+    seed(updateDraft);
+    const stream = openStream();
+    replies.push(stream.reply);
+    const first = setup({ channel: "SELLER" });
+    act(() => {
+      void first.result.current.confirm("d-update");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    first.unmount();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(resultOf("d-update")?.approval).toBe("unknown");
+
+    const second = setup({ channel: "SELLER" });
+    act(() => second.result.current.startNewChat());
+    expect(unresolvedIds()).toEqual(["d-update"]);
+  });
+
+  it("[I-5] 초안과 무관한 질문이 실패해도 초안은 잠기지 않는다 — 말풍선이 아니라 초안 상태로 판단한다", async () => {
+    seed(updateDraft);
+    replies.push(rejected(500), sse(DONE));
+    const { result } = setup({ channel: "SELLER" });
+
+    await act(() => result.current.send("오늘 주문 몇 건이야?"));
+    expect(lastMessage().error).toBeDefined(); // 전제 — 마지막 말풍선은 실패
+
+    expect(resultOf("d-update")?.approval).toBeUndefined();
+    expect(unresolvedIds()).toEqual([]);
+    await act(() => result.current.confirm("d-update"));
+    expect(requestBody(1)).toMatchObject({ action: "confirm", draftId: "d-update" });
+  });
+
+  it("[I-5] 미해결 기록에는 소유자가 남는다", async () => {
+    useAuthStore.setState({ user: { id: "seller-a" } as never });
+    seed(updateDraft);
+    replies.push(rejected(500));
+    const { result } = setup({ channel: "SELLER" });
+
+    await act(() => result.current.confirm("d-update"));
+
+    expect(state().unresolvedApprovals).toEqual([
+      { draftId: "d-update", op: "update", productId: "7", ownerId: "seller-a" },
+    ]);
   });
 });

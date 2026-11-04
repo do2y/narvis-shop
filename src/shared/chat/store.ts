@@ -6,6 +6,8 @@ import type {
   ChatResult,
   ConditionAction,
   ConditionChip,
+  DraftApproval,
+  SellerDraft,
   SellerLane,
   SellerReport,
   SuggestionChip,
@@ -61,6 +63,18 @@ export interface ChatMessage {
   resend?: Resend;
 }
 
+/**
+ * 처리 여부가 불명확한 판매자 승인의 기록 — 이후 같은 대상을 승인할 때 경고하려고 남긴다.
+ * 초안과 달리 새 대화(reset)에서 지우지 않는다: 초안이 사라져도 서버 처리 여부가 확인된 것은 아니다.
+ * ownerId 가 같은 계정에게만 보인다. 메모리에만 있어 새로고침하면 사라진다.
+ */
+export interface UnresolvedApproval {
+  draftId: string;
+  op: SellerDraft["op"];
+  productId: string | null;
+  ownerId: string | null;
+}
+
 export type Resend =
   | { kind: "conditions"; actions: ConditionAction[] }
   | { kind: "confirm"; draftId: string };
@@ -113,6 +127,7 @@ interface ChatState {
    * 저장하지 않는다(chatPersistence 대상 아님).
    */
   activeTurnId: string | null;
+  unresolvedApprovals: UnresolvedApproval[];
   lane: SellerLane | null; // 판매자 챗 화면 전환 신호 — 첫 프레임 meta.lane
   /**
    * 진행 표시 문구(최종 답변 아님, 로딩 표시용). 구매자·판매자 공용 슬롯이다 —
@@ -154,6 +169,14 @@ interface ChatState {
   setResults: (results: ChatResult[]) => void;
   addResult: (result: ChatResult) => void;
   settleDraft: (draftId: string, action: ChatAction) => void;
+  /** 초안의 승인 상태를 바꾼다. undefined 면 지운다 */
+  setDraftApproval: (
+    draftId: string,
+    approval: DraftApproval | undefined,
+    message?: string,
+  ) => void;
+  addUnresolvedApproval: (entry: UnresolvedApproval) => void;
+  removeUnresolvedApproval: (draftId: string) => void;
   dropDraft: (draftId: string) => void;
   setConditions: (chips: ConditionChip[]) => void;
   setSuggestions: (chips: SuggestionChip[]) => void;
@@ -193,6 +216,8 @@ const initial = {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   ...initial,
+  // initial 에 넣지 않는다 — reset(새 대화)이 지우면 안 되는 값이다
+  unresolvedApprovals: [],
 
   setSessionId: (sessionId) => set({ sessionId }),
   setThreadId: (threadId) => set({ threadId }),
@@ -268,6 +293,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
         r.kind === "draft" && r.draft.draftId === draftId
           ? { ...r, settled: action }
           : r,
+      ),
+    })),
+  setDraftApproval: (draftId, approval, message) =>
+    set((s) => ({
+      results: s.results.map((r) =>
+        r.kind === "draft" && r.draft.draftId === draftId
+          ? { ...r, approval, approvalMessage: message }
+          : r,
+      ),
+    })),
+  addUnresolvedApproval: (entry) =>
+    set((s) =>
+      s.unresolvedApprovals.some((u) => u.draftId === entry.draftId)
+        ? {}
+        : { unresolvedApprovals: [...s.unresolvedApprovals, entry] },
+    ),
+  removeUnresolvedApproval: (draftId) =>
+    set((s) => ({
+      unresolvedApprovals: s.unresolvedApprovals.filter(
+        (u) => u.draftId !== draftId,
       ),
     })),
   // 사용자가 수정을 취소하면 실패가 아니라 "없던 일" — 카드를 그냥 걷어낸다(서버 호출 없음)
