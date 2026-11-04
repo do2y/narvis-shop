@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ensureSession } from "@/shared/chat/sessionCoordinator";
+import { ensureSession, refreshTicket } from "@/shared/chat/sessionCoordinator";
 import { useChatStore } from "@/shared/chat/store";
 import type { ChatSession, SellerDraft } from "@/shared/types/chat";
 import SellerChatPage from "./ChatPage";
@@ -124,6 +124,7 @@ beforeEach(() => {
   aiCalls.length = 0;
   vi.stubGlobal("fetch", fetchMock);
   vi.mocked(ensureSession).mockReset().mockResolvedValue(session);
+  vi.mocked(refreshTicket).mockReset().mockResolvedValue(session);
 });
 
 afterEach(async () => {
@@ -134,12 +135,12 @@ afterEach(async () => {
 
 // 초안 턴은 프레임을 **한 청크**로 보낸다. 청크가 나뉘면 draft 와 done 사이에 렌더가 끼어
 // done{replace} 가 카드를 가린다 — 별도 결함(07-issues I-3)이라 이 테스트의 관심(재시도)과 분리한다.
-const draftTurn = () =>
+const draftTurn = (target: SellerDraft = draft) =>
   sse(
     [
       frame("meta", { lane: "product" }),
       frame("token", { text: "초안을 만들었어요." }),
-      frame("draft", draft),
+      frame("draft", target),
       frame("done", { finishReason: "stop", panel: "replace" }),
     ].join(""),
   );
@@ -194,4 +195,54 @@ describe("판매자 등록 카드 — 다시 시도 (H1 · I-4)", () => {
     expect(screen.queryAllByRole("button", { name: /다시 시도/ })).toHaveLength(0);
     expect(aiCalls).toHaveLength(2);
   });
+});
+
+// 등록·수정·삭제 승인은 모두 같은 confirm 경로다 — 카드만 다르다
+const updateDraft: SellerDraft = {
+  draftId: "draft-update",
+  op: "update",
+  productId: "7",
+  changes: [{ field: "price", before: 32000, after: 30000 }],
+  summary: "가격을 30,000원으로 인하",
+};
+const deleteDraft: SellerDraft = {
+  draftId: "draft-delete",
+  op: "delete",
+  productId: "7",
+  changes: [{ field: "name", before: "코튼 셔츠", after: "" }],
+  summary: "상품 삭제",
+};
+
+describe("판매자 승인 — 새 티켓과 401 (I-6)", () => {
+  it.each([
+    ["등록", draft, /상품 등록/],
+    ["수정", updateDraft, /적용/],
+    ["삭제", deleteDraft, /적용/],
+  ] as const)(
+    "[I-6·화면] %s 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+    async (_label, target, confirmButton) => {
+      replies.push(draftTurn(target), rejected(401), sse(frame("done", { finishReason: "stop" })));
+      renderPage();
+      sendFromInput("초안 만들어 줘");
+      fireEvent.click(await screen.findByRole("button", { name: confirmButton }));
+
+      await waitFor(() =>
+        expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
+      );
+
+      expect(ensureSession).toHaveBeenLastCalledWith(
+        "SELLER",
+        session.sessionId,
+        true,
+        { fresh: true },
+      );
+      expect(aiCalls).toHaveLength(2); // 초안 턴 1 + 승인 1
+      expect(aiBody(1)).toMatchObject({ action: "confirm", draftId: target.draftId });
+      expect(refreshTicket).not.toHaveBeenCalled();
+      expect(useChatStore.getState().messages.slice(-1)[0].error).toContain(
+        "반영 여부를 확인",
+      );
+      expect(screen.queryAllByRole("button", { name: /다시 시도/ })).toHaveLength(0);
+    },
+  );
 });

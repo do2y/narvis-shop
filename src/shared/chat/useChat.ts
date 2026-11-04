@@ -138,10 +138,19 @@ export function useChat({
   // sessionId 는 항상 발급 응답값을 쓴다(BE·Redis 발급, sliding TTL) — 클라이언트가 만들지 않는다.
   // 승계 실패가 미해결이면 새 세션 발급을 막는다(allowCreate=false) — 조용히 새로
   // 만들면 화면엔 이전 대화가 있는데 AI 는 기억 못 하는 어긋남이 생긴다.
-  const acquireTicket = useCallback((): Promise<ChatSession> => {
-    const { sessionId, claimFailure } = useChatStore.getState();
-    return ensureSession(channel, sessionId, !claimFailure);
-  }, [channel]);
+  //
+  // fresh: 판매자 승인은 캐시를 건너뛰고 티켓을 새로 받는다(I-6) — 만료 직전 티켓으로 거부될 일을
+  // 줄이기 위해서다. 승인은 401 이어도 자동으로 다시 보내지 않으므로 그 거부가 곧 "확인 필요"가 된다.
+  const acquireTicket = useCallback(
+    (fresh: boolean): Promise<ChatSession> => {
+      const { sessionId, claimFailure } = useChatStore.getState();
+      const allowCreate = !claimFailure;
+      return fresh
+        ? ensureSession(channel, sessionId, allowCreate, { fresh: true })
+        : ensureSession(channel, sessionId, allowCreate);
+    },
+    [channel],
+  );
 
   // 다른 탭이 세션을 발급·갱신하면 이 탭의 표시용 sessionId 도 따라간다.
   // (정본은 코디네이터의 localStorage 캐시 — 여기선 스토어를 동기화만 한다.)
@@ -254,7 +263,7 @@ export function useChat({
       try {
         // 1) 티켓 확보(Spring REST) — 코디네이터가 캐시·락으로 탭 간 단일화해 돌려준다.
         //    sessionId 는 서버 발급값을 저장·사용(재발급도 같은 sessionId 를 돌려준다).
-        const session = await acquireTicket();
+        const session = await acquireTicket(resend?.kind === "confirm");
         // 확보를 기다리는 사이 새 대화가 시작됐으면 여기서 멈춘다 — 요청을 보내지 않는다
         if (!isCurrent()) return;
         setSessionId(session.sessionId);
@@ -290,6 +299,10 @@ export function useChat({
         } catch (err) {
           // 401(티켓 만료) — 코디네이터 경유로 재발급(같은 락)하고 1회만 재시도.
           // 갱신된 티켓은 브로드캐스트로 다른 탭에도 공유된다.
+          //
+          // 판매자 승인은 자동으로 다시 보내지 않는다 — 401 이 "처리 전 거부"라는 근거가 서버 코드 확인이 아니라
+          // 감사 문서뿐이고, 다시 나간 승인은 등록·수정·삭제를 실행한다. catch 에서 확인 안내로 끝난다(I-6).
+          if (resend?.kind === "confirm") throw err;
           if (err instanceof StreamStartError && err.status === 401) {
             const fresh = await refreshTicket(channel, session.sessionId);
             if (!isCurrent()) return;

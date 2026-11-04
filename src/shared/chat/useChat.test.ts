@@ -1021,7 +1021,7 @@ describe("useChat — 말풍선 없는 턴의 재시도 (H1)", () => {
   it.each([
     ["시작 거부 500", () => [rejected(500)]],
     ["시작 거부 403", () => [rejected(403)]],
-    ["재발급 뒤에도 401", () => [rejected(401), rejected(401)]],
+    ["시작 거부 401", () => [rejected(401)]],
     ["종결 없이 끊김", () => [sse(token("처리 중…"))]],
     [
       "SSE error (서버가 retryable:true 라고 해도)",
@@ -1184,5 +1184,125 @@ describe("useChat — 말풍선 없는 턴의 재시도 (H1)", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(state().messages.map((m) => m.id)).toEqual(["u", "a1", "a2"]);
+  });
+});
+
+/**
+ * I-6 — 판매자 승인은 전송 직전에 새 티켓을 확보하고, 401 이어도 자동으로 다시 보내지 않는다.
+ * 새 티켓은 401 가능성을 줄일 뿐 없애지 못한다(서버 키 교체·시계 차이 등). 그래서 401 뒤의 처리가 본체다.
+ * 일반 발화·칩 제거의 자동 재발급·재전송은 그대로다.
+ */
+describe("useChat — 판매자 승인의 티켓과 401 (I-6)", () => {
+  const CONFIRM_MESSAGE =
+    "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.";
+
+  async function draftTurn() {
+    replies.push(sse(token("초안입니다"), DONE));
+    const hook = setup({ channel: "SELLER" });
+    await act(() => hook.result.current.send("상품 등록해줘"));
+    vi.mocked(ensureSession).mockClear();
+    fetchMock.mockClear();
+    return hook;
+  }
+
+  it("[I-6] 승인은 캐시를 건너뛰고 기존 세션의 티켓을 새로 받은 뒤, 요청을 정확히 한 번 보낸다", async () => {
+    const { result } = await draftTurn();
+    vi.mocked(ensureSession).mockResolvedValueOnce(session("fresh-ticket"));
+    replies.push(sse(token("반영했습니다"), DONE));
+
+    await act(() => result.current.confirm("draft-1"));
+
+    expect(ensureSession).toHaveBeenCalledTimes(1);
+    expect(ensureSession).toHaveBeenCalledWith("SELLER", "session-1", true, {
+      fresh: true,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(requestAuth(0)).toBe("Bearer fresh-ticket");
+    expect(vi.mocked(ensureSession).mock.invocationCallOrder[0]).toBeLessThan(
+      fetchMock.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("[I-6] 승인이 401 을 받으면 재발급·재전송 없이 끝나고, 처리 여부를 단정하지 않고 안내한다", async () => {
+    const { result } = await draftTurn();
+    replies.push(rejected(401, "TOKEN_EXPIRED"), sse(DONE));
+
+    await act(() => result.current.confirm("draft-1"));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(refreshTicket).not.toHaveBeenCalled();
+    expect(lastMessage()).toMatchObject({
+      error: CONFIRM_MESSAGE,
+      retryable: false,
+    });
+    expect(lastMessage().resend).toBeUndefined();
+
+    act(() => result.current.retry(lastMessage().id));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("[I-6] 새 티켓 확보가 실패하면 요청을 보내지 않고, 다시 시도하면 또 새 티켓으로 시작한다", async () => {
+    const { result } = await draftTurn();
+    vi.mocked(ensureSession).mockRejectedValueOnce(
+      new ApiError({ code: "INTERNAL", message: "" }, 500),
+    );
+
+    await act(() => result.current.confirm("draft-1"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(lastMessage().resend).toEqual({ kind: "confirm", draftId: "draft-1" });
+
+    replies.push(sse(DONE));
+    await act(async () => {
+      result.current.retry(lastMessage().id);
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    });
+    expect(ensureSession).toHaveBeenLastCalledWith("SELLER", "session-1", true, {
+      fresh: true,
+    });
+    expect(requestBody(0)).toMatchObject({ action: "confirm", draftId: "draft-1" });
+  });
+
+  it("[I-6] 승계 실패가 미해결이면 승인에서도 새 세션 생성을 막으라고 알린다", async () => {
+    const { result } = await draftTurn();
+    useChatStore.setState({
+      sessionId: null,
+      claimFailure: { sessionId: "guest-1", retrying: false },
+    });
+    vi.mocked(ensureSession).mockRejectedValueOnce(new SessionClaimPendingError());
+
+    await act(() => result.current.confirm("draft-1"));
+
+    expect(ensureSession).toHaveBeenCalledWith("SELLER", null, false, { fresh: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(lastMessage().retryable).toBe(false);
+  });
+
+  it("[I-6] 일반 발화는 캐시 경로를 쓰고 401 이면 종전대로 재발급 후 다시 보낸다", async () => {
+    replies.push(rejected(401), sse(token("답"), DONE));
+    const { result } = setup();
+
+    await act(() => result.current.send("이거 담아줘"));
+
+    expect(ensureSession).toHaveBeenCalledWith("SHOPPING", null, true);
+    expect(refreshTicket).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(requestBody(1)).toEqual(requestBody(0));
+    expect(lastMessage().error).toBeUndefined();
+  });
+
+  it("[I-6] 칩 제거도 캐시 경로를 쓰고 401 이면 종전대로 재발급 후 다시 보낸다", async () => {
+    replies.push(rejected(401), sse(DONE));
+    const { result } = setup();
+
+    await act(async () => {
+      result.current.removeCondition("category", "상의");
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(state().isStreaming).toBe(false));
+    });
+
+    expect(ensureSession).toHaveBeenCalledWith("SHOPPING", null, true);
+    expect(refreshTicket).toHaveBeenCalledTimes(1);
+    expect(requestBody(1)).toEqual(requestBody(0));
+    expect(lastMessage().error).toBeUndefined();
   });
 });

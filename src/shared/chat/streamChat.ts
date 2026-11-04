@@ -38,7 +38,7 @@ export class StreamInterruptedError extends Error {
  * 채팅 SSE 스트림 소비 유틸.
  * POST + JSON body이므로 EventSource가 아닌 fetch 스트리밍으로 파싱한다.
  * 자동 재시도 금지(중복 담기 방지) — 실패 시 호출부에서 재시도 버튼 제공.
- * 예외: 401(티켓 만료)만 스트림 시작 전이라 재발급 후 1회 재시도 안전(호출부 처리).
+ * 예외: 401(티켓 만료)은 호출부가 재발급 후 1회 재시도한다 — 단 판매자 승인은 다시 보내지 않는다(useChat).
  *
  * 인증은 로그인 AT 가 아니라 세션 발급으로 받은 단명 streamTicket 을 싣는다.
  * URL 도 세션 발급 응답의 llmSseUrl 을 그대로 쓴다(BE 설정값) — 여기서 URL 을 만들지 않는다.
