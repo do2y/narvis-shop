@@ -278,6 +278,19 @@ retry()  →  dropLastExchange()          (store.ts:199-213)
 > 테스트 수: useChat 42 · chatEventHandler 16 · MessageList 3 · 판매자 ChatPage 1.
 > ⚠️ H1 2단계가 `useChat.ts`의 catch·retry 부근을 바꾸므로, 실행 시점에 대상 문자열을 다시 확인함(실행기가 0회·2회 이상 일치면 "무효"로 걸러냄).
 >
+> **I-6 구현 후(2026-11-04, 작업 트리·커밋 전 기준) — 실행 시 이 표를 씀.** 검출 예측 아님.
+> | # | 현재 대상 | 비고 |
+> |---|---|---|
+> | D1 | `store.ts` `endTurn`의 `progress: null` | 변화 없음 |
+> | D2 | `useChat.ts:147` `const allowCreate = !claimFailure;` → `true` | **대상 변경** — 일반·승인 두 호출이 함께 씀. 관련 테스트에 `[I-6] 승계 실패가 미해결이면…`(호출 인자) 추가 |
+> | D3 | `useChat.ts:309` `setSessionId(fresh.sessionId)` | **승인 턴은 이 줄에 오지 않음.** 지나가는 테스트: `[R2]` · `[C3]` · `[A2]` · `[I-6] 일반 발화…` · `[I-6] 칩 제거…`(요청 수·body·`error`) |
+> | D4 | `useChat.ts:357` `StreamInterruptedError` 분기 | 변화 없음 |
+> | D5 | `useChat.ts:254` `setLane(null);` | 변화 없음 |
+> | D6 | `useChat.ts:435` `...(screen ? { screen } : {}),` | 변화 없음 |
+> | D7 | `useChat.ts:531` `abortRef.current?.abort();` | 변화 없음 |
+> | D8 | `chatErrors.ts` `case 429` | `[H1] 칩 제거가 다시 해도 같은 결과인 실패(409)`는 409라 이 값을 보지 않음 |
+> 테스트 수: useChat 63 · sessionCoordinator 19 · MessageList 5 · 판매자 ChatPage 5.
+>
 > **H1 2단계(작업 트리, 커밋 전) 이후 확인 결과**: D1~D8의 **대상 문자열은 그대로**이고 줄 번호만 밀림 — D1 `store.ts:286` · D2 `useChat.ts:143` · D3 `:296`(첫 발급 `:260`) · D4 `:343` · D5 `:245` · D6 `:421` · D7 `:517` · D8 변동 없음. 관련 테스트 추가분(보는 값만): D3 — `[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(재발급 뒤에도 401)`(오류 문구·`retryable`·`resend`) · D4 — `[H1] …(종결 없이 끊김)`(같은 값). 테스트 수: useChat 56 · MessageList 5 · 판매자 ChatPage 2.
 
 | # | 변경 위치 (현재) | 변이 | 바뀌는 동작 | 사용자 영향 | 관련 테스트 (보는 값) |

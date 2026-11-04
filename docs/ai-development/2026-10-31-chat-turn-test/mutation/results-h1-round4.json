@@ -1,0 +1,253 @@
+{
+  "tests": [
+    "src/shared/chat/useChat.test.ts",
+    "src/shared/chat/MessageList.test.tsx",
+    "src/features/seller/ChatPage.test.tsx"
+  ],
+  "restored": {
+    "src/shared/chat/useChat.ts": {
+      "originalSha": "529a7627f6f8",
+      "restoredSha": "529a7627f6f8",
+      "identical": true
+    },
+    "src/shared/chat/retryPolicy.ts": {
+      "originalSha": "526e2ce9f9b6",
+      "restoredSha": "526e2ce9f9b6",
+      "identical": true
+    },
+    "src/features/seller/ChatPage.tsx": {
+      "originalSha": "fef74a28b75c",
+      "restoredSha": "fef74a28b75c",
+      "identical": true
+    }
+  },
+  "restoredIdentical": true,
+  "baselineTotal": 73,
+  "results": [
+    {
+      "id": "F1",
+      "scenario": "H1",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "요청 시작 표시를 하지 않음 (요청을 보낸 뒤의 실패를 보내기 전 실패로 오인)",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[I-4·카드] 승인 요청이 나간 뒤 실패하면(500) 카드와 말풍선 어디에도 다시 시도가 없고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.다시 시도초안 닫기' to contain '상품 목록에서 반영 여부를 확인'"
+        },
+        {
+          "name": "[I-6·화면] 등록 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.' to contain '반영 여부를 확인'"
+        },
+        {
+          "name": "[I-6·화면] 수정 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.' to contain '반영 여부를 확인'"
+        },
+        {
+          "name": "[I-6·화면] 삭제 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.' to contain '반영 여부를 확인'"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(시작 거부 500) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(7) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(시작 거부 403) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(시작 거부 401) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(7) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(종결 없이 끊김) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(SSE error (서버가 retryable:true 라고 해도)) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 네트워크 오류로 실패해도 다시 보내지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[I-6] 승인이 401 을 받으면 재발급·재전송 없이 끝나고, 처리 여부를 단정하지 않고 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(7) } to match object { …(2) }"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "F3",
+      "scenario": "H1",
+      "target": "src/shared/chat/retryPolicy.ts",
+      "desc": "재전송 정보 형식 확인 제거 (객체면 무엇이든 재전송 정보로 받음)",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[H1] 형식이 깨진 재전송 정보 이면 다시 보내지도, 실패 말풍선을 지우지도 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ 'u', 'a1', …(1) ] to deeply equal [ 'u', 'a1', 'a2' ]"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "F4",
+      "scenario": "H1",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "실패가 아닌 턴에도 재전송 정책을 적용 (성공한 턴을 건드림)",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[H1] 판매자 승인이 성공하면 실패 표시도 재전송 정보도 남지 않는다 — 요청을 보낸 턴이라도 성공은 성공이다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확…' to be undefined"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "F5",
+      "scenario": "I-4·카드",
+      "target": "src/features/seller/ChatPage.tsx",
+      "desc": "판매자 카드가 canRetry 를 보지 않고 항상 다시 시도 버튼을 받음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[I-4·카드] 승인 요청이 나간 뒤 실패하면(500) 카드와 말풍선 어디에도 다시 시도가 없고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ …(1) ] to have a length of +0 but got 1"
+        },
+        {
+          "name": "[I-6·화면] 등록 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ …(1) ] to have a length of +0 but got 1"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "F6",
+      "scenario": "H1",
+      "target": "src/shared/chat/retryPolicy.ts",
+      "desc": "canRetry 가 retryable:false 를 보지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[MessageList] 재시도해도 같은 결과인 실패(retryable:false)는 마지막이어도 버튼이 없다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(1) ] to have a length of +0 but got 1"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "F7",
+      "scenario": "H1",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "칩 제거 재전송 정보를 retryable:false 실패에도 기록",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[H1] 재전송 정보는 다시 시도할 수 있는 실패에만 남긴다 — 409 처럼 버튼이 없는 실패엔 저장하지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { kind: 'conditions', …(1) } to be undefined"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "F8",
+      "scenario": "H1",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "판매자 승인이 요청을 보낸 뒤 실패해도 재전송 허용",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[I-4·카드] 승인 요청이 나간 뒤 실패하면(500) 카드와 말풍선 어디에도 다시 시도가 없고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.다시 시도초안 닫기' to contain '상품 목록에서 반영 여부를 확인'"
+        },
+        {
+          "name": "[I-6·화면] 등록 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.' to contain '반영 여부를 확인'"
+        },
+        {
+          "name": "[I-6·화면] 수정 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.' to contain '반영 여부를 확인'"
+        },
+        {
+          "name": "[I-6·화면] 삭제 승인은 새 티켓을 받아 한 번만 보내고, 401 이면 다시 보내지 않으며 다시 시도도 주지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '응답을 받지 못했어요. 다시 시도해 주세요.' to contain '반영 여부를 확인'"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(시작 거부 500) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(7) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(시작 거부 403) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(시작 거부 401) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(7) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(종결 없이 끊김) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 실패하면(SSE error (서버가 retryable:true 라고 해도)) 다시 보내지 않고 반영 여부 확인을 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[H1] 판매자 승인이 요청을 보낸 뒤 네트워크 오류로 실패해도 다시 보내지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(2) }"
+        },
+        {
+          "name": "[I-6] 승인이 401 을 받으면 재발급·재전송 없이 끝나고, 처리 여부를 단정하지 않고 안내한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(7) } to match object { …(2) }"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "F9",
+      "scenario": "H1·A",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "[사후] 정상 종료 경로의 재전송 정책이 현재 턴인지 보지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[H1·A] 새 대화로 버려진 칩 제거 턴이 뒤늦게 끝나도, 새 대화의 실패 말풍선에 재전송 정보를 붙이지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { kind: 'conditions', …(1) } to be undefined"
+        }
+      ],
+      "byExpectedTest": true
+    }
+  ]
+}
