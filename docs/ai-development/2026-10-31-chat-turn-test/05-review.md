@@ -278,6 +278,8 @@ retry()  →  dropLastExchange()          (store.ts:199-213)
 > 테스트 수: useChat 42 · chatEventHandler 16 · MessageList 3 · 판매자 ChatPage 1.
 > ⚠️ H1 2단계가 `useChat.ts`의 catch·retry 부근을 바꾸므로, 실행 시점에 대상 문자열을 다시 확인함(실행기가 0회·2회 이상 일치면 "무효"로 걸러냄).
 >
+> **I-5 구현 후(`2f2fced`) 줄 번호**: D1 `store.ts:331` · D2 `useChat.ts:150` · D3 `:316` · D4 `:369` · D5 `:257` · D6 `:455` · D7 `:561` · D8 변동 없음. 대상 문자열은 그대로. 테스트 수: useChat 86 · 핸들러 16 · 판매자 ChatPage 22. 검출 예측 아님.
+>
 > **I-6 구현 후(2026-11-04, 작업 트리·커밋 전 기준) — 실행 시 이 표를 씀.** 검출 예측 아님.
 > | # | 현재 대상 | 비고 |
 > |---|---|---|

@@ -1,0 +1,133 @@
+{
+  "tests": [
+    "src/shared/chat/useChat.test.ts",
+    "src/shared/chat/MessageList.test.tsx",
+    "src/features/seller/ChatPage.test.tsx"
+  ],
+  "restored": {
+    "src/shared/chat/retryPolicy.ts": {
+      "originalSha": "526e2ce9f9b6",
+      "restoredSha": "526e2ce9f9b6",
+      "identical": true
+    },
+    "src/shared/chat/store.ts": {
+      "originalSha": "2ab558853060",
+      "restoredSha": "2ab558853060",
+      "identical": true
+    },
+    "src/shared/chat/MessageList.tsx": {
+      "originalSha": "ce48b582c007",
+      "restoredSha": "ce48b582c007",
+      "identical": true
+    },
+    "src/features/seller/ChatPage.tsx": {
+      "originalSha": "d9972fa6604f",
+      "restoredSha": "d9972fa6604f",
+      "identical": true
+    }
+  },
+  "restoredIdentical": true,
+  "baselineTotal": 112,
+  "results": [
+    {
+      "id": "E1",
+      "scenario": "B1",
+      "target": "src/shared/chat/retryPolicy.ts",
+      "desc": "retry 의 스트리밍 중 가드 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[MessageList] 응답 중에는 마지막 말풍선이 실패로 표시돼 있어도 버튼이 없다 — 그때 눌러도 재시도되지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(1) ] to have a length of +0 but got 1"
+        },
+        {
+          "name": "[B1] 실패가 표시됐어도 턴이 아직 끝나지 않았으면(카드 조회 대기) 재시도하지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [] to deeply equal [ 'user', 'assistant' ]"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "E2",
+      "scenario": "B4",
+      "target": "src/shared/chat/retryPolicy.ts",
+      "desc": "retry 의 '대상이 마지막 말풍선인가' 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[MessageList] 마지막 실패 말풍선에만 버튼을 그리고, 누르면 그 말풍선의 id 를 넘긴다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ <button …(2)></button>, …(1) ] to have a length of 1 but got 2"
+        },
+        {
+          "name": "[B4] 실패가 연달아 있을 때 위쪽 실패의 id 로 재시도하면 아무것도 보내지 않는다 — 마지막 실패가 대신 나가면 안 된다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected \"vi.fn()\" to be called 2 times, but got 3 times"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "E3",
+      "scenario": "B",
+      "target": "src/shared/chat/store.ts",
+      "desc": "dropLastExchange 의 '마지막이 실패인가' 확인 제거",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[B] dropLastExchange 는 마지막 말풍선이 실패가 아니면 아무것도 지우지 않는다 — 응답 중인 턴을 지키는 마지막 방어선",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { text: '질문', imageUrls: undefined } to be null"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "E4",
+      "scenario": "MessageList",
+      "target": "src/shared/chat/MessageList.tsx",
+      "desc": "재시도 버튼을 마지막 말풍선으로 제한하지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[MessageList] 마지막 실패 말풍선에만 버튼을 그리고, 누르면 그 말풍선의 id 를 넘긴다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ <button …(2)></button>, …(1) ] to have a length of 1 but got 2"
+        },
+        {
+          "name": "[MessageList] 위쪽 실패 말풍선은 버튼 없이 실패 문구를 그대로 보여준다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(1) ] to have a length of +0 but got 1"
+        },
+        {
+          "name": "[MessageList] 응답 중에는 마지막 말풍선이 실패로 표시돼 있어도 버튼이 없다 — 그때 눌러도 재시도되지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(1) ] to have a length of +0 but got 1"
+        },
+        {
+          "name": "[MessageList] 말풍선 없는 턴의 실패는 다시 보낼 정보가 있을 때만 버튼을 그린다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ Array(1) ] to have a length of +0 but got 1"
+        }
+      ],
+      "byExpectedTest": true
+    },
+    {
+      "id": "E5",
+      "scenario": "B·카드",
+      "target": "src/features/seller/ChatPage.tsx",
+      "desc": "[사후] 등록 카드 재시도가 마지막 말풍선이 아닌 대상을 넘김",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[H1·카드] 승인 요청이 나가기 전에 실패하면(세션 확보 실패) 카드의 다시 시도가 같은 초안을 다시 승인한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected [ { method: 'POST', …(3) } ] to have a length of 2 but got 1"
+        }
+      ],
+      "byExpectedTest": false
+    }
+  ]
+}
