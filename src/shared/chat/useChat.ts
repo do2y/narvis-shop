@@ -81,7 +81,12 @@ interface UseChatOptions {
    * 스트림 종료 시 우측 패널 조치(판매자 전용). done.panel 을 그대로 전달한다.
    * replace(패널 교체) / keep(유지) / refresh(목록 재조회). error 로 끝나면 호출되지 않는다.
    */
-  onDone?: (panel: SellerPanel | undefined) => void;
+  onDone?: (
+    panel: SellerPanel | undefined,
+    turn: { draftArrived: boolean },
+  ) => void;
+  /** 새 초안 프레임을 받은 순간 */
+  onDraft?: () => void;
   /**
    * 전송 시점의 화면 맥락을 반환하는 함수(사이드 채팅 전용).
    * 값이 아닌 함수로 받는 이유: 사용자가 목록을 이동하며 대화하므로
@@ -94,6 +99,7 @@ export function useChat({
   channel,
   onAction,
   onDone,
+  onDraft,
   getScreenContext,
 }: UseChatOptions) {
   // 이 훅이 실제로 "구독"해야 하는 값은 isStreaming 하나다.
@@ -129,10 +135,12 @@ export function useChat({
   // 콜백들은 매 렌더 갱신되도록 ref로 보관(send의 deps를 안정적으로 유지)
   const onActionRef = useRef(onAction);
   const onDoneRef = useRef(onDone);
+  const onDraftRef = useRef(onDraft);
   const getScreenContextRef = useRef(getScreenContext);
   useEffect(() => {
     onActionRef.current = onAction;
     onDoneRef.current = onDone;
+    onDraftRef.current = onDraft;
     getScreenContextRef.current = getScreenContext;
   });
 
@@ -285,7 +293,8 @@ export function useChat({
         // 콜백은 ref 로 넘겨 최신 것을 부른다(send 의 deps 를 안정적으로 유지).
         const turn = createTurnHandler({
           onAction: (action) => onActionRef.current?.(action),
-          onDone: (panel) => onDoneRef.current?.(panel),
+          onDone: (panel, turn) => onDoneRef.current?.(panel, turn),
+          onDraft: () => onDraftRef.current?.(),
           isCurrent,
           confirmingDraftId,
         });

@@ -8,7 +8,6 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ensureSession,
@@ -21,7 +20,6 @@ import type { ChatSession, DraftApproval, SellerDraft } from "@/shared/types/cha
 import SellerChatPage from "./ChatPage";
 import { ProductCreateCard } from "./components/ProductCreateCard";
 import { ProductDiffCard } from "./components/ProductDiffCard";
-import { SellerWorkspace } from "./components/SellerWorkspace";
 
 /**
  * 판매자 등록 카드의 "다시 시도" 연결 — 화면 전체를 렌더해 실제 배선을 지난다.
@@ -146,23 +144,75 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-// 초안 턴은 프레임을 **한 청크**로 보낸다. 청크가 나뉘면 draft 와 done 사이에 렌더가 끼어
-// done{replace} 가 카드를 가린다 — 별도 결함(07-issues I-3)이라 이 테스트의 관심(재시도)과 분리한다.
-const draftTurn = (target: SellerDraft = draft) =>
-  sse(
-    [
-      frame("meta", { lane: "product" }),
-      frame("token", { text: "초안을 만들었어요." }),
-      frame("draft", target),
-      frame("done", { finishReason: "stop", panel: "replace" }),
-    ].join(""),
+/**
+ * 청크 사이에 실제로 시간을 둔다 — 이 틈에 React 가 렌더·이펙트를 실행한다.
+ * 스트림을 미리 채우면 읽는 쪽이 쉬지 않아 렌더가 끼어들지 못하므로 읽을 때마다 하나씩 내준다.
+ */
+function chunked(chunks: string[]): Response {
+  const queue = [...chunks];
+  const stream = new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        await new Promise((r) => setTimeout(r, 5));
+        const next = queue.shift();
+        if (next === undefined) controller.close();
+        else controller.enqueue(encoder.encode(next));
+      },
+    },
+    { highWaterMark: 0 },
   );
+  return new Response(stream, { status: 200 });
+}
+
+/** 서버가 언제 보낼지 테스트가 정하는 스트림 */
+function heldStream() {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const stream = new ReadableStream<Uint8Array>({
+    start: (c) => {
+      controller = c;
+    },
+  });
+  return {
+    response: new Response(stream, { status: 200 }),
+    push: (text: string) => controller.enqueue(encoder.encode(text)),
+    close: () => controller.close(),
+  };
+}
+
+type Panel = "replace" | "keep" | "refresh";
+const draftFrames = (target: SellerDraft, panel: Panel) => [
+  frame("meta", { lane: "product" }),
+  frame("token", { text: "초안을 만들었어요." }),
+  frame("draft", target),
+  frame("done", { finishReason: "stop", panel }),
+];
+const CHUNKINGS: [string, (frames: string[]) => string[]][] = [
+  ["한 청크", (frames) => [frames.join("")]],
+  ["프레임별 청크", (frames) => frames],
+  [
+    "draft 와 done 사이에만 경계",
+    (frames) => [frames.slice(0, -1).join(""), frames[frames.length - 1]],
+  ],
+];
+const draftTurn = (target: SellerDraft = draft, panel: Panel = "replace") =>
+  chunked(draftFrames(target, panel));
+
+/** 응답이 끝나 눌 수 있게 된 버튼 — 스트리밍 중에는 카드 버튼이 비활성이다 */
+async function readyButton(name: RegExp) {
+  return waitFor(() => {
+    const button = screen.queryByRole("button", { name }) as HTMLButtonElement | null;
+    expect(button).not.toBeNull();
+    expect(button!.disabled).toBe(false);
+    return button!;
+  });
+}
+const turnEnded = () =>
+  waitFor(() => expect(useChatStore.getState().isStreaming).toBe(false));
 
 /** 초안을 받고 카드의 "상품 등록"을 누른 뒤, 오류 상태가 된 카드의 영역을 돌려준다 */
 async function confirmFromCard() {
   sendFromInput("이 셔츠 등록해 줘");
-  await screen.findByText("코튼 오버핏 셔츠");
-  fireEvent.click(screen.getByRole("button", { name: /상품 등록/ }));
+  fireEvent.click(await readyButton(/상품 등록/));
   await waitFor(() =>
     expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
   );
@@ -175,9 +225,7 @@ async function confirmFromCard() {
   return cardMessage!.parentElement!;
 }
 
-// 카드가 오류 상태로 보이는 실제 경로는 "등록 승인 실패"뿐이다. 수정 요청은 입력창 전송이
-// 패널을 "auto"로 돌려 카드가 가려지므로(07-issues I-3과 같은 원인) 카드 버튼에 닿지 않는다.
-// 서버가 등록 실패를 action 으로 알리는 경우도 done{keep} 이 패널을 목록으로 돌려 카드가 보이지 않는다.
+// 서버가 등록 실패를 action 으로 알리는 경우는 done{keep} 이 패널을 목록으로 돌려 카드가 보이지 않는다.
 describe("판매자 등록 카드 — 다시 시도 (H1 · I-4)", () => {
   it("[H1·카드] 승인 요청이 나가기 전에 실패하면(세션 확보 실패) 카드의 다시 시도가 같은 초안을 다시 승인한다", async () => {
     vi.mocked(ensureSession)
@@ -255,7 +303,7 @@ describe("판매자 승인 — 새 티켓과 401 (I-6)", () => {
       replies.push(draftTurn(target), rejected(401), sse(frame("done", { finishReason: "stop" })));
       renderPage();
       sendFromInput("초안 만들어 줘");
-      fireEvent.click(await screen.findByRole("button", { name: confirmButton }));
+      fireEvent.click(await readyButton(confirmButton));
 
       await waitFor(() =>
         expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
@@ -293,20 +341,11 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
   const keepDone = () =>
     sse(token2("안내 문구"), frame("done", { finishReason: "stop", panel: "keep" }));
 
-  /**
-   * 이전 초안을 치운다. 패널은 초안 **수가 늘 때만** 결과로 전환해, 교체된 새 초안은 카드가 보이지 않는다(07-issues I-3).
-   * 별도 결함이라 이 테스트의 관심(경고)과 분리하려고, 새 초안을 받기 전에 이전 초안을 없앤다.
-   */
-  const closeOldDraft = () =>
-    act(() => {
-      useChatStore.setState({ results: [] });
-    });
-
   /** 초안을 받아 승인까지 누른다 */
   async function approve(target: SellerDraft, button: RegExp) {
     sendFromInput("초안 만들어 줘");
-    fireEvent.click(await screen.findByRole("button", { name: button }));
-    await waitFor(() => expect(useChatStore.getState().isStreaming).toBe(false));
+    fireEvent.click(await readyButton(button));
+    await turnEnded();
     await waitFor(() =>
       expect(aiCalls.some((c) => JSON.parse(c.body as string).draftId === target.draftId)).toBe(true),
     );
@@ -342,7 +381,7 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
     renderPage();
 
     sendFromInput("가격 내려 줘");
-    fireEvent.click(await screen.findByRole("button", { name: /적용/ }));
+    fireEvent.click(await readyButton(/적용/));
     await waitFor(() =>
       expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
     );
@@ -367,10 +406,9 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
     renderPage();
     await approve(updateDraft, /적용/);
 
-    closeOldDraft();
     sendFromInput("다시 만들어 줘");
-    expect(await screen.findByText(WARNING)).toBeTruthy();
-    fireEvent.click(await screen.findByRole("button", { name: /적용/ }));
+    await waitFor(() => expect(screen.queryByText(WARNING)).not.toBeNull());
+    fireEvent.click(await readyButton(/적용/));
 
     // 1단계 — 아직 나가지 않는다
     expect(screen.queryByRole("button", { name: /확인했고 승인/ })).not.toBeNull();
@@ -380,7 +418,7 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
     fireEvent.click(screen.getByRole("button", { name: /돌아가기/ }));
     expect(aiCalls).toHaveLength(3);
 
-    fireEvent.click(await screen.findByRole("button", { name: /적용/ }));
+    fireEvent.click(await readyButton(/적용/));
     fireEvent.click(screen.getByRole("button", { name: /확인했고 승인/ }));
 
     await waitFor(() => expect(aiCalls).toHaveLength(4));
@@ -399,10 +437,9 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
     await approve(updateDraft, /적용/);
     expect(useChatStore.getState().unresolvedApprovals).toHaveLength(1);
 
-    closeOldDraft();
     sendFromInput("다시 만들어 줘");
 
-    expect(await screen.findByText(WARNING)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText(WARNING)).not.toBeNull());
   });
 
   it("[I-5·화면] 등록은 대상을 구분할 id 가 없어 미해결 등록이 있으면 새 등록 초안에 경고한다", async () => {
@@ -410,10 +447,9 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
     renderPage();
     await approve(draft, /상품 등록/);
 
-    closeOldDraft();
     sendFromInput("다시 만들어 줘");
 
-    expect(await screen.findByText(WARNING)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText(WARNING)).not.toBeNull());
   });
 
   it("[I-5·화면] 다른 상품의 새 초안에는 경고하지 않고 바로 승인된다", async () => {
@@ -426,14 +462,50 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
     renderPage();
     await approve(updateDraft, /적용/);
 
-    closeOldDraft();
     sendFromInput("다른 상품 가격 내려 줘");
-    const apply = await screen.findByRole("button", { name: /적용/ });
+    const apply = await readyButton(/적용/);
     expect(screen.queryByText(WARNING)).toBeNull();
     fireEvent.click(apply);
 
     await waitFor(() => expect(aiCalls).toHaveLength(4));
     expect(aiBody(3)).toMatchObject({ draftId: otherProduct.draftId });
+  });
+
+  it("[I-5·화면] 잠긴 초안을 그대로 둔 채 등록 초안을 받아도 경고와 2단계 확인을 거쳐 승인된다", async () => {
+    replies.push(
+      draftTurn(draft),
+      rejected(500),
+      draftTurn(newCreate),
+      sse(frame("done", { finishReason: "stop", panel: "refresh" })),
+    );
+    renderPage();
+    await approve(draft, /상품 등록/);
+    expect(useChatStore.getState().results).toHaveLength(1); // 전제 — 이전 초안이 남아 있다
+
+    sendFromInput("다시 만들어 줘");
+    await waitFor(() => expect(screen.queryByText(WARNING)).not.toBeNull());
+    fireEvent.click(await readyButton(/상품 등록/));
+    expect(aiCalls).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: /확인했고 승인/ }));
+
+    await waitFor(() => expect(aiCalls).toHaveLength(4));
+    expect(aiBody(3)).toMatchObject({ action: "confirm", draftId: newCreate.draftId });
+  });
+
+  it("[I-5·화면] 무관한 수정 요청이 실패해도 초안은 잠기지 않고 적용 버튼이 남는다", async () => {
+    replies.push(draftTurn(updateDraft), rejected(500));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+
+    sendFromInput("재고도 바꿔 줘");
+    await waitFor(() =>
+      expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
+    );
+    await turnEnded();
+
+    expect(screen.queryByRole("button", { name: /적용/ })).not.toBeNull();
+    expect(screen.queryByRole("link", { name: /상품 목록 보기/ })).toBeNull();
   });
 
   it("[I-5·화면] 초안을 닫아도 미해결 기록은 남는다 — 닫는다고 취소되는 것이 아니다", async () => {
@@ -461,9 +533,8 @@ describe("판매자 승인 상태와 카드 (I-5)", () => {
       useAuthStore.getState().clearAuth();
       useAuthStore.setState({ user: sellerUser("seller-b") });
     });
-    closeOldDraft();
     sendFromInput("다시 만들어 줘");
-    await screen.findByRole("button", { name: /적용/ });
+    await readyButton(/적용/);
     expect(screen.queryByText(WARNING)).toBeNull();
     view.unmount();
   });
@@ -522,28 +593,6 @@ describe("승인 상태별 카드 표시 (I-5)", () => {
     expect(screen.queryByRole("button", { name: confirmButton })).toBeNull();
   });
 
-  // 입력창 전송은 패널을 "auto"로 돌려 카드가 가려진다(I-3) — 화면 전체로는 닿지 않아 패널을 직접 렌더한다
-  it("[I-5·카드] 마지막 말풍선이 실패여도 수정 카드는 초안 상태로만 잠긴다", () => {
-    const props = {
-      tab: "products",
-      filters: {},
-      onTabChange: noop,
-      onBackToList: noop,
-      results: [{ kind: "draft", draft: updateDraft }],
-      showResults: true,
-      isStreaming: false,
-      analysisReport: null,
-      analysisLoading: false,
-      streamError: "다른 질문이 실패했어요",
-      onConfirmDraft: noop,
-      onCancelDraft: noop,
-    } as unknown as ComponentProps<typeof SellerWorkspace>;
-    render(<SellerWorkspace {...props} />);
-
-    expect(screen.queryByRole("button", { name: /적용/ })).not.toBeNull();
-    expect(screen.queryByRole("link", { name: /상품 목록 보기/ })).toBeNull();
-  });
-
   it("[I-5·카드] 등록 카드 — 이전 승인이 불명확하면 경고하고, 2단계 확인 뒤에만 승인한다", () => {
     const onConfirm = vi.fn();
     const onAcknowledge = vi.fn();
@@ -578,5 +627,272 @@ describe("승인 상태별 카드 표시 (I-5)", () => {
     );
 
     expect((screen.getByRole("button", { name: /등록 중/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("패널 전환 — 새 초안 (I-3)", () => {
+  const replacement: SellerDraft = {
+    ...updateDraft,
+    draftId: "draft-update-2",
+    summary: "가격을 28,000원으로 인하",
+  };
+  const generalTurn = (panel: Panel) =>
+    chunked([token2("안내 문구"), frame("done", { finishReason: "stop", panel })]);
+  const panelShows = (summary: string) => screen.queryByText(summary) !== null;
+
+  it.each(CHUNKINGS)("[I-3] %s — 첫 초안은 응답이 끝난 뒤에도 카드가 보인다", async (_label, split) => {
+    replies.push(chunked(split(draftFrames(draft, "replace"))));
+    renderPage();
+    sendFromInput("이 셔츠 등록해 줘");
+
+    await turnEnded();
+    await readyButton(/상품 등록/);
+  });
+
+  it.each(CHUNKINGS)("[I-3] %s — 새 초안이 기존 초안을 교체해도 새 카드가 보인다", async (_label, split) => {
+    replies.push(draftTurn(updateDraft), chunked(split(draftFrames(replacement, "replace"))));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+
+    sendFromInput("28,000원으로 해 줘");
+
+    await waitFor(() => expect(panelShows(replacement.summary)).toBe(true));
+    await turnEnded();
+    expect(panelShows(replacement.summary)).toBe(true);
+    expect(panelShows(updateDraft.summary)).toBe(false);
+    await readyButton(/적용/);
+  });
+
+  describe.each(["keep", "refresh"] as const)("done{%s}", (panel) => {
+    it.each(CHUNKINGS)(`[I-3] %s — 같은 턴에 초안이 오면 done{${panel}} 뒤에도 카드가 보인다`, async (_label, split) => {
+      replies.push(chunked(split(draftFrames(updateDraft, panel))));
+      renderPage();
+      sendFromInput("가격 내려 줘");
+
+      await turnEnded();
+      await new Promise((r) => setTimeout(r, 20));
+      await readyButton(/적용/);
+    });
+
+    it(`[I-3] 초안 없는 턴이 done{${panel}} 로 목록으로 돌아간 뒤 새 초안이 와도 카드가 보인다`, async () => {
+      replies.push(draftTurn(updateDraft), generalTurn(panel), draftTurn(replacement));
+      renderPage();
+      sendFromInput("가격 내려 줘");
+      await readyButton(/적용/);
+
+      sendFromInput("이번 주 주문은?");
+      await turnEnded();
+      await waitFor(() => expect(panelShows(updateDraft.summary)).toBe(false)); // 전제 — 목록으로 돌아갔다
+
+      sendFromInput("28,000원으로 해 줘");
+      await waitFor(() => expect(panelShows(replacement.summary)).toBe(true));
+      await readyButton(/적용/);
+    });
+  });
+
+  it("[I-3] done{refresh} 는 초안이 온 턴에도 목록 데이터를 다시 받는다 — 패널만 초안에 남는다", async () => {
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    replies.push(draftTurn(updateDraft, "refresh"));
+    render(
+      <QueryClientProvider client={client}>
+        <SellerChatPage />
+      </QueryClientProvider>,
+    );
+    sendFromInput("가격 내려 줘");
+
+    await readyButton(/적용/);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["seller"] });
+  });
+
+  it("[I-3] 동일한 초안의 재렌더링과 무관한 상태 변경으로 닫은 패널이 다시 열리지 않는다", async () => {
+    replies.push(draftTurn(updateDraft));
+    const view = renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+    expect(panelShows(updateDraft.summary)).toBe(false);
+
+    const store = useChatStore.getState();
+    act(() => {
+      store.setResults([...useChatStore.getState().results]); // 같은 초안, 새 배열
+      store.setDraftApproval(updateDraft.draftId, "closed");
+      store.setProgress("진행 중");
+      store.appendToLastAssistant("추가 문구");
+    });
+    view.rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <SellerChatPage />
+      </QueryClientProvider>,
+    );
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(panelShows(updateDraft.summary)).toBe(false);
+  });
+
+  it.each(["keep", "replace"] as const)("[I-3] 닫은 패널은 초안 없는 턴의 done{%s} 로 다시 열리지 않는다", async (panel) => {
+    replies.push(draftTurn(updateDraft), generalTurn(panel));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+
+    sendFromInput("이번 주 주문은?");
+    await waitFor(() => expect(aiCalls).toHaveLength(2));
+    await turnEnded();
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(panelShows(updateDraft.summary)).toBe(false);
+  });
+
+  it("[I-3] 응답 도중 닫은 패널은 그 턴의 done 으로 다시 열리지 않는다", async () => {
+    const turn = heldStream();
+    replies.push(turn.response);
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await waitFor(() => expect(aiCalls).toHaveLength(1));
+
+    turn.push(frame("draft", updateDraft));
+    await waitFor(() => expect(panelShows(updateDraft.summary)).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+    turn.push(frame("done", { finishReason: "stop", panel: "replace" }));
+    turn.close();
+    await turnEnded();
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(panelShows(updateDraft.summary)).toBe(false);
+  });
+
+  it("[I-3] 초안 검토 중 수정을 요청하면 응답하는 동안 카드가 가려지지 않는다", async () => {
+    const edit = heldStream();
+    replies.push(draftTurn(updateDraft), edit.response);
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+
+    sendFromInput("28,000원으로 해 줘");
+    await waitFor(() => expect(aiCalls).toHaveLength(2));
+    edit.push(token2("고치는 중"));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(panelShows(updateDraft.summary)).toBe(true);
+    edit.close();
+  });
+
+  it.each([
+    ["요청 거절", () => rejected(500)],
+    ["SSE error", () => chunked([frame("error", { code: "INTERNAL", message: "" })])],
+  ] as const)("[I-3] 수정 요청이 실패해도(%s) 카드가 남는다", async (_label, failure) => {
+    replies.push(draftTurn(updateDraft), failure());
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+
+    sendFromInput("28,000원으로 해 줘");
+    await waitFor(() =>
+      expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
+    );
+    await turnEnded();
+
+    await readyButton(/적용/);
+  });
+
+  it("[I-3] 초안 뒤 error 로 끝난 턴의 표시가 다음 턴으로 새지 않는다 — 초안 없는 다음 턴의 done{keep} 은 목록으로 돌아간다", async () => {
+    replies.push(
+      chunked([frame("draft", updateDraft), frame("error", { code: "INTERNAL", message: "" })]),
+      generalTurn("keep"),
+    );
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+
+    sendFromInput("이번 주 주문은?");
+    await waitFor(() => expect(aiCalls).toHaveLength(2));
+    await turnEnded();
+
+    await waitFor(() => expect(panelShows(updateDraft.summary)).toBe(false));
+  });
+
+  it("[I-3] 초안을 닫은 뒤 받은 새 초안은 다시 패널을 연다", async () => {
+    replies.push(draftTurn(updateDraft), draftTurn(replacement));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+    fireEvent.click(screen.getByRole("button", { name: /취소/ }));
+    expect(panelShows(updateDraft.summary)).toBe(false);
+
+    sendFromInput("다시 만들어 줘");
+
+    await waitFor(() => expect(panelShows(replacement.summary)).toBe(true));
+  });
+
+  it("[I-3] 새 대화로 버려진 턴의 초안은 패널을 열지 않는다", async () => {
+    const turn = heldStream();
+    replies.push(turn.response);
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await waitFor(() => expect(aiCalls).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole("button", { name: /새 대화/ }));
+    turn.push(frame("draft", updateDraft));
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(panelShows(updateDraft.summary)).toBe(false);
+    expect(useChatStore.getState().results).toEqual([]);
+  });
+
+  it.each(CHUNKINGS)("[I-3 회귀] %s — 분석 리포트는 done{replace} 뒤 패널에 표시된다", async (_label, split) => {
+    replies.push(
+      chunked(
+        split([
+          frame("meta", { lane: "analysis" }),
+          token2("지난주 매출이 늘었어요."),
+          frame("done", { finishReason: "stop", panel: "replace" }),
+        ]),
+      ),
+    );
+    renderPage();
+    sendFromInput("지난주 분석해 줘");
+
+    await turnEnded();
+    await waitFor(() =>
+      expect(useChatStore.getState().analysisReport).not.toBeNull(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /목록으로/ })).not.toBeNull(),
+    );
+  });
+
+  it("[I-3 회귀] 초안이 만료돼 사라진 뒤 질문이 실패하면 빈 결과 패널이 아니라 목록이다", async () => {
+    replies.push(draftTurn(updateDraft), rejected(500));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+    act(() => useChatStore.getState().dropDraft(updateDraft.draftId)); // 초안 TTL 만료와 같은 동작
+
+    sendFromInput("이번 주 주문은?");
+    await waitFor(() =>
+      expect(useChatStore.getState().messages.slice(-1)[0].error).toBeDefined(),
+    );
+
+    expect(screen.queryByRole("button", { name: /목록으로/ })).toBeNull();
+  });
+
+  it("[I-3 회귀] 목록을 고른 뒤 새 분석을 시키면 응답 중에 스켈레톤이 보인다", async () => {
+    const analysis = heldStream();
+    replies.push(draftTurn(updateDraft), analysis.response);
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+
+    sendFromInput("지난주 분석해 줘");
+    await waitFor(() => expect(aiCalls).toHaveLength(2));
+    analysis.push(frame("meta", { lane: "analysis" }));
+
+    await waitFor(() => expect(screen.queryByLabelText("분석 중")).not.toBeNull());
+    analysis.close();
   });
 });

@@ -274,7 +274,8 @@ describe("createTurnHandler — 현재 턴이 아닐 때", () => {
   it("[A] 11종 이벤트 어느 것도 대화 상태(메시지·카드·칩·진행·레인·리포트·초안)를 바꾸지 않고, onDone 도 부르지 않는다", async () => {
     fetchChatListGroup.mockResolvedValue(group("늦은 카드"));
     const onDone = vi.fn();
-    const { feed, settle } = startTurn({ isCurrent: () => false, onDone });
+    const onDraft = vi.fn();
+    const { feed, settle } = startTurn({ isCurrent: () => false, onDone, onDraft });
     const before = conversationState();
 
     feed(
@@ -294,6 +295,7 @@ describe("createTurnHandler — 현재 턴이 아닐 때", () => {
 
     expect(conversationState()).toEqual(before);
     expect(onDone).not.toHaveBeenCalled();
+    expect(onDraft).not.toHaveBeenCalled();
   });
 
   it("[A] 서버에서 끝난 장바구니·찜 변경은 onAction 으로 넘기고(캐시 동기화), 실패·판매자 결과는 넘기지 않는다", () => {
@@ -329,5 +331,31 @@ describe("createTurnHandler — 현재 턴이 아닐 때", () => {
 
     expect(useChatStore.getState().results).toEqual([]);
     expect(lastMessage().text).toBe("");
+  });
+});
+
+describe("새 초안 도착 신호 (I-3)", () => {
+  beforeEach(() => useChatStore.getState().reset());
+
+  it("[I-3] 초안 프레임마다 onDraft 를 부르고, done 에 이 턴의 초안 도착 여부를 알린다", () => {
+    const onDraft = vi.fn();
+    const onDone = vi.fn();
+    const { feed } = startTurn({ onDraft, onDone });
+
+    feed(
+      { type: "draft", data: draft("update", "draft-1") },
+      { type: "done", data: { finishReason: "stop", panel: "keep" } },
+    );
+
+    expect(onDraft).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalledWith("keep", { draftArrived: true });
+  });
+
+  it("[I-3] 초안이 없는 턴은 draftArrived 가 false 다 — 이전 턴의 도착이 새지 않는다", () => {
+    const onDone = vi.fn();
+    startTurn({ onDone }).feed({ type: "draft", data: draft("update", "draft-1") });
+    startTurn({ onDone }).feed({ type: "done", data: { finishReason: "stop", panel: "keep" } });
+
+    expect(onDone).toHaveBeenCalledWith("keep", { draftArrived: false });
   });
 });

@@ -85,10 +85,21 @@ export default function SellerChatPage() {
   const { send, confirm, retry, startNewChat, isStreaming } = useChat({
     channel: "SELLER",
     getScreenContext,
-    onDone: (panel: SellerPanel | undefined) => {
-      // refresh: 쓰기 반영 → 목록 재조회 후 목록으로 복귀
+    // 새 초안이 오면 우측을 결과 영역으로 전환한다. 렌더 후 이펙트로 감지하면 done 과의 실행 순서가
+    // 네트워크 청크 경계에 따라 뒤바뀌고(I-3), 초안 수로 판단하면 교체된 새 초안을 놓친다.
+    onDraft: () => {
+      setPanelIntent("results");
+      setMobileView("chat");
+    },
+    onDone: (panel: SellerPanel | undefined, { draftArrived }) => {
       if (panel === "refresh") {
         queryClient.invalidateQueries({ queryKey: ["seller"] });
+      }
+      // 이 턴의 산출물은 초안이다. 패널은 onDraft 가 정했으니 건드리지 않는다 —
+      // 그 뒤 사용자가 목록을 골랐다면 그 선택도 유지된다.
+      if (draftArrived) return;
+      // refresh: 쓰기 반영 → 목록 재조회 후 목록으로 복귀
+      if (panel === "refresh") {
         setPanelIntent("list");
         return;
       }
@@ -100,7 +111,7 @@ export default function SellerChatPage() {
         setPanelIntent("list");
         return;
       }
-      // replace: diff는 draft 도착 시 "results"로 켜짐 / 분석 리포트는 파생("auto")으로 표시.
+      // replace: 분석 리포트는 파생("auto")으로 표시.
       // 여기서 "auto"로 되돌려야 직전 턴의 "list"가 이번 리포트를 가리지 않는다.
       setPanelIntent("auto");
     },
@@ -124,17 +135,6 @@ export default function SellerChatPage() {
 
   // 분석 레인이면 스트림 도는 동안 우측에 로딩 스켈레톤(계약 §3.3: meta.lane 즉시 준비)
   const analysisLoading = isStreaming && lane === "analysis";
-
-  // draft 도착 시 우측을 결과 영역으로 전환(증가 감지라 effect 필요)
-  const draftCount = results.filter((r) => r.kind === "draft").length;
-  const prevDraftCount = useRef(0);
-  useEffect(() => {
-    if (draftCount > prevDraftCount.current) {
-      setPanelIntent("results");
-      setMobileView("chat");
-    }
-    prevDraftCount.current = draftCount;
-  }, [draftCount]);
 
   // 우측 결과 영역 노출 여부 — "list"가 켜져 있으면 무조건 목록이다.
   //
@@ -230,8 +230,12 @@ export default function SellerChatPage() {
 
   // 새 질문을 보내면 직전 턴의 "목록으로"를 놓아준다. 이게 없으면 리포트를 닫아 둔 뒤
   // 다시 분석시켰을 때 done 전까지 우측이 목록에 묶여 스켈레톤이 뜨지 않는다.
+  // 검토 중인 초안은 가리지 않는다 — 수정 요청이 실패하면 카드로 돌아올 길이 없다.
+  const reviewingDraft = results.some((r) => r.kind === "draft");
   const sendFromInput: typeof send = (message, conditionActions, opts) => {
-    setPanelIntent("auto");
+    setPanelIntent((prev) =>
+      prev === "results" && reviewingDraft ? "results" : "auto",
+    );
     return send(message, conditionActions, opts);
   };
 

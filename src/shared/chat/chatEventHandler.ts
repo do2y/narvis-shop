@@ -17,7 +17,12 @@ interface TurnHandlerOptions {
   /** 채널별 액션 후처리(장바구니 invalidate 등). 안내 문구 표시는 여기서 공통 처리한다. */
   onAction?: (action: ChatAction) => void;
   /** 스트림 정상 종료 시 우측 패널 조치(판매자 전용). error 로 끝나면 호출되지 않는다. */
-  onDone?: (panel: SellerPanel | undefined) => void;
+  onDone?: (
+    panel: SellerPanel | undefined,
+    turn: { draftArrived: boolean },
+  ) => void;
+  /** 새 초안 프레임을 받은 순간(판매자 전용). 렌더 타이밍과 무관하게 프레임 순서대로 불린다. */
+  onDraft?: () => void;
   /**
    * 이 턴이 아직 현재 턴인가(스토어 activeTurnId). 아니면 대화 상태를 바꾸지 않는다.
    * 생략하면 항상 현재 턴으로 본다.
@@ -40,6 +45,7 @@ interface TurnHandlerOptions {
 export function createTurnHandler({
   onAction,
   onDone,
+  onDraft,
   isCurrent = () => true,
   confirmingDraftId,
 }: TurnHandlerOptions) {
@@ -76,6 +82,10 @@ export function createTurnHandler({
   // 분석 리포트 보관함 — 스트림 1회 수명(이 핸들러와 같다).
   // report 수신 즉시 패널에 꽂지 않고 여기 담아 두는 이유는 done 절 주석 참조.
   let pendingReport: SellerReport | null = null;
+
+  // 이 턴에 초안이 왔는가 — 패널이 목록으로 돌아가면 안 되는 턴을 done 에 알린다.
+  // 턴 수명이라 초안 뒤 error 로 끝나도 다음 턴으로 새지 않는다.
+  let draftArrived = false;
 
   const onEvent = (e: ChatEvent) => {
     if (!isCurrent()) {
@@ -187,6 +197,8 @@ export function createTurnHandler({
         // 방치되지 않게 한다. 수정 턴에서 새 draft 가 오면 같은 코드가 다시
         // 돌아 draftId·타이머가 함께 갱신된다(별도 분기 불필요).
         if (e.data.op === "create") setActiveDraft(e.data.draftId);
+        draftArrived = true;
+        onDraft?.();
         break;
       case "report":
         // 보관만 하고 화면에 꽂지 않는다 — 커밋 신호는 done{replace} 다.
@@ -251,7 +263,7 @@ export function createTurnHandler({
           // null 이면 패널을 건드리지 않는다 — 이전 리포트가 남는 게 낫다
           if (next) setAnalysisReport(next);
         }
-        onDone?.(e.data.panel);
+        onDone?.(e.data.panel, { draftArrived });
         break;
       }
       case "error":
