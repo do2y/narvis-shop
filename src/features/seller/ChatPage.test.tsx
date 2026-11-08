@@ -896,3 +896,293 @@ describe("패널 전환 — 새 초안 (I-3)", () => {
     analysis.close();
   });
 });
+
+/**
+ * 모바일 초안 접근(I-8)과 초안 복귀(I-9).
+ *
+ * jsdom 은 미디어 쿼리·CSS 를 적용하지 않는다. 여기서 "보인다/숨는다"는 **어느 칸을 보이도록 지정했는가**
+ * (`lg` 미만에서 쓰이는 `hidden` 클래스)와 접근성 상태를 읽는 것이고, 실제 표시는 브라우저에서 확인해야 한다.
+ */
+describe("모바일 초안 접근과 초안 복귀 (I-8 · I-9)", () => {
+  const other: SellerDraft = {
+    ...updateDraft,
+    draftId: "draft-other",
+    productId: "8",
+    summary: "다른 상품 가격 인하",
+  };
+  const next: SellerDraft = { ...updateDraft, draftId: "draft-update-2", summary: "가격을 28,000원으로 인하" };
+  const ENTRY = /^초안 보기 \((\d+)\)$/;
+  const chatPane = () => screen.queryByRole("region", { name: "AI 채팅" });
+  const workPane = () =>
+    screen
+      .queryAllByRole("region")
+      .find((el) => el.getAttribute("aria-label") !== "AI 채팅") ?? null;
+  /** lg 미만에서 이 칸을 보이도록 지정했는가 */
+  const mobileShown = (el: HTMLElement | null) => {
+    expect(el).not.toBeNull();
+    return !el!.classList.contains("hidden");
+  };
+  const currentTab = () => {
+    const nav = screen.queryByRole("navigation", { name: "화면 전환" });
+    expect(nav).not.toBeNull();
+    return within(nav!)
+      .queryAllByRole("button")
+      .filter((el) => el.getAttribute("aria-current") === "page")
+      .map((el) => el.textContent);
+  };
+  const tab = (name: string) => {
+    const nav = screen.queryByRole("navigation", { name: "화면 전환" });
+    expect(nav).not.toBeNull();
+    return within(nav!).getByRole("button", { name });
+  };
+  const entries = () => screen.queryAllByRole("button", { name: ENTRY });
+  const shows = (summary: string) => screen.queryByText(summary) !== null;
+  const paneLabel = () => workPane()?.getAttribute("aria-label") ?? null;
+  /** 작업 영역(목록 상단)의 입구 — 채팅 칸의 입구와 구분한다 */
+  const listEntries = () => entries().filter((e) => workPane()?.contains(e));
+  const listEntry = () => {
+    const [el] = listEntries();
+    expect(el).toBeDefined();
+    return el!;
+  };
+
+  async function receiveDraft(target: SellerDraft = updateDraft) {
+    replies.push(draftTurn(target));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+  }
+
+  it.each(CHUNKINGS)("[I-8] %s — 새 초안이 오면 모바일에서 작업 영역을 보이게 하고, 결과 화면임을 접근성 정보로 알린다", async (_label, split) => {
+    replies.push(chunked(split(draftFrames(updateDraft, "replace"))));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await turnEnded();
+    await readyButton(/적용/);
+
+    expect(mobileShown(workPane())).toBe(true);
+    expect(mobileShown(chatPane())).toBe(false);
+    expect(paneLabel()).toBe("초안 검토");
+    expect(currentTab()).toEqual([]); // 결과를 보는 동안 어느 탭도 현재 화면이 아니다
+  });
+
+  it("[I-8] 작업 영역 → AI 채팅 → 초안 보기로 다시 작업 영역의 초안 카드로 돌아온다", async () => {
+    await receiveDraft();
+
+    fireEvent.click(tab("AI 채팅"));
+    expect(mobileShown(chatPane())).toBe(true);
+    expect(mobileShown(workPane())).toBe(false);
+    expect(currentTab()).toEqual(["AI 채팅"]);
+
+    const [entry] = entries();
+    expect(entry?.textContent).toBe("초안 보기 (1)");
+    fireEvent.click(entry!);
+
+    expect(mobileShown(workPane())).toBe(true);
+    expect(mobileShown(chatPane())).toBe(false);
+    expect(shows(updateDraft.summary)).toBe(true);
+    expect(currentTab()).toEqual([]);
+  });
+
+  it("[I-9] 목록으로 이동한 뒤 초안 보기로 기존 초안을 다시 연다 — 결과를 보는 동안에는 목록의 입구가 없다", async () => {
+    await receiveDraft();
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+    expect(shows(updateDraft.summary)).toBe(false);
+    expect(paneLabel()).toBe("작업 목록");
+    expect(currentTab()).toEqual(["주문 관리"]);
+
+    fireEvent.click(listEntry());
+
+    expect(shows(updateDraft.summary)).toBe(true);
+    expect(listEntries()).toHaveLength(0);
+  });
+
+  it("[I-9] done{keep} 로 목록에 돌아간 뒤에도 입구로 초안을 다시 연다 — keep 의 목록 복귀는 그대로다", async () => {
+    replies.push(draftTurn(updateDraft), chunked([token2("안내"), frame("done", { finishReason: "stop", panel: "keep" })]));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    await readyButton(/적용/);
+    sendFromInput("이번 주 주문은?");
+    await turnEnded();
+    await waitFor(() => expect(shows(updateDraft.summary)).toBe(false)); // keep 은 여전히 목록으로
+
+    fireEvent.click(listEntry());
+
+    await readyButton(/적용/);
+  });
+
+  it.each([
+    ["unknown", () => rejected(500), /반영 여부를 확인/],
+    ["closed", () => sse(token2("안내"), frame("done", { finishReason: "stop", panel: "keep" })), /결과를 확정하지 못했어요/],
+  ] as const)("[I-9] %s 초안의 안내를 입구로 다시 확인할 수 있고, 다시 승인할 수는 없다", async (_label, reply, notice) => {
+    replies.push(draftTurn(updateDraft), reply());
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    fireEvent.click(await readyButton(/적용/));
+    await turnEnded();
+    if (shows(updateDraft.summary)) fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+
+    fireEvent.click(listEntry());
+
+    await waitFor(() =>
+      expect(workPane() && within(workPane()!).queryByText(notice)).not.toBeNull(),
+    );
+    expect(screen.queryByRole("button", { name: /적용/ })).toBeNull();
+    expect(aiCalls).toHaveLength(2); // I-5 — 같은 초안은 다시 나가지 않는다
+  });
+
+  it("[I-8·I-5] closed 뒤 받은 새 초안은 모바일 작업 영역에서 경고와 2단계 확인을 거쳐 승인된다 — 채팅을 다녀와도 같다", async () => {
+    replies.push(
+      draftTurn(updateDraft),
+      sse(token2("안내"), frame("done", { finishReason: "stop", panel: "keep" })),
+      draftTurn(next),
+      sse(frame("done", { finishReason: "stop", panel: "refresh" })),
+    );
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    fireEvent.click(await readyButton(/적용/));
+    await turnEnded();
+
+    fireEvent.click(tab("AI 채팅"));
+    sendFromInput("다시 만들어 줘");
+    await waitFor(() => expect(shows(next.summary)).toBe(true));
+    expect(mobileShown(workPane())).toBe(true);
+    fireEvent.click(tab("AI 채팅"));
+    expect(entries()).toHaveLength(1);
+    fireEvent.click(entries()[0]);
+
+    await waitFor(() => expect(screen.queryByText(/이전 승인 결과를 확인하지 못했어요/)).not.toBeNull());
+    fireEvent.click(await readyButton(/적용/));
+    expect(aiCalls).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: /확인했고 승인/ }));
+    await waitFor(() => expect(aiCalls).toHaveLength(4));
+    expect(aiBody(3)).toMatchObject({ action: "confirm", draftId: next.draftId });
+  });
+
+  it.each(CHUNKINGS)("[I-9] %s — 한 턴에 초안이 둘이면 입구는 개수를 알리고 결과 패널 전체를 연다", async (_label, split) => {
+    replies.push(
+      chunked(
+        split([
+          frame("meta", { lane: "product" }),
+          frame("draft", updateDraft),
+          frame("draft", other),
+          frame("done", { finishReason: "stop", panel: "replace" }),
+        ]),
+      ),
+    );
+    renderPage();
+    sendFromInput("두 상품 가격 내려 줘");
+    await turnEnded();
+    await waitFor(() => expect(shows(other.summary)).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+
+    const entry = listEntry();
+    expect(entry.textContent).toBe("초안 보기 (2)");
+    fireEvent.click(entry);
+
+    expect(shows(updateDraft.summary)).toBe(true);
+    expect(shows(other.summary)).toBe(true);
+  });
+
+  it("[I-9] 초안을 닫으면 개수가 줄고, 마지막 초안을 닫으면 입구가 사라진다", async () => {
+    replies.push(
+      chunked([frame("draft", updateDraft), frame("draft", other), frame("done", { finishReason: "stop", panel: "replace" })]),
+    );
+    renderPage();
+    sendFromInput("두 상품 가격 내려 줘");
+    await turnEnded();
+    await waitFor(() => expect(shows(other.summary)).toBe(true));
+
+    fireEvent.click(screen.getAllByRole("button", { name: /취소/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+    expect(entries().map((el) => el.textContent)).toContain("초안 보기 (1)");
+    expect(entries().map((el) => el.textContent)).not.toContain("초안 보기 (2)");
+
+    fireEvent.click(listEntry());
+    fireEvent.click(screen.getByRole("button", { name: /취소/ }));
+
+    expect(entries()).toHaveLength(0);
+    expect(shows(other.summary)).toBe(false);
+  });
+
+  it("[I-9] 초안이 없으면 입구가 없다", () => {
+    renderPage();
+    expect(entries()).toHaveLength(0);
+  });
+
+  it("[I-9] 수동으로 닫은 패널은 입구가 있어도 무관한 상태 변경으로 다시 열리지 않는다", async () => {
+    await receiveDraft();
+    fireEvent.click(screen.getByRole("button", { name: /목록으로/ }));
+
+    act(() => {
+      const store = useChatStore.getState();
+      store.setResults([...store.results]);
+      store.setDraftApproval(updateDraft.draftId, "closed");
+      store.appendToLastAssistant("추가 문구");
+    });
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(shows(updateDraft.summary)).toBe(false);
+    expect(entries().length).toBeGreaterThan(0);
+  });
+
+  it("[I-8 반응형] 데스크톱 클래스 분기는 그대로다 — 두 칸 모두 lg 에서 표시 지정, 채팅의 초안 보기는 lg 에서 숨김 지정", async () => {
+    await receiveDraft();
+
+    expect(chatPane()?.className ?? "").toContain("lg:flex");
+    expect(workPane()?.className ?? "").toContain("lg:flex");
+    fireEvent.click(tab("AI 채팅"));
+    expect(chatPane()?.className ?? "").toContain("lg:flex");
+    expect(workPane()?.className ?? "").toContain("lg:flex");
+    const chatEntry = entries().find((el) => el.closest('[aria-label="AI 채팅"]'));
+    expect(chatEntry).toBeDefined();
+    expect(chatEntry!.closest(".lg\\:hidden")).not.toBeNull();
+  });
+
+  // 수정 요청은 기존 초안을 고치지 않는다 — 새 draftId 초안이 오면 교체되고, 되묻기로 끝나면 초안이 오지 않는다.
+  // 그래서 "바로 반영"처럼 결과를 단정하지 않고, 새 초안을 검토한 뒤 승인한다는 흐름만 알린다.
+  it("[I-8 문구] 등록 초안 안내는 새 초안이 만들어질 수 있고 검토 뒤 등록한다고 알린다 — 데스크톱·모바일 각자의 문구, 배치 클래스 유지", async () => {
+    replies.push(draftTurn(draft));
+    renderPage();
+    sendFromInput("이 셔츠 등록해 줘");
+    await readyButton(/상품 등록/);
+
+    const desktop = screen.queryByText(
+      "채팅으로 수정을 요청하면 오른쪽에 새 초안이 만들어질 수 있어요. 검토한 뒤 등록해 주세요.",
+    );
+    expect(desktop?.className.split(" ")).toEqual(expect.arrayContaining(["hidden", "lg:inline"]));
+    const mobile = screen.queryByText(
+      "채팅으로 수정을 요청하면 새 초안이 만들어질 수 있어요. 검토한 뒤 등록해 주세요.",
+    );
+    expect(mobile?.className ?? "").toContain("lg:hidden");
+    expect(screen.queryByText(/바로 반영/)).toBeNull();
+  });
+
+  it("[I-8·새 대화] 모바일 초안 결과 화면에서 새 대화를 누르면 채팅 화면으로 돌아간다 — 미해결 승인 기록은 그대로다", async () => {
+    replies.push(draftTurn(updateDraft), rejected(500));
+    renderPage();
+    sendFromInput("가격 내려 줘");
+    fireEvent.click(await readyButton(/적용/));
+    await turnEnded();
+    expect(paneLabel()).toBe("초안 검토"); // 전제 — 결과 화면
+    expect(useChatStore.getState().unresolvedApprovals).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "새 대화" }));
+
+    expect(mobileShown(chatPane())).toBe(true);
+    expect(mobileShown(workPane())).toBe(false);
+    expect(currentTab()).toEqual(["AI 채팅"]);
+    expect(useChatStore.getState().results).toEqual([]);
+    expect(useChatStore.getState().unresolvedApprovals).toHaveLength(1); // I-5 정책 그대로
+  });
+
+  it("[I-8·새 대화] 모바일 작업 목록 탭에서 새 대화를 누르면 그 탭에 머문다 — 기존 동작", async () => {
+    renderPage();
+    fireEvent.click(tab("상품 관리"));
+
+    fireEvent.click(screen.getByRole("button", { name: "새 대화" }));
+
+    expect(currentTab()).toEqual(["상품 관리"]);
+    expect(mobileShown(workPane())).toBe(true);
+  });
+});

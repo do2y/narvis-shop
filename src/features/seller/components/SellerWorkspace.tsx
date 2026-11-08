@@ -12,6 +12,7 @@ import type {
 } from "../types";
 import { hoverMuted, pressable } from "../interaction";
 import { AnalysisReport } from "./AnalysisReport";
+import { DraftEntryButton } from "./DraftEntryButton";
 import { OrderList } from "./OrderList";
 import { ProductList } from "./ProductList";
 import { ProductDiffCard } from "./ProductDiffCard";
@@ -37,6 +38,8 @@ interface SellerWorkspaceProps {
   /** 분석 스트림 진행 중 — 리포트 확정 전 스켈레톤 표시(lane:analysis) */
   analysisLoading: boolean;
   onBackToList: () => void;
+  /** 목록을 보는 동안 남은 초안 결과로 돌아간다(I-9). 특정 초안이 아니라 결과 패널 전체를 연다 */
+  onOpenDrafts?: () => void;
   onConfirmDraft: (draftId: string) => void;
   onCancelDraft: (draftId: string) => void;
   /** 이 초안이 처리 여부 불명인 이전 승인과 중복될 수 있는가 */
@@ -84,6 +87,7 @@ export function SellerWorkspace({
   analysisReport,
   analysisLoading,
   onBackToList,
+  onOpenDrafts,
   onConfirmDraft,
   onCancelDraft,
   hasDuplicateRisk,
@@ -208,22 +212,35 @@ export function SellerWorkspace({
               ) : null,
             )}
           </div>
-        ) : tab === "orders" ? (
-          <OrderList
-            tab={orderTab}
-            page={orderPage}
-            onTabChange={onOrderTabChange}
-            onPageChange={onOrderPageChange}
-          />
         ) : (
-          <ProductList
-            tab={productTab}
-            sort={productSort}
-            page={productPage}
-            onTabChange={onProductTabChange}
-            onSortChange={onProductSortChange}
-            onPageChange={onProductPageChange}
-          />
+          <>
+            {/* 결과를 닫거나 done 이 목록으로 돌려도 초안은 남아 있다 — 다시 여는 입구.
+                누를 때만 연다(자동으로 다시 열지 않는다). 개수는 위 결과 패널이 그리는 카드 수와 같다 */}
+            {onOpenDrafts && draftResults.length > 0 && (
+              <DraftEntryButton
+                count={draftResults.length}
+                onClick={onOpenDrafts}
+                className="mb-4"
+              />
+            )}
+            {tab === "orders" ? (
+              <OrderList
+                tab={orderTab}
+                page={orderPage}
+                onTabChange={onOrderTabChange}
+                onPageChange={onOrderPageChange}
+              />
+            ) : (
+              <ProductList
+                tab={productTab}
+                sort={productSort}
+                page={productPage}
+                onTabChange={onProductTabChange}
+                onSortChange={onProductSortChange}
+                onPageChange={onProductPageChange}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
