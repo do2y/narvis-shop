@@ -1,7 +1,7 @@
 # 테스트 — 계약을 테스트로 고정한 이유와 범위
 
 > FE·BE·AI 서버가 **동시에** 개발되는 상황에서 "상대가 무엇을 보낼지"를 붙잡아 두려고 쓴 테스트의 기록.
-> 측정 기준 2026-10-31 — `npm run test` 결과 **39개 파일 · 485건 통과** (`useChat`·`MessageList`·판매자 `ChatPage` 테스트 추가 전 36 · 330).
+> 측정 기준 2026-10-31 — `npm run test` 결과 **39개 파일 · 504건 통과** (`useChat`·`MessageList`·판매자 `ChatPage` 테스트 추가 전 36 · 330).
 >
 > 설정: `vitest.config.mts` · 대상: `src/**/*.test.{ts,tsx}`(순수 모듈 + 훅 `useChat` + 컴포넌트 `MessageList` · 판매자 `ChatPage`)
 
