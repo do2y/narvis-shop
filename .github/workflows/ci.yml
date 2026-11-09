@@ -1,5 +1,11 @@
 name: CI
-on: [pull_request]
+
+# pull_request: PR 검사 · push(main): 머지 뒤 main 상태 확인 · workflow_dispatch: Actions 탭에서 수동 실행
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
 jobs:
   check:
     runs-on: ubuntu-latest
