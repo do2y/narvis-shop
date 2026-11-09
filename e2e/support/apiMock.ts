@@ -164,6 +164,25 @@ export function useGuestShoppingDefaults(
   api.on("POST", /^\/api\/chat\/tickets$/, () => ok(session));
 }
 
+/**
+ * 목록 id 에서 상품 id 를 결정적으로 만든다 — 계약상 productId 는 **숫자 문자열**이다
+ * (서버 64비트 id, src/shared/types/product.ts). 상세 라우트는 숫자가 아니면 조회 없이 404 다.
+ * 같은 테스트의 서로 다른 목록끼리 겹치지 않아야 한다(카드 키·상세 캐시 시딩이 productId 기준).
+ *
+ * 형식: FNV-1a 32비트 해시(10진) + 두 자리 순번. 최대 429496729599(12자리) — int64·JS 안전 정수 범위 안.
+ * ⚠️ 고유성은 보장되지 않는다: 두 목록 id 의 해시가 같으면 충돌한다(목록당 카드 99개 이하일 때 그 경우뿐).
+ * 2026-11-10 기준 픽스처 목록 id 5개는 해시가 모두 달라 충돌이 없음을 계산으로 확인했다 —
+ * 목록 id 를 추가하면 다시 확인할 것. 2^53 을 넘는 실제 규모의 id 는 이 픽스처로 다루지 않는다.
+ */
+function productIdFor(listId: string, index: number): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < listId.length; i++) {
+    hash ^= listId.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${hash}${String(index + 1).padStart(2, "0")}`;
+}
+
 /** CH-5 응답 — ChatListResponse 계약 필드만 쓴다 */
 export function chatList(listId: string, names: string[]) {
   return {
@@ -172,7 +191,7 @@ export function chatList(listId: string, names: string[]) {
     listType: "PICK_ONE",
     itemsDropped: 0,
     items: names.map((name, i) => ({
-      productId: `${listId}-p${i + 1}`,
+      productId: productIdFor(listId, i),
       name,
       brandName: "E2E 브랜드",
       price: 59000 + i * 1000,
