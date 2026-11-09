@@ -1,0 +1,128 @@
+{
+  "P1-create": {
+    "aiRequests": 3,
+    "confirmBodies": [
+      {
+        "body": {
+          "sessionId": "session-1",
+          "threadId": "3e57d16a-3b26-4b5e-af9d-74c7e897e935",
+          "action": "confirm",
+          "draftId": "draft-1"
+        },
+        "auth": "Bearer ticket-1"
+      },
+      {
+        "body": {
+          "sessionId": "session-1",
+          "threadId": "3e57d16a-3b26-4b5e-af9d-74c7e897e935",
+          "action": "confirm",
+          "draftId": "draft-1"
+        },
+        "auth": "Bearer ticket-2"
+      }
+    ],
+    "refreshCalls": 1,
+    "lastMessage": {
+      "text": ""
+    }
+  },
+  "P1-update": {
+    "aiRequests": 3,
+    "confirmBodies": [
+      {
+        "body": {
+          "sessionId": "session-1",
+          "threadId": "9ba0ecb2-fdf4-4bd8-ab2f-a93b68fbafee",
+          "action": "confirm",
+          "draftId": "draft-u1"
+        },
+        "auth": "Bearer ticket-1"
+      },
+      {
+        "body": {
+          "sessionId": "session-1",
+          "threadId": "9ba0ecb2-fdf4-4bd8-ab2f-a93b68fbafee",
+          "action": "confirm",
+          "draftId": "draft-u1"
+        },
+        "auth": "Bearer ticket-2"
+      }
+    ],
+    "refreshCalls": 1,
+    "lastMessage": {
+      "text": ""
+    }
+  },
+  "P2-500": {
+    "afterFailure": {
+      "bubble": {
+        "error": "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.",
+        "retryable": false
+      },
+      "applyButtons": [
+        {
+          "disabled": false
+        }
+      ],
+      "retryButtons": []
+    },
+    "clickApplyAgain": {
+      "sessionId": "session-1",
+      "threadId": "7f54b6b0-6066-4526-8e5e-9d7ec28a3a99",
+      "action": "confirm",
+      "draftId": "draft-u1"
+    },
+    "aiRequests": 3
+  },
+  "P2-끊김": {
+    "afterFailure": {
+      "bubble": {
+        "error": "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.",
+        "retryable": false
+      },
+      "applyButtons": [
+        {
+          "disabled": false
+        }
+      ],
+      "retryButtons": []
+    },
+    "clickApplyAgain": {
+      "sessionId": "session-1",
+      "threadId": "565360cc-edcd-47b1-8819-da6fa0fdfb6b",
+      "action": "confirm",
+      "draftId": "draft-u1"
+    },
+    "aiRequests": 3
+  },
+  "P2-SSE error": {
+    "afterFailure": {
+      "bubble": {
+        "error": "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.",
+        "retryable": false
+      },
+      "applyButtons": [
+        {
+          "disabled": false
+        }
+      ],
+      "retryButtons": []
+    },
+    "clickApplyAgain": {
+      "sessionId": "session-1",
+      "threadId": "4562137f-a861-4566-9a1d-88492793b6e3",
+      "action": "confirm",
+      "draftId": "draft-u1"
+    },
+    "aiRequests": 3
+  },
+  "P3-create-500": {
+    "registerButtons": [],
+    "retryButtons": [],
+    "closeButtons": [
+      {
+        "disabled": false
+      }
+    ]
+  }
+}

@@ -11,6 +11,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx eslint .
+      # 회귀 테스트는 로컬에서만 돌리면 실행을 빠뜨린다 — PR 게이트에 둔다.
+      # build 보다 앞에 두는 이유: 수 초면 끝나 실패를 먼저 알 수 있다.
+      - run: npm run test
       # next build가 타입 체크를 포함하므로 별도 tsc는 두지 않는다.
       # 백엔드가 없는 CI에서도 통과해야 한다 — 서버 fetch에 5초 타임아웃이 있고
       # 홈은 force-dynamic이라 빌드 시점에 백엔드를 부르지 않는다.

@@ -1,0 +1,54 @@
+{
+  "P4": [
+    [
+      "d-create",
+      "PRODUCT_UPDATED"
+    ]
+  ],
+  "P5": [
+    [
+      "d-update",
+      null
+    ]
+  ],
+  "P6": [
+    [
+      "d-create",
+      "PRODUCT_UPDATED"
+    ],
+    [
+      "d-update",
+      null
+    ]
+  ],
+  "P7": {
+    "settled": [
+      [
+        "d-create",
+        "PRODUCT_UPDATED"
+      ]
+    ],
+    "bubble": {
+      "error": "요청이 처리됐는지 확인하지 못했어요. 상품 목록에서 반영 여부를 확인한 뒤 다시 진행해 주세요.",
+      "retryable": false
+    }
+  },
+  "P8-refresh": {
+    "settled": [
+      [
+        "d-create",
+        null
+      ]
+    ],
+    "error": null
+  },
+  "P8-keep": {
+    "settled": [
+      [
+        "d-create",
+        null
+      ]
+    ],
+    "error": null
+  }
+}

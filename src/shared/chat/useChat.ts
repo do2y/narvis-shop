@@ -34,10 +34,43 @@ import {
   isNotFound,
 } from "./chatErrors";
 import { removeChip } from "./conditionRemoval";
-import { useChatStore } from "./store";
+import {
+  CONFIRM_UNKNOWN,
+  draftResultOf,
+  recordUnresolved,
+  settleApproval,
+} from "./draftApproval";
+import { canRetry, isResend } from "./retryPolicy";
+import { type Resend, useChatStore } from "./store";
 
 function newId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * 말풍선 없는 턴이 실패로 끝났을 때 재전송 정보를 남길지 정한다.
+ *
+ * - 승인: 요청을 **시작하지 않았을 때만** 남긴다. fetch 를 한 번이라도 불렀으면 응답 상태 코드와
+ *   무관하게 서버 처리 여부를 알 수 없다고 본다(4xx 가 "처리 전 거부"라는 근거가 계약 문서뿐이다).
+ *   SSE error 의 retryable:true 도 같은 이유로 따르지 않는다.
+ * - 칩 제거: 조건 제거는 계약상 멱등이라 재시도 가능한 실패면 남긴다.
+ */
+function settleResend(resend: Resend, requestStarted: boolean): void {
+  const { messages, failLastAssistant, setLastResend } = useChatStore.getState();
+  const last = messages[messages.length - 1];
+  if (last?.role !== "assistant" || !last.error) return; // 실패가 아니면(중단 포함) 할 일 없음
+  if (resend.kind === "confirm" && requestStarted) {
+    // 서버가 이미 결과 action 을 보낸 뒤의 오류는 그 오류 문구를 유지한다 — "확인하지 못했어요"로
+    // 덮으면 말풍선의 서버 문구와 어긋난다. 어느 쪽이든 다시 보내지는 않는다.
+    const answered = draftResultOf(resend.draftId)?.approval;
+    const hasAnswer = answered === "closed" || answered === "rejected";
+    failLastAssistant(hasAnswer ? last.error : CONFIRM_UNKNOWN, {
+      retryable: false,
+      requestId: last.requestId,
+    });
+    return;
+  }
+  if (last.retryable !== false) setLastResend(resend);
 }
 
 interface UseChatOptions {
@@ -48,7 +81,12 @@ interface UseChatOptions {
    * 스트림 종료 시 우측 패널 조치(판매자 전용). done.panel 을 그대로 전달한다.
    * replace(패널 교체) / keep(유지) / refresh(목록 재조회). error 로 끝나면 호출되지 않는다.
    */
-  onDone?: (panel: SellerPanel | undefined) => void;
+  onDone?: (
+    panel: SellerPanel | undefined,
+    turn: { draftArrived: boolean },
+  ) => void;
+  /** 새 초안 프레임을 받은 순간 */
+  onDraft?: () => void;
   /**
    * 전송 시점의 화면 맥락을 반환하는 함수(사이드 채팅 전용).
    * 값이 아닌 함수로 받는 이유: 사용자가 목록을 이동하며 대화하므로
@@ -61,6 +99,7 @@ export function useChat({
   channel,
   onAction,
   onDone,
+  onDraft,
   getScreenContext,
 }: UseChatOptions) {
   // 이 훅이 실제로 "구독"해야 하는 값은 isStreaming 하나다.
@@ -79,9 +118,11 @@ export function useChat({
     failLastAssistant,
     setConditions,
     setSessionId,
-    setStreaming,
+    beginTurn,
+    endTurn,
     setLane,
     setProgress,
+    setDraftApproval,
     reset,
   } = useChatStore.getState();
 
@@ -94,10 +135,12 @@ export function useChat({
   // 콜백들은 매 렌더 갱신되도록 ref로 보관(send의 deps를 안정적으로 유지)
   const onActionRef = useRef(onAction);
   const onDoneRef = useRef(onDone);
+  const onDraftRef = useRef(onDraft);
   const getScreenContextRef = useRef(getScreenContext);
   useEffect(() => {
     onActionRef.current = onAction;
     onDoneRef.current = onDone;
+    onDraftRef.current = onDraft;
     getScreenContextRef.current = getScreenContext;
   });
 
@@ -106,10 +149,19 @@ export function useChat({
   // sessionId 는 항상 발급 응답값을 쓴다(BE·Redis 발급, sliding TTL) — 클라이언트가 만들지 않는다.
   // 승계 실패가 미해결이면 새 세션 발급을 막는다(allowCreate=false) — 조용히 새로
   // 만들면 화면엔 이전 대화가 있는데 AI 는 기억 못 하는 어긋남이 생긴다.
-  const acquireTicket = useCallback((): Promise<ChatSession> => {
-    const { sessionId, claimFailure } = useChatStore.getState();
-    return ensureSession(channel, sessionId, !claimFailure);
-  }, [channel]);
+  //
+  // fresh: 판매자 승인은 캐시를 건너뛰고 티켓을 새로 받는다(I-6) — 만료 직전 티켓으로 거부될 일을
+  // 줄이기 위해서다. 승인은 401 이어도 자동으로 다시 보내지 않으므로 그 거부가 곧 "확인 필요"가 된다.
+  const acquireTicket = useCallback(
+    (fresh: boolean): Promise<ChatSession> => {
+      const { sessionId, claimFailure } = useChatStore.getState();
+      const allowCreate = !claimFailure;
+      return fresh
+        ? ensureSession(channel, sessionId, allowCreate, { fresh: true })
+        : ensureSession(channel, sessionId, allowCreate);
+    },
+    [channel],
+  );
 
   // 다른 탭이 세션을 발급·갱신하면 이 탭의 표시용 sessionId 도 따라간다.
   // (정본은 코디네이터의 localStorage 캐시 — 여기선 스토어를 동기화만 한다.)
@@ -136,7 +188,7 @@ export function useChat({
   //
   // 없으면 화면을 떠난 뒤에도 fetch 리더가 계속 돌며 onEvent 가 스토어를 갱신한다.
   // 스토어는 모듈 전역(zustand)이라 언마운트로 사라지지 않으므로 조용히 살아남고,
-  // 특히 finally 의 setStreaming(false) 가 언마운트 뒤에 도착하는 경우가 문제다 —
+  // 특히 finally 의 스트리밍 정리가 언마운트 뒤에 도착하는 경우가 문제다 —
   // 다시 채팅에 들어오면 복원된 대화 위에 이전 턴의 token 이 이어붙거나
   // isStreaming 이 true 로 굳어 입력창이 막힌 채로 남는다.
   //
@@ -189,8 +241,15 @@ export function useChat({
        * 서버가 되돌려주지 않으므로 여기서 넣어 두지 않으면 화면에서 사라진다.
        */
       userImageUrls?: string[],
+      /** 사용자 말풍선이 없는 턴(칩 제거·승인)이 실패하면 다시 보낼 정보 — settleResend 가 판정 */
+      resend?: Resend,
     ) => {
       if (useChatStore.getState().isStreaming) return;
+
+      // 이 턴의 소유권. 새 대화(reset)가 비우면 이 턴의 남은 작업은 대화 상태에 쓰지 않는다 —
+      // 세션 확보 await·카드 조회·finally 가 새 대화의 말풍선·카드·로딩을 건드리던 결함(A1·A2).
+      const turnId = newId();
+      const isCurrent = () => useChatStore.getState().activeTurnId === turnId;
 
       if (userText !== null) {
         addMessage({
@@ -202,18 +261,25 @@ export function useChat({
       }
       // 스트리밍으로 채워질 빈 assistant 메시지 선 추가
       addMessage({ id: newId(), role: "assistant", text: "" });
-      setStreaming(true);
+      beginTurn(turnId);
       setLane(null);
       setProgress(null);
+      const confirmingDraftId =
+        resend?.kind === "confirm" ? resend.draftId : undefined;
+      if (confirmingDraftId) setDraftApproval(confirmingDraftId, "pending");
       // 이전 리포트는 유지(새 스트림이 analysis+replace로 끝날 때만 교체) — done에서 갱신
 
       const controller = new AbortController();
       abortRef.current = controller;
+      // AI 서버로 요청을 내보냈는가 — 한 번이라도 fetch 를 불렀으면 이후 실패는 서버 처리 여부 불명
+      let requestStarted = false;
 
       try {
         // 1) 티켓 확보(Spring REST) — 코디네이터가 캐시·락으로 탭 간 단일화해 돌려준다.
         //    sessionId 는 서버 발급값을 저장·사용(재발급도 같은 sessionId 를 돌려준다).
-        const session = await acquireTicket();
+        const session = await acquireTicket(resend?.kind === "confirm");
+        // 확보를 기다리는 사이 새 대화가 시작됐으면 여기서 멈춘다 — 요청을 보내지 않는다
+        if (!isCurrent()) return;
         setSessionId(session.sessionId);
 
         // threadId(계약 CH-2): 대화 스레드(방) 식별자, 필수.
@@ -227,7 +293,10 @@ export function useChat({
         // 콜백은 ref 로 넘겨 최신 것을 부른다(send 의 deps 를 안정적으로 유지).
         const turn = createTurnHandler({
           onAction: (action) => onActionRef.current?.(action),
-          onDone: (panel) => onDoneRef.current?.(panel),
+          onDone: (panel, turn) => onDoneRef.current?.(panel, turn),
+          onDraft: () => onDraftRef.current?.(),
+          isCurrent,
+          confirmingDraftId,
         });
 
         // 2) llmSseUrl + streamTicket 으로 SSE 스트림 소비.
@@ -235,6 +304,7 @@ export function useChat({
         //    토큰 수신이 시작된 뒤의 오류는 SSE error 이벤트로 오므로 여기서 재시도하지 않는다
         //    (중복 담기 방지). 재발급도 실패하면 catch 로 떨어진다.
         try {
+          requestStarted = true;
           await streamChat(
             session.llmSseUrl,
             session.streamTicket,
@@ -245,8 +315,13 @@ export function useChat({
         } catch (err) {
           // 401(티켓 만료) — 코디네이터 경유로 재발급(같은 락)하고 1회만 재시도.
           // 갱신된 티켓은 브로드캐스트로 다른 탭에도 공유된다.
+          //
+          // 판매자 승인은 자동으로 다시 보내지 않는다 — 401 이 "처리 전 거부"라는 근거가 서버 코드 확인이 아니라
+          // 감사 문서뿐이고, 다시 나간 승인은 등록·수정·삭제를 실행한다. catch 에서 확인 안내로 끝난다(I-6).
+          if (resend?.kind === "confirm") throw err;
           if (err instanceof StreamStartError && err.status === 401) {
             const fresh = await refreshTicket(channel, session.sessionId);
+            if (!isCurrent()) return;
             setSessionId(fresh.sessionId);
             await streamChat(
               fresh.llmSseUrl,
@@ -261,11 +336,27 @@ export function useChat({
         }
 
         await turn.settle();
+        // 스트림은 정상 종료됐지만 SSE error 로 실패가 표시됐을 수 있다.
+        // 카드 조회를 기다리는 사이 새 대화가 시작됐다면 마지막 말풍선은 새 대화의 것이다 — 쓰지 않는다
+        if (resend && isCurrent()) settleResend(resend, requestStarted);
+        if (confirmingDraftId && isCurrent()) {
+          const { messages } = useChatStore.getState();
+          const failed = Boolean(messages[messages.length - 1]?.error);
+          settleApproval(confirmingDraftId, requestStarted, failed);
+        }
       } catch (err) {
         // 404 SESSION_NOT_FOUND = 세션 TTL(10분) 만료. CH-1 이 멱등 발급이라 다른 탭이
         // 세션을 축출하는 일은 없으므로 "다른 곳에서 종료됨"이 아니라 단순 만료다.
         // 캐시를 비워 두면 다음 전송의 ensureSession 이 새로 발급한다 — 여기서 자동
         // 재전송하지 않고 재시도 버튼만 준다(중복 담기 방지).
+        //
+        // 새 대화로 버려진 턴의 실패는 대화에 쓰지 않는다 — 지금의 마지막 말풍선은 새 대화의 것이다.
+        // 다만 "세션이 죽었다"는 사실은 탭이 공유하는 세션 캐시에 반영한다(대화 상태가 아닌 접속 정보).
+        // 안 비우면 새 대화의 다음 전송이 만료된 세션을 캐시에서 집어 한 번 더 실패한다.
+        if (!isCurrent()) {
+          if (isNotFound(err)) clearCachedSession(channel);
+          return;
+        }
         if (isAbortError(err)) {
           // 사용자가 스스로 끊은 것이다(새 대화·화면 이탈) — 오류가 아니므로
           // 말풍선에 실패를 남기지 않는다. 종전엔 startNewChat 의 abort 가 이 자리로
@@ -297,19 +388,30 @@ export function useChat({
           // 세션 발급·티켓 재발급 실패(axios 경로) 등 나머지
           failLastAssistant("응답을 받지 못했어요. 다시 시도해 주세요.");
         }
+        if (resend) settleResend(resend, requestStarted);
+        if (confirmingDraftId) {
+          settleApproval(confirmingDraftId, requestStarted, true);
+        }
       } finally {
-        setStreaming(false);
-        setProgress(null);
-        abortRef.current = null;
+        // 새 대화가 남긴 "진행 중이던 승인" 기록 — 요청을 내보내기 전에 멈췄다면 처리됐을 리 없다
+        if (confirmingDraftId && !requestStarted && !isCurrent()) {
+          useChatStore.getState().removeUnresolvedApproval(confirmingDraftId);
+        }
+        // 아직 현재 턴일 때만 정리한다 — 새 대화에서 이미 시작된 턴의 응답 중 상태를 풀지 않게
+        endTurn(turnId);
+        // 컨트롤러도 자기 것일 때만 비운다 — 새 턴의 것을 지우면 "새 대화"가 그 턴을 못 끊는다
+        if (abortRef.current === controller) abortRef.current = null;
       }
     },
     [
       addMessage,
       failLastAssistant,
       setSessionId,
-      setStreaming,
+      beginTurn,
+      endTurn,
       setLane,
       setProgress,
+      setDraftApproval,
       acquireTicket,
       channel,
     ],
@@ -366,6 +468,10 @@ export function useChat({
         // (판매자 confirm 과 동일 처리, 계약 CH-2).
         trimmed || null,
         opts?.imageUrls,
+        // 말풍선이 없으니 실패하면 다시 보낼 내용을 따로 남긴다(H1)
+        !trimmed && conditionActions?.length
+          ? { kind: "conditions", actions: conditionActions }
+          : undefined,
       );
     },
     [run],
@@ -374,6 +480,10 @@ export function useChat({
   // draft 승인 — 발화가 아니라 최상위 action/draftId 로 확정한다(발화≠동의, 계약 v2).
   const confirm = useCallback(
     (draftId: string) => {
+      // 결과가 정해졌거나 진행 중인 초안은 다시 보내지 않는다 — 버튼을 숨기는 것과 별개의 방어.
+      // 실행 여부를 모르는 초안을 다시 실행하면 등록·수정·삭제가 두 번 될 수 있다.
+      const result = draftResultOf(draftId);
+      if (result?.approval || result?.settled) return;
       return run(
         ({ sessionId, threadId }) => ({
           sessionId,
@@ -382,6 +492,8 @@ export function useChat({
           draftId,
         }),
         null, // 승인은 사용자 말풍선을 남기지 않는다
+        undefined,
+        { kind: "confirm", draftId },
       );
     },
     [run],
@@ -389,12 +501,32 @@ export function useChat({
 
   // 실패한 응답 재시도 — 에러난 (user, assistant) 쌍을 제거하고 같은 발화로 다시 전송.
   // 이미지도 그대로 다시 싣는다(실패한 턴은 서버에 닿지 않아 재분석 우려가 없다).
-  const retry = useCallback(() => {
-    const dropped = useChatStore.getState().dropLastExchange();
-    if (dropped?.text) {
-      send(dropped.text, undefined, { imageUrls: dropped.imageUrls });
-    }
-  }, [send]);
+  //
+  // 대상은 버튼이 달린 말풍선 id 로 받고, 그것이 **마지막 실패 말풍선일 때만** 진행한다.
+  // 종전엔 대상 없이 "마지막 교환"을 지웠다 — 위쪽 실패 말풍선을 누르면 마지막 성공 질문이
+  // 다시 나갔고(담기 중복), 연타·응답 중 재시도는 진행 중인 턴을 지웠다.
+  //
+  // 판정은 버튼 노출과 같은 canRetry 를 쓴다 — 보이는 버튼과 실제 동작이 어긋나지 않게(I-4).
+  // 말풍선 없는 턴은 남겨 둔 재전송 정보로 원래 진입점을 다시 탄다(H1): 칩은 send("", actions)
+  // (수집 없음·말풍선 없음·낙관적 제거 재적용 없음), 승인은 confirm(draftId).
+  const retry = useCallback(
+    (messageId: string) => {
+      const { isStreaming, messages } = useChatStore.getState();
+      if (!canRetry(messages, isStreaming, messageId)) return;
+      const resend = messages[messages.length - 1].resend;
+      if (isResend(resend)) {
+        useChatStore.getState().dropLastFailure();
+        if (resend.kind === "conditions") send("", resend.actions);
+        else confirm(resend.draftId);
+        return;
+      }
+      const dropped = useChatStore.getState().dropLastExchange();
+      if (dropped?.text) {
+        send(dropped.text, undefined, { imageUrls: dropped.imageUrls });
+      }
+    },
+    [send, confirm],
+  );
 
   // 조건 칩 제거 — conditionActions 배열로 보낸다(계약 CH-2 #84, 규약 문자열 방식은 폐기).
   // 어떤 칩을 지웠는지는 UI만 아는 사실이라 발화만으로는 서버가 복원할 수 없다.
@@ -429,6 +561,12 @@ export function useChat({
   // 새 대화 = 새 방. 세션(접속)은 유지하고 thread_id 만 새로 판다 — BE 와 합의된 동작.
   // 여기서 세션을 새로 발급하면 다른 탭의 세션을 축출해 멀티탭이 깨진다.
   const startNewChat = useCallback(() => {
+    // 진행 중인 승인은 초안과 함께 사라져도 처리 여부가 확인된 것이 아니다 — 기록을 남긴다
+    for (const r of useChatStore.getState().results) {
+      if (r.kind === "draft" && r.approval === "pending") {
+        recordUnresolved(r.draft.draftId);
+      }
+    }
     abortRef.current?.abort();
     const threadId = newThreadId(channel);
     // 저장소를 먼저 비운다 — saveChat 은 빈 대화를 무시하므로(다른 탭 덮어쓰기 방지)

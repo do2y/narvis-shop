@@ -4,7 +4,10 @@ import { create } from "zustand";
 import type {
   ChatAction,
   ChatResult,
+  ConditionAction,
   ConditionChip,
+  DraftApproval,
+  SellerDraft,
   SellerLane,
   SellerReport,
   SuggestionChip,
@@ -49,7 +52,32 @@ export interface ChatMessage {
   retryable?: boolean;
   /** 서버 로그 추적용 id. 사용자 신고 시 이 값으로 요청을 찾는다. */
   requestId?: string;
+  /**
+   * 사용자 말풍선이 없는 턴(칩 제거·판매자 승인)이 실패했을 때 **다시 보낼 최소 정보**.
+   *
+   * 일반 발화는 바로 앞 user 말풍선이 곧 재전송 내용이지만, 이 두 턴은 말풍선이 없어
+   * 여기 남기지 않으면 재시도할 것이 없다. 다시 보내도 안전하다고 판정된 실패에만 남는다
+   * (retryPolicy.ts). sessionId·티켓·화면 맥락은 담지 않는다 — 재시도 시점에 새로 구한다.
+   * 대화와 함께 저장·복원되므로 읽을 때는 isResend 로 형식을 확인한다.
+   */
+  resend?: Resend;
 }
+
+/**
+ * 처리 여부가 불명확한 판매자 승인의 기록 — 이후 같은 대상을 승인할 때 경고하려고 남긴다.
+ * 초안과 달리 새 대화(reset)에서 지우지 않는다: 초안이 사라져도 서버 처리 여부가 확인된 것은 아니다.
+ * ownerId 가 같은 계정에게만 보인다. 메모리에만 있어 새로고침하면 사라진다.
+ */
+export interface UnresolvedApproval {
+  draftId: string;
+  op: SellerDraft["op"];
+  productId: string | null;
+  ownerId: string | null;
+}
+
+export type Resend =
+  | { kind: "conditions"; actions: ConditionAction[] }
+  | { kind: "confirm"; draftId: string };
 
 /**
  * 로그인 승계(CH-7) 실패 상태 — 게스트 대화를 회원으로 넘기지 못했을 때.
@@ -90,6 +118,16 @@ interface ChatState {
   conditions: ConditionChip[]; // AI 추출 조건 칩(구매자) — (field, value)로 제거 왕복
   suggestions: SuggestionChip[]; // 완화·되돌리기 제안 칩(구매자)
   isStreaming: boolean;
+  /**
+   * 지금 대화 상태에 쓸 권한이 있는 턴(스트림 1회)의 id. isStreaming 과 항상 같이 바뀐다.
+   *
+   * 새 대화(reset)가 이 값을 비우는 순간 이전 턴은 더 이상 현재 턴이 아니다 — 그 턴의
+   * 남은 비동기 작업(세션 확보 await·카드 조회·finally)이 새 대화를 건드리지 못하게 하는 기준이다.
+   * abort 는 네트워크만 끊을 뿐 이미 시작된 작업이 스토어에 쓰는 것은 막지 못한다.
+   * 저장하지 않는다(chatPersistence 대상 아님).
+   */
+  activeTurnId: string | null;
+  unresolvedApprovals: UnresolvedApproval[];
   lane: SellerLane | null; // 판매자 챗 화면 전환 신호 — 첫 프레임 meta.lane
   /**
    * 진행 표시 문구(최종 답변 아님, 로딩 표시용). 구매자·판매자 공용 슬롯이다 —
@@ -124,13 +162,28 @@ interface ChatState {
    * 이미지도 함께 돌려준다 — 실패한 턴은 서버에 닿지 않았으므로 재시도가 곧 그 턴이다.
    */
   dropLastExchange: () => { text: string; imageUrls?: string[] } | null;
+  /** 마지막 실패 말풍선 하나만 지운다 — 말풍선 없는 턴의 재시도(지울 user 말풍선이 없다) */
+  dropLastFailure: () => void;
+  /** 마지막 실패 말풍선에 재전송 정보를 붙인다 */
+  setLastResend: (resend: Resend) => void;
   setResults: (results: ChatResult[]) => void;
   addResult: (result: ChatResult) => void;
   settleDraft: (draftId: string, action: ChatAction) => void;
+  /** 초안의 승인 상태를 바꾼다. undefined 면 지운다 */
+  setDraftApproval: (
+    draftId: string,
+    approval: DraftApproval | undefined,
+    message?: string,
+  ) => void;
+  addUnresolvedApproval: (entry: UnresolvedApproval) => void;
+  removeUnresolvedApproval: (draftId: string) => void;
   dropDraft: (draftId: string) => void;
   setConditions: (chips: ConditionChip[]) => void;
   setSuggestions: (chips: SuggestionChip[]) => void;
-  setStreaming: (v: boolean) => void;
+  /** 턴 시작 — 소유권과 스트리밍 상태를 함께 켠다 */
+  beginTurn: (turnId: string) => void;
+  /** 턴 종료 — 그 턴이 아직 현재 턴일 때만 소유권·스트리밍·진행 표시를 함께 끈다 */
+  endTurn: (turnId: string) => void;
   setLane: (lane: SellerLane | null) => void;
   setProgress: (text: string | null) => void;
   setAnalysisReport: (report: AnalysisReportView | null) => void;
@@ -154,6 +207,7 @@ const initial = {
   conditions: [],
   suggestions: [],
   isStreaming: false,
+  activeTurnId: null,
   lane: null,
   progress: null,
   analysisReport: null,
@@ -162,6 +216,8 @@ const initial = {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   ...initial,
+  // initial 에 넣지 않는다 — reset(새 대화)이 지우면 안 되는 값이다
+  unresolvedApprovals: [],
 
   setSessionId: (sessionId) => set({ sessionId }),
   setThreadId: (threadId) => set({ threadId }),
@@ -200,7 +256,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const messages = [...get().messages];
     // 마지막이 실패한 assistant면 그것과 직전 user를 제거하고 user 발화를 반환
     const last = messages[messages.length - 1];
-    if (last?.role !== "assistant") return null;
+    // 실패가 아니면 손대지 않는다 — 응답 중인 턴을 지우면 그 턴의 토큰이 이전 답에 붙는다
+    if (last?.role !== "assistant" || !last.error) return null;
     messages.pop();
     const prev = messages[messages.length - 1];
     const dropped = prev?.role === "user" ? prev : null;
@@ -212,6 +269,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // 텍스트만 돌려주면 재시도가 사진 없이 나가 초안이 이미지 없이 만들어진다.
     return { text: dropped.text, imageUrls: dropped.imageUrls };
   },
+  dropLastFailure: () =>
+    set((s) => {
+      const last = s.messages[s.messages.length - 1];
+      if (last?.role !== "assistant" || !last.error) return {};
+      return { messages: s.messages.slice(0, -1) };
+    }),
+  setLastResend: (resend) =>
+    set((s) => {
+      const messages = [...s.messages];
+      const last = messages[messages.length - 1];
+      if (last?.role !== "assistant" || !last.error) return {};
+      messages[messages.length - 1] = { ...last, resend };
+      return { messages };
+    }),
   setResults: (results) => set({ results }),
   addResult: (result) => set((s) => ({ results: [...s.results, result] })),
   // 수정 확인/실패 결과가 오면 해당 diff 카드를 처리 완료 상태로 잠근다
@@ -224,6 +295,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
           : r,
       ),
     })),
+  setDraftApproval: (draftId, approval, message) =>
+    set((s) => ({
+      results: s.results.map((r) =>
+        r.kind === "draft" && r.draft.draftId === draftId
+          ? { ...r, approval, approvalMessage: message }
+          : r,
+      ),
+    })),
+  addUnresolvedApproval: (entry) =>
+    set((s) =>
+      s.unresolvedApprovals.some((u) => u.draftId === entry.draftId)
+        ? {}
+        : { unresolvedApprovals: [...s.unresolvedApprovals, entry] },
+    ),
+  removeUnresolvedApproval: (draftId) =>
+    set((s) => ({
+      unresolvedApprovals: s.unresolvedApprovals.filter(
+        (u) => u.draftId !== draftId,
+      ),
+    })),
   // 사용자가 수정을 취소하면 실패가 아니라 "없던 일" — 카드를 그냥 걷어낸다(서버 호출 없음)
   dropDraft: (draftId) =>
     set((s) => ({
@@ -233,7 +324,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })),
   setConditions: (conditions) => set({ conditions }),
   setSuggestions: (suggestions) => set({ suggestions }),
-  setStreaming: (isStreaming) => set({ isStreaming }),
+  beginTurn: (turnId) => set({ activeTurnId: turnId, isStreaming: true }),
+  endTurn: (turnId) =>
+    set((s) =>
+      s.activeTurnId === turnId
+        ? { activeTurnId: null, isStreaming: false, progress: null }
+        : {},
+    ),
   setLane: (lane) => set({ lane }),
   setProgress: (progress) => set({ progress }),
   setAnalysisReport: (analysisReport) => set({ analysisReport }),

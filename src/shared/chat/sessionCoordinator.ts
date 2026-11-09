@@ -194,12 +194,19 @@ export async function ensureSession(
    * 고르기 전까지는 발급을 막는다.
    */
   allowCreate = true,
+  /**
+   * fresh: 캐시를 읽지 않고 티켓을 새로 받는다(판매자 승인 직전, I-6).
+   * 만료 직전 티켓으로 승인이 거부되는 일을 줄이기 위한 것으로, 401 이 불가능해지는 것은 아니다.
+   * 발급 실패는 그대로 던진다 — 캐시의 옛 티켓으로 되돌아가면 fresh 를 쓰는 의미가 없다.
+   * 재발급·폴백·승계 대기 규칙은 평소와 같다.
+   */
+  { fresh = false }: { fresh?: boolean } = {},
 ): Promise<ChatSession> {
-  const cached = readCache(channel);
+  const cached = fresh ? null : readCache(channel);
   if (cached) return cached;
 
   return withLock(keyFor(channel), async () => {
-    const again = readCache(channel);
+    const again = fresh ? null : readCache(channel);
     if (again) return again; // 락 안에서 재확인 — 대기 중 다른 탭이 발급했을 수 있다
 
     if (!knownSessionId && !allowCreate) throw new SessionClaimPendingError();

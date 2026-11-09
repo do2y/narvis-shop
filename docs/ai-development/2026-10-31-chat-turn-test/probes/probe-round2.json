@@ -1,0 +1,27 @@
+{
+  "B4": {
+    "before": {
+      "isStreaming": false,
+      "texts": [
+        "user:첫 질문(실패)",
+        "assistant: [ERR]",
+        "user:둘째 질문(성공)",
+        "assistant:둘째 답"
+      ],
+      "results": 0,
+      "threadId": "e0b24c2e-0c1c-4fb2-9076-ac1f18589518"
+    },
+    "after": {
+      "isStreaming": false,
+      "texts": [
+        "user:첫 질문(실패)",
+        "assistant: [ERR]",
+        "user:둘째 질문(성공)",
+        "assistant:재전송된 답"
+      ],
+      "results": 0,
+      "threadId": "e0b24c2e-0c1c-4fb2-9076-ac1f18589518"
+    },
+    "resentBody": "둘째 질문(성공)"
+  }
+}

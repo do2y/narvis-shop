@@ -14,8 +14,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hoverMuted, pressable } from "../interaction";
+import {
+  DraftApprovalNotice,
+  DuplicateRiskConfirm,
+  DuplicateRiskWarning,
+  isApprovalLocked,
+} from "./DraftApprovalNotice";
 import { ChangesFields, PreviewFields } from "./DraftReviewFields";
 import type {
+  DraftApproval,
   ChatAction,
   DraftSection,
   SellerDraft,
@@ -23,6 +30,11 @@ import type {
 
 interface ProductCreateCardProps {
   draft: SellerDraft;
+  approval?: DraftApproval;
+  approvalMessage?: string;
+  /** 이전 승인의 처리 여부가 불명확한 대상 — 경고하고 한 번 더 확인받는다 */
+  duplicateRisk?: boolean;
+  onAcknowledge?: (draftId: string) => void;
   /** 확정된 결과(등록 완료·실패). 있으면 확인 버튼 대신 결과를 표시한다. */
   settled?: ChatAction;
   onConfirm: (draftId: string) => void;
@@ -114,7 +126,7 @@ function StatusBadge({
   tone,
   children,
 }: {
-  tone: "review" | "busy" | "done" | "error";
+  tone: "review" | "busy" | "done" | "error" | "locked";
   children: React.ReactNode;
 }) {
   return (
@@ -122,7 +134,7 @@ function StatusBadge({
       className={cn(
         "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
         tone === "review" && "bg-brand/10 text-brand",
-        tone === "busy" && "bg-muted text-muted-foreground",
+        (tone === "busy" || tone === "locked") && "bg-muted text-muted-foreground",
         tone === "done" && "bg-brand text-brand-foreground",
         tone === "error" && "bg-destructive/10 text-destructive",
       )}
@@ -148,6 +160,10 @@ function StatusBadge({
 export function ProductCreateCard({
   draft,
   settled,
+  approval,
+  approvalMessage,
+  duplicateRisk,
+  onAcknowledge,
   onConfirm,
   onCancel,
   disabled,
@@ -159,12 +175,14 @@ export function ProductCreateCard({
   const succeeded = !!settled && !failed;
 
   // 화면 상태 한 곳에서 결정 — 배지·푸터·본문 흐림이 전부 이 값을 따른다.
-  // 순서가 우선순위다: 확정 결과 > 스트림 오류 > 처리 중 > 검토 가능
+  // 순서가 우선순위다: 확정 결과 > 승인 잠금 > 스트림 오류 > 처리 중 > 검토 가능
   const state = settled
     ? failed
       ? "error"
       : "done"
-    : streamError
+    : isApprovalLocked(approval)
+      ? "locked"
+      : streamError
       ? "error"
       : disabled
         ? "busy"
@@ -184,7 +202,9 @@ export function ProductCreateCard({
               ? "등록이 완료되었어요."
               : state === "error"
                 ? "문제가 생겨 등록을 진행할 수 없어요."
-                : "등록 전 내용을 확인해 주세요."}
+                : state === "locked"
+                  ? "이 초안은 다시 승인할 수 없어요."
+                  : "등록 전 내용을 확인해 주세요."}
           </p>
         </div>
         <StatusBadge tone={state}>
@@ -192,9 +212,11 @@ export function ProductCreateCard({
             ? "등록 완료"
             : state === "error"
               ? "오류"
-              : state === "busy"
-                ? "처리 중"
-                : "검토 중"}
+              : state === "locked"
+                ? "확인 필요"
+                : state === "busy"
+                  ? "처리 중"
+                  : "검토 중"}
         </StatusBadge>
       </header>
 
@@ -203,7 +225,7 @@ export function ProductCreateCard({
       <div
         className={cn(
           "transition-opacity duration-150 ease-out-strong",
-          (succeeded || state === "error") && "opacity-60",
+          (succeeded || state === "error" || state === "locked") && "opacity-60",
         )}
       >
         {preview ? (
@@ -234,6 +256,10 @@ export function ProductCreateCard({
         draftId={draft.draftId}
         state={state}
         settled={settled}
+        approval={approval}
+        approvalMessage={approvalMessage}
+        duplicateRisk={duplicateRisk}
+        onAcknowledge={onAcknowledge}
         streamError={streamError}
         onConfirm={onConfirm}
         onCancel={onCancel}
@@ -253,19 +279,53 @@ function ConfirmFooter({
   draftId,
   state,
   settled,
+  approval,
+  approvalMessage,
+  duplicateRisk,
+  onAcknowledge,
   streamError,
   onConfirm,
   onCancel,
   onRetry,
 }: {
   draftId: string;
-  state: "review" | "busy" | "done" | "error";
+  state: "review" | "busy" | "done" | "error" | "locked";
   settled?: ChatAction;
+  approval?: DraftApproval;
+  approvalMessage?: string;
+  duplicateRisk?: boolean;
+  onAcknowledge?: (draftId: string) => void;
   streamError?: string;
   onConfirm: (draftId: string) => void;
   onCancel: (draftId: string) => void;
   onRetry?: () => void;
 }) {
+  const [asking, setAsking] = useState(false);
+
+  if (state === "locked" && approval) {
+    return (
+      <div className="sticky bottom-0 mt-6 border-t bg-muted/30 pb-1 pt-5 backdrop-blur">
+        <DraftApprovalNotice
+          approval={approval}
+          message={approvalMessage}
+          onClose={() => onCancel(draftId)}
+        />
+      </div>
+    );
+  }
+
+  if (duplicateRisk && asking) {
+    return (
+      <div className="sticky bottom-0 mt-6 flex flex-col gap-3 border-t bg-muted/30 pb-1 pt-5 backdrop-blur">
+        <DuplicateRiskWarning />
+        <DuplicateRiskConfirm
+          onAcknowledge={() => onAcknowledge?.(draftId)}
+          onBack={() => setAsking(false)}
+        />
+      </div>
+    );
+  }
+
   // 등록 완료 — 결과와 다음 행동. 상세로는 못 간다(등록된 productId 가 응답에 없다)
   if (state === "done") {
     return (
@@ -350,10 +410,11 @@ function ConfirmFooter({
     // sticky bottom-0: 스크롤이 길어져도 액션이 화면에 남는다.
     // 배경은 워크스페이스와 같은 톤 — 떠 있는 바가 아니라 "영역의 바닥"으로 읽히게
     <div className="sticky bottom-0 mt-6 flex flex-col gap-3 border-t bg-muted/30 pb-1 pt-5 backdrop-blur">
+      {duplicateRisk && <DuplicateRiskWarning />}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => onConfirm(draftId)}
+          onClick={() => (duplicateRisk ? setAsking(true) : onConfirm(draftId))}
           disabled={busy}
           className={cn(
             "inline-flex h-11 items-center gap-1.5 rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground",

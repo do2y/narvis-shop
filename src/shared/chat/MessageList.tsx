@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { ProductImage } from "@/shared/ui/ProductImage";
 import { MessageMarkdown } from "./MessageMarkdown";
+import { canRetry } from "./retryPolicy";
 import type { ChatMessage } from "./store";
 
 interface MessageListProps {
@@ -11,7 +12,8 @@ interface MessageListProps {
   /** 진행 상태 문구(progress 이벤트, 구매자·판매자 공용). 답변 전 로딩 표시용 */
   progress?: string | null;
   showUserAvatar?: boolean;
-  onRetry: () => void;
+  /** 재시도 대상 말풍선 id 를 넘긴다 — 훅이 그게 마지막 실패 말풍선인지 다시 확인한다 */
+  onRetry: (messageId: string) => void;
 }
 
 function TypingIndicator() {
@@ -100,11 +102,13 @@ export function MessageList({
               <div className="flex max-w-[80%] flex-col items-start gap-2 rounded-2xl rounded-tl-sm bg-destructive/10 px-4 py-2.5">
                 <span className="text-sm text-destructive">{msg.error}</span>
                 {/* 재시도해도 같은 결과가 뻔한 실패(권한·과다 요청 등)에는 버튼을 주지 않는다 —
-                    누를수록 상황이 나빠지거나 무의미하다. 판단은 서버 retryable 을 따른다. */}
-                {msg.retryable !== false && (
+                    누를수록 상황이 나빠지거나 무의미하다. 판단은 서버 retryable 을 따른다.
+                    마지막 말풍선에만 준다 — 위쪽 실패는 사실만 남긴다(재시도는 마지막 턴 기준).
+                    노출 판정은 훅의 retry 와 같은 canRetry 다 — 보이는데 눌러도 안 되는 버튼을 만들지 않는다. */}
+                {canRetry(messages, isStreaming, msg.id) && (
                   <button
                     type="button"
-                    onClick={onRetry}
+                    onClick={() => onRetry(msg.id)}
                     className="rounded-full border border-destructive/30 px-3 py-1 text-sm text-destructive transition-all hover:bg-destructive/10 active:scale-95"
                   >
                     다시 시도

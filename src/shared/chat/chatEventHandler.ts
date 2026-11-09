@@ -1,12 +1,15 @@
 import { resolveAnalysisReport } from "@/shared/chat/analysisReport";
+import { closeApproval, draftResultOf } from "@/shared/chat/draftApproval";
 import { resolveChatErrorMessage } from "@/shared/chat/errorMessage";
 import { fetchChatListGroup } from "@/shared/chat/lists";
 import { resolveProgressText } from "@/shared/chat/progress";
-import type {
-  ChatAction,
-  ChatEvent,
-  SellerPanel,
-  SellerReport,
+import {
+  isCartMutatingAction,
+  isWishlistMutatingAction,
+  type ChatAction,
+  type ChatEvent,
+  type SellerPanel,
+  type SellerReport,
 } from "@/shared/types/chat";
 import { useChatStore } from "./store";
 
@@ -14,7 +17,19 @@ interface TurnHandlerOptions {
   /** 채널별 액션 후처리(장바구니 invalidate 등). 안내 문구 표시는 여기서 공통 처리한다. */
   onAction?: (action: ChatAction) => void;
   /** 스트림 정상 종료 시 우측 패널 조치(판매자 전용). error 로 끝나면 호출되지 않는다. */
-  onDone?: (panel: SellerPanel | undefined) => void;
+  onDone?: (
+    panel: SellerPanel | undefined,
+    turn: { draftArrived: boolean },
+  ) => void;
+  /** 새 초안 프레임을 받은 순간(판매자 전용). 렌더 타이밍과 무관하게 프레임 순서대로 불린다. */
+  onDraft?: () => void;
+  /**
+   * 이 턴이 아직 현재 턴인가(스토어 activeTurnId). 아니면 대화 상태를 바꾸지 않는다.
+   * 생략하면 항상 현재 턴으로 본다.
+   */
+  isCurrent?: () => boolean;
+  /** 이 턴이 판매자 승인이면 그 초안 — 승인 결과를 기록할 대상 */
+  confirmingDraftId?: string;
 }
 
 /**
@@ -27,13 +42,19 @@ interface TurnHandlerOptions {
  * 턴 단위로 만드는 이유: 아래 세 값은 스트림 1회 수명이다. 턴을 넘어 살아남으면
  * 이전 턴의 리포트·조회가 다음 턴 결과로 샌다.
  */
-export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
+export function createTurnHandler({
+  onAction,
+  onDone,
+  onDraft,
+  isCurrent = () => true,
+  confirmingDraftId,
+}: TurnHandlerOptions) {
   const {
     appendToLastAssistant,
     failLastAssistant,
     setResults,
     addResult,
-    settleDraft,
+    setDraftApproval,
     setConditions,
     setSuggestions,
     setLane,
@@ -62,7 +83,23 @@ export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
   // report 수신 즉시 패널에 꽂지 않고 여기 담아 두는 이유는 done 절 주석 참조.
   let pendingReport: SellerReport | null = null;
 
+  // 이 턴에 초안이 왔는가 — 패널이 목록으로 돌아가면 안 되는 턴을 done 에 알린다.
+  // 턴 수명이라 초안 뒤 error 로 끝나도 다음 턴으로 새지 않는다.
+  let draftArrived = false;
+
   const onEvent = (e: ChatEvent) => {
+    if (!isCurrent()) {
+      // 끝난 턴 — 대화 상태(메시지·카드·칩·진행·레인·리포트·초안)는 건드리지 않는다.
+      // 다만 서버에서 실제로 끝난 장바구니·찜 변경은 캐시를 맞춰야 하므로 넘긴다.
+      // 실패 action·판매자 결과는 동기화할 서버 변화가 없거나 대화 UI(초안 카드) 몫이라 넘기지 않는다.
+      if (
+        e.type === "action" &&
+        (isCartMutatingAction(e.data) || isWishlistMutatingAction(e.data))
+      ) {
+        onAction?.(e.data);
+      }
+      return;
+    }
     switch (e.type) {
       case "meta":
         // 첫 프레임 — 레인으로 즉시 레이아웃·로딩 준비
@@ -120,6 +157,8 @@ export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
               fetchChatListGroup(id).catch(() => null),
             ),
           ).then((groups) => {
+            // 조회하는 사이 새 대화가 시작됐으면 버린다 — 이전 턴의 카드가 새 대화 패널에 들어오던 결함(A1)
+            if (!isCurrent()) return;
             const usable = groups.filter(
               (g): g is NonNullable<typeof g> =>
                 // 카드가 0개라도 드롭이 있었다면 넣는다 — "추천이 다 품절됐다"는
@@ -158,6 +197,8 @@ export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
         // 방치되지 않게 한다. 수정 턴에서 새 draft 가 오면 같은 코드가 다시
         // 돌아 draftId·타이머가 함께 갱신된다(별도 분기 불필요).
         if (e.data.op === "create") setActiveDraft(e.data.draftId);
+        draftArrived = true;
+        onDraft?.();
         break;
       case "report":
         // 보관만 하고 화면에 꽂지 않는다 — 커밋 신호는 done{replace} 다.
@@ -171,35 +212,20 @@ export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
         // 문구를 하드코딩하거나 파싱하지 않는다. 분기는 type·reason 으로만.
         const action = e.data;
         appendToLastAssistant(`\n\n${action.message}`);
-        // 수정 결과면 해당 draft 카드를 확정 상태로 잠금
-        if (
-          action.type === "PRODUCT_UPDATED" ||
-          action.type === "PRODUCT_UPDATE_FAILED"
-        ) {
-          const drafts = useChatStore
-            .getState()
-            .results.filter((r) => r.kind === "draft" && !r.settled);
-          // 등록 초안은 productId 가 null 이다(아직 상품이 없으니까) —
-          // productId 로만 찾으면 등록 결과가 카드에 영원히 반영되지 않는다.
-          // 등록은 확정 대기 중인 create 초안을 대상으로 잡는다.
-          const pending =
-            drafts.find(
-              (r) =>
-                r.kind === "draft" &&
-                r.draft.productId === action.productId,
-            ) ??
-            drafts.find(
-              (r) => r.kind === "draft" && r.draft.op === "create",
-            );
-          if (pending?.kind === "draft") {
-            settleDraft(pending.draft.draftId, action);
-            // 등록이 끝났으면 초안 모드를 푼다(실패면 계속 고칠 수 있게 유지)
-            if (
-              pending.draft.op === "create" &&
-              action.type === "PRODUCT_UPDATED"
-            ) {
+        // 판매자 결과는 **이번에 승인한 초안**에만 기록한다. action 에 draftId 가 없어 다른 상품·다른 턴의
+        // 결과가 등록 초안을 "완료"로 만들던 결함(I-7) — 대상은 요청을 보낸 쪽이 안다.
+        //
+        // 성공 action 도 성공으로 확정하지 않는다: 이 초안의 성공을 보장하는 이벤트가 아니다(draftApproval.ts).
+        // 서버 문구는 위에서 말풍선에 붙었다.
+        if (confirmingDraftId) {
+          if (action.type === "PRODUCT_UPDATED") {
+            closeApproval(confirmingDraftId);
+            // 승인이 끝났으니 초안 모드는 푼다(실패면 계속 고칠 수 있게 유지)
+            if (draftResultOf(confirmingDraftId)?.draft.op === "create") {
               setActiveDraft(null);
             }
+          } else if (action.type === "PRODUCT_UPDATE_FAILED") {
+            setDraftApproval(confirmingDraftId, "rejected", action.message);
           }
         }
         // 이 경로에서는 행동 이벤트를 쏘지 않는다.
@@ -237,7 +263,7 @@ export function createTurnHandler({ onAction, onDone }: TurnHandlerOptions) {
           // null 이면 패널을 건드리지 않는다 — 이전 리포트가 남는 게 낫다
           if (next) setAnalysisReport(next);
         }
-        onDone?.(e.data.panel);
+        onDone?.(e.data.panel, { draftArrived });
         break;
       }
       case "error":

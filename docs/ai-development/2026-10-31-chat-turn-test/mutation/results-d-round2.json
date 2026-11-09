@@ -1,0 +1,61 @@
+{
+  "tests": [
+    "src"
+  ],
+  "restored": {
+    "src/shared/chat/useChat.ts": {
+      "originalSha": "180b8dd48b6d",
+      "restoredSha": "180b8dd48b6d",
+      "identical": true
+    }
+  },
+  "restoredIdentical": true,
+  "baselineTotal": 509,
+  "results": [
+    {
+      "id": "D3",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "401 재발급 결과의 sessionId 를 스토어에 쓰지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[D3] 재발급이 다른 sessionId 를 돌려주면 스토어의 sessionId 를 새 값으로 바꾼다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected 'session-1' to be 'session-2' // Object.is equality"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D5",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "run 시작에서 이전 턴 레인을 비우지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[D5] 분석 턴 다음 턴은 meta 가 오기 전부터 레인이 비어 있다 — 이전 분석 레인이 남지 않는다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected 'analysis' to be null"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D6",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "send 가 화면 맥락(screen)을 body 에 싣지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[D6] getScreenContext 가 돌려준 화면 맥락을 AI 요청 body 의 screen 으로 그대로 보낸다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected undefined to deeply equal { pageType: 'home', …(2) }"
+        }
+      ],
+      "byExpectedTest": false
+    }
+  ]
+}

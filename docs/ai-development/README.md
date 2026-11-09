@@ -14,6 +14,7 @@ Claude Code·ChatGPT 같은 생성형 AI로 개발하면서 **무엇을 맡겼�
 
 - 파일명 `YYYY-MM-DD-<주제>.md` (예: `2026-11-03-sse-parser-test.md`)
 - 한 기록 = 한 작업. 여러 세션에 걸쳐도 같은 작업이면 한 파일에 이어 씀
+- 계획·검증 자료가 따로 필요한 여러 단계 과제는 같은 이름의 **폴더**로 둠 (`YYYY-MM-DD-<주제>/README.md`가 입구)
 - 관련 기술 문서 끝에 역링크 한 줄을 다는 것은 선택 (`> AI 개발 기록: [...](../ai-development/...)`)
 
 ## 템플릿
@@ -44,6 +45,7 @@ Claude Code·ChatGPT 같은 생성형 AI로 개발하면서 **무엇을 맡겼�
 | 기록 | 한 줄 |
 |---|---|
 | [claude-md-drift.md](claude-md-drift.md) | AI가 매 세션 읽는 규칙 문서(CLAUDE.md)가 구현보다 뒤처졌던 6개 지점 |
+| [2026-10-31-chat-turn-test/](2026-10-31-chat-turn-test/README.md) | `useChat` 턴 오케스트레이션 테스트 + 변이 검증 — AI가 쓴 공허한 테스트를 변이로 찾아낸 과정 (14/15 → 15/15) |
 
 ## 기록 후보 — 기존 문서에 이미 근거가 있는 것
 

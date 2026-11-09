@@ -80,4 +80,23 @@ export type ChatEvent =
  */
 export type ChatResult =
   | { kind: "products"; groups: ProductGroup[] }
-  | { kind: "draft"; draft: SellerDraft; settled?: ChatAction };
+  | {
+      kind: "draft";
+      draft: SellerDraft;
+      /**
+       * 이 초안의 승인 성공을 **확인할 수 있는** 서버 이벤트. 현재 계약의 action 에는 draftId 가 없어
+       * 어떤 이벤트도 이를 보장하지 못하므로 기록 경로가 없다 — 계약이 바뀌면 연결한다.
+       */
+      settled?: ChatAction;
+      approval?: DraftApproval;
+      /** rejected 일 때 서버가 준 문구 */
+      approvalMessage?: string;
+    };
+
+/**
+ * 초안별 승인 상태(shared/chat/draftApproval.ts).
+ * pending 진행 중 / unknown 요청 후 실패 — 실행 여부 불명 /
+ * closed 판정 근거 없이 응답 종료 — 성공도 실패도 아님 / rejected 서버가 실패를 알림.
+ * 값이 있으면 같은 초안을 다시 승인할 수 없다.
+ */
+export type DraftApproval = "pending" | "unknown" | "closed" | "rejected";

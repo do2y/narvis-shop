@@ -226,18 +226,136 @@ describe("createTurnHandler", () => {
       expect(onAction).toHaveBeenCalledWith(action);
     });
 
-    it("등록 성공은 productId 가 없는 create 초안을 확정하고 초안 모드를 푼다", () => {
-      const { feed } = startTurn();
-      feed({ type: "draft", data: draft("create", "c1") });
-      expect(useChatStore.getState().activeDraft?.draftId).toBe("c1");
+    it("[I-5] 승인 턴의 성공 action 은 성공으로 확정하지 않고 closed 로 두며, 초안 모드는 푼다", () => {
+      useChatStore.setState({
+        results: [{ kind: "draft", draft: draft("create", "d1") }],
+      });
+      useChatStore.getState().setActiveDraft("d1");
+      const { feed } = startTurn({ confirmingDraftId: "d1" });
 
       feed({
         type: "action",
         data: { type: "PRODUCT_UPDATED", message: "등록했어요", productId: "77" },
       });
-      const [card] = useChatStore.getState().results;
-      expect(card?.kind === "draft" && card.settled?.type).toBe("PRODUCT_UPDATED");
+
+      const card = useChatStore.getState().results[0];
+      expect(card).toMatchObject({ kind: "draft", approval: "closed" });
+      expect(card?.kind === "draft" && card.settled).toBeUndefined();
       expect(useChatStore.getState().activeDraft).toBeNull();
     });
+  });
+});
+
+/**
+ * 턴 소유권(A 단위) — 현재 턴이 아니면(새 대화로 버려진 턴) 이벤트가 대화 상태를 바꾸지 않는다.
+ * 단, 서버에서 실제로 끝난 장바구니·찜 변경은 캐시 동기화를 위해 onAction 으로 넘긴다
+ * (개발자 결정 2026-10-31: 서버 상태 동기화와 대화 UI 변경을 분리).
+ */
+describe("createTurnHandler — 현재 턴이 아닐 때", () => {
+  beforeEach(() => {
+    useChatStore.getState().reset();
+    fetchChatListGroup.mockReset();
+  });
+
+  const conversationState = () => {
+    const s = useChatStore.getState();
+    return {
+      messages: s.messages,
+      results: s.results,
+      conditions: s.conditions,
+      suggestions: s.suggestions,
+      progress: s.progress,
+      lane: s.lane,
+      analysisReport: s.analysisReport,
+      activeDraft: s.activeDraft,
+    };
+  };
+
+  it("[A] 11종 이벤트 어느 것도 대화 상태(메시지·카드·칩·진행·레인·리포트·초안)를 바꾸지 않고, onDone 도 부르지 않는다", async () => {
+    fetchChatListGroup.mockResolvedValue(group("늦은 카드"));
+    const onDone = vi.fn();
+    const onDraft = vi.fn();
+    const { feed, settle } = startTurn({ isCurrent: () => false, onDone, onDraft });
+    const before = conversationState();
+
+    feed(
+      { type: "meta", data: { lane: "analysis" } },
+      { type: "progress", data: { stage: "searching" } },
+      { type: "token", data: { text: "늦은 토큰" } },
+      { type: "conditions", data: { chips: [{ field: "category", label: "상의", value: "상의" }] } },
+      { type: "suggestions", data: { chips: [{ label: "넓혀 볼까요?", estCount: 3 }] } },
+      { type: "products.ready", data: { listIds: ["list-1"] } },
+      { type: "draft", data: draft("create", "draft-1") },
+      { type: "report", data: report("늦은 리포트") },
+      { type: "action", data: { type: "PRODUCT_UPDATED", message: "등록됐어요", productId: "1" } },
+      { type: "done", data: { finishReason: "zero_result", panel: "replace" } },
+      { type: "error", data: { code: "INTERNAL", message: "" } },
+    );
+    await settle();
+
+    expect(conversationState()).toEqual(before);
+    expect(onDone).not.toHaveBeenCalled();
+    expect(onDraft).not.toHaveBeenCalled();
+  });
+
+  it("[A] 서버에서 끝난 장바구니·찜 변경은 onAction 으로 넘기고(캐시 동기화), 실패·판매자 결과는 넘기지 않는다", () => {
+    const onAction = vi.fn();
+    const { feed } = startTurn({ isCurrent: () => false, onAction });
+    const before = conversationState();
+
+    feed(
+      { type: "action", data: { type: "CART_ADDED", message: "담았어요", cartItemId: "9" } },
+      { type: "action", data: { type: "WISHLIST_ADDED", message: "찜했어요" } },
+      { type: "action", data: { type: "CART_ADD_FAILED", message: "품절", reason: "STOCK_INSUFFICIENT" } },
+      { type: "action", data: { type: "PRODUCT_UPDATED", message: "등록됐어요", productId: "1" } },
+    );
+
+    expect(onAction.mock.calls.map(([a]) => a.type)).toEqual(["CART_ADDED", "WISHLIST_ADDED"]);
+    expect(conversationState()).toEqual(before); // 안내 문구도 붙지 않는다
+  });
+
+  it("[A1] 카드 조회 도중 현재 턴이 아니게 되면, 조회가 늦게 끝나도 카드를 넣지 않는다", async () => {
+    let resolveGroup!: (g: ProductGroup) => void;
+    fetchChatListGroup.mockReturnValue(
+      new Promise((r) => {
+        resolveGroup = r;
+      }),
+    );
+    let current = true;
+    const { feed, settle } = startTurn({ isCurrent: () => current });
+    feed({ type: "products.ready", data: { listIds: ["list-1"] } });
+
+    current = false; // 이 사이에 새 대화가 시작됐다
+    resolveGroup(group("늦은 카드"));
+    await settle();
+
+    expect(useChatStore.getState().results).toEqual([]);
+    expect(lastMessage().text).toBe("");
+  });
+});
+
+describe("새 초안 도착 신호 (I-3)", () => {
+  beforeEach(() => useChatStore.getState().reset());
+
+  it("[I-3] 초안 프레임마다 onDraft 를 부르고, done 에 이 턴의 초안 도착 여부를 알린다", () => {
+    const onDraft = vi.fn();
+    const onDone = vi.fn();
+    const { feed } = startTurn({ onDraft, onDone });
+
+    feed(
+      { type: "draft", data: draft("update", "draft-1") },
+      { type: "done", data: { finishReason: "stop", panel: "keep" } },
+    );
+
+    expect(onDraft).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalledWith("keep", { draftArrived: true });
+  });
+
+  it("[I-3] 초안이 없는 턴은 draftArrived 가 false 다 — 이전 턴의 도착이 새지 않는다", () => {
+    const onDone = vi.fn();
+    startTurn({ onDone }).feed({ type: "draft", data: draft("update", "draft-1") });
+    startTurn({ onDone }).feed({ type: "done", data: { finishReason: "stop", panel: "keep" } });
+
+    expect(onDone).toHaveBeenCalledWith("keep", { draftArrived: false });
   });
 });

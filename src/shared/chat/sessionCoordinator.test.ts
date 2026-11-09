@@ -107,6 +107,73 @@ describe("sessionCoordinator", () => {
 
       expect(got.sessionId).toBe("fresh");
     });
+
+    /**
+     * fresh — 판매자 승인 직전. 캐시를 쓰지 않고 기존 세션의 티켓만 새로 받는다(I-6).
+     * 폴백·승계 규칙은 평소와 같아야 하고, 실패해도 캐시의 옛 티켓으로 돌아가면 안 된다.
+     */
+    describe("fresh", () => {
+      // 성공했다면 그 값이 단언 메시지에 그대로 찍힌다 — 옛 티켓으로 되돌아갔는지 바로 보이게
+      const failureOf = (promise: Promise<unknown>) =>
+        promise.then(
+          (value) => ({ resolved: value }),
+          (error: unknown) => ({ rejected: error }),
+        );
+
+      it("[I-6] 신선한 캐시가 있어도 재사용하지 않고, 같은 세션의 새 티켓을 받아 캐시에 쓴다", async () => {
+        seedCache(session("s1", "old-ticket"));
+        vi.mocked(reissueTicket).mockResolvedValue(session("s1", "new-ticket"));
+
+        const got = await ensureSession("SHOPPING", "s1", true, { fresh: true });
+
+        expect(reissueTicket).toHaveBeenCalledWith("s1");
+        expect(openChatSession).not.toHaveBeenCalled();
+        expect(got).toMatchObject({ sessionId: "s1", streamTicket: "new-ticket" });
+        expect(readCacheRaw()?.session.streamTicket).toBe("new-ticket");
+      });
+
+      it("[I-6] 재발급이 실패하면 그대로 실패한다 — 캐시의 옛 티켓으로 조용히 되돌아가지 않는다", async () => {
+        seedCache(session("s1", "old-ticket"));
+        const failure = { code: "INTERNAL" };
+        vi.mocked(reissueTicket).mockRejectedValue(failure);
+
+        expect(
+          await failureOf(ensureSession("SHOPPING", "s1", true, { fresh: true })),
+        ).toEqual({ rejected: failure });
+        expect(openChatSession).not.toHaveBeenCalled();
+      });
+
+      it.each(["SESSION_NOT_FOUND", "SESSION_FORBIDDEN"])(
+        "[I-6] %s 면 평소처럼 새 세션으로 폴백한다",
+        async (code) => {
+          seedCache(session("s1", "old-ticket"));
+          vi.mocked(reissueTicket).mockRejectedValue({ code });
+          vi.mocked(openChatSession).mockResolvedValue(session("s2", "t2"));
+
+          const got = await ensureSession("SHOPPING", "s1", true, { fresh: true });
+
+          expect(got).toMatchObject({ sessionId: "s2", streamTicket: "t2" });
+        },
+      );
+
+      it("[I-6] 승계 실패 중(allowCreate=false)이면 만료 세션도 새로 만들지 않는다", async () => {
+        seedCache(session("s1", "old-ticket"));
+        vi.mocked(reissueTicket).mockRejectedValue({ code: "SESSION_NOT_FOUND" });
+
+        expect(
+          await failureOf(ensureSession("SHOPPING", "s1", false, { fresh: true })),
+        ).toEqual({ rejected: expect.any(SessionClaimPendingError) });
+        expect(openChatSession).not.toHaveBeenCalled();
+      });
+
+      it("[I-6] 승계 실패 중에 sessionId 도 없으면 캐시가 있어도 승계 대기로 막는다", async () => {
+        seedCache(session("s1", "old-ticket"));
+
+        expect(
+          await failureOf(ensureSession("SHOPPING", null, false, { fresh: true })),
+        ).toEqual({ rejected: expect.any(SessionClaimPendingError) });
+      });
+    });
   });
 
   describe("claimSession — 로그인 승계", () => {

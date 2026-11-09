@@ -6,12 +6,15 @@ import { useQueryParams } from "@/shared/hooks/useQueryParams";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChatConversation } from "@/shared/chat/ChatConversation";
 import { NewChatButton } from "@/shared/chat/NewChatButton";
+import { acknowledgeUnresolved, hasDuplicateRisk } from "@/shared/chat/draftApproval";
+import { canRetry } from "@/shared/chat/retryPolicy";
 import { SuggestedQuestions } from "@/shared/chat/SuggestedQuestions";
 import { useChatStore } from "@/shared/chat/store";
 import { useChat } from "@/shared/chat/useChat";
 import { selectIsAuthReady, useAuthStore } from "@/shared/stores/authStore";
 import { cn } from "@/lib/utils";
-import type { SellerPanel } from "@/shared/types/chat";
+import type { SellerDraft, SellerPanel } from "@/shared/types/chat";
+import { DraftEntryButton } from "./components/DraftEntryButton";
 import { SellerHeader } from "./components/SellerHeader";
 import { SellerWorkspace } from "./components/SellerWorkspace";
 import { SELLER_SUGGESTED_QUESTIONS } from "./suggestedQuestions";
@@ -27,8 +30,9 @@ import type {
 // 추천 질문은 대시보드 히어로와 같은 정본을 쓴다(suggestedQuestions) —
 // 화면마다 다른 예시를 보여주면 무엇이 되는 기능인지 판단할 수 없다.
 
-// 모바일 3분할 대신 탭 전환(요청: 좁은 화면에서 세 영역 동시 표시 금지)
-type MobileView = "chat" | SellerWorkspaceTab;
+// 모바일 3분할 대신 탭 전환(요청: 좁은 화면에서 세 영역 동시 표시 금지).
+// "results" 는 탭이 아니라 작업 영역에 초안 결과를 띄운 상태다 — 어느 탭도 현재 화면이 아니다.
+type MobileView = "chat" | "results" | SellerWorkspaceTab;
 
 export default function SellerChatPage() {
   const queryClient = useQueryClient();
@@ -83,10 +87,22 @@ export default function SellerChatPage() {
   const { send, confirm, retry, startNewChat, isStreaming } = useChat({
     channel: "SELLER",
     getScreenContext,
-    onDone: (panel: SellerPanel | undefined) => {
-      // refresh: 쓰기 반영 → 목록 재조회 후 목록으로 복귀
+    // 새 초안이 오면 우측을 결과 영역으로 전환한다. 렌더 후 이펙트로 감지하면 done 과의 실행 순서가
+    // 네트워크 청크 경계에 따라 뒤바뀌고(I-3), 초안 수로 판단하면 교체된 새 초안을 놓친다.
+    // 모바일에서는 작업 영역으로 넘어간다 — 채팅에 남으면 카드에 닿을 길이 없었다(I-8).
+    onDraft: () => {
+      setPanelIntent("results");
+      setMobileView("results");
+    },
+    onDone: (panel: SellerPanel | undefined, { draftArrived }) => {
       if (panel === "refresh") {
         queryClient.invalidateQueries({ queryKey: ["seller"] });
+      }
+      // 이 턴의 산출물은 초안이다. 패널은 onDraft 가 정했으니 건드리지 않는다 —
+      // 그 뒤 사용자가 목록을 골랐다면 그 선택도 유지된다.
+      if (draftArrived) return;
+      // refresh: 쓰기 반영 → 목록 재조회 후 목록으로 복귀
+      if (panel === "refresh") {
         setPanelIntent("list");
         return;
       }
@@ -98,7 +114,7 @@ export default function SellerChatPage() {
         setPanelIntent("list");
         return;
       }
-      // replace: diff는 draft 도착 시 "results"로 켜짐 / 분석 리포트는 파생("auto")으로 표시.
+      // replace: 분석 리포트는 파생("auto")으로 표시.
       // 여기서 "auto"로 되돌려야 직전 턴의 "list"가 이번 리포트를 가리지 않는다.
       setPanelIntent("auto");
     },
@@ -106,6 +122,8 @@ export default function SellerChatPage() {
 
   const messages = useChatStore((s) => s.messages);
   const results = useChatStore((s) => s.results);
+  // 결과 패널이 그리는 초안 카드 수 — 초안 입구의 표시 여부와 개수가 이 값을 따른다
+  const draftCount = results.filter((r) => r.kind === "draft").length;
   // 마지막 응답이 실패로 끝났으면 그 문구를 우측 검토 패널에도 전달한다.
   // 스트림 실패는 settled(=confirm 결과)에 담기지 않아, 이걸 넘기지 않으면
   // 좌측엔 "통신 실패"인데 우측엔 [등록]이 살아 있는 모순된 화면이 된다.
@@ -122,17 +140,6 @@ export default function SellerChatPage() {
 
   // 분석 레인이면 스트림 도는 동안 우측에 로딩 스켈레톤(계약 §3.3: meta.lane 즉시 준비)
   const analysisLoading = isStreaming && lane === "analysis";
-
-  // draft 도착 시 우측을 결과 영역으로 전환(증가 감지라 effect 필요)
-  const draftCount = results.filter((r) => r.kind === "draft").length;
-  const prevDraftCount = useRef(0);
-  useEffect(() => {
-    if (draftCount > prevDraftCount.current) {
-      setPanelIntent("results");
-      setMobileView("chat");
-    }
-    prevDraftCount.current = draftCount;
-  }, [draftCount]);
 
   // 우측 결과 영역 노출 여부 — "list"가 켜져 있으면 무조건 목록이다.
   //
@@ -181,6 +188,14 @@ export default function SellerChatPage() {
 
   // draft 승인/취소 — confirm은 최상위 action/draftId로, 취소는 서버 호출 없이 카드만 닫음
   const confirmDraft = (draftId: string) => confirm(draftId);
+  // 이전 승인의 처리 여부가 불명확하면 경고한다. 같은 계정의 기록만 본다.
+  // 알리는 절차일 뿐 중복 실행을 막지 못한다 — 사용자가 확인하면 그대로 나간다.
+  const unresolvedApprovals = useChatStore((s) => s.unresolvedApprovals);
+  const ownerId = useAuthStore((s) => s.user?.id ?? null);
+  const acknowledgeDraft = (draft: SellerDraft) => {
+    acknowledgeUnresolved(draft);
+    confirm(draft.draftId);
+  };
   const cancelDraft = (draftId: string) => {
     dropDraft(draftId);
     // 취소한 것이 검토 중이던 등록 초안이면 입력창도 평상시로 되돌린다
@@ -211,17 +226,32 @@ export default function SellerChatPage() {
 
   const started = messages.length > 0;
 
+  // 남은 초안으로 돌아가는 입구(채팅의 "초안 보기"·목록의 입구가 함께 쓴다).
+  // 특정 초안이 아니라 결과 패널 전체를 연다 — 패널이 남은 초안을 모두 그린다.
+  // 누를 때만 열린다: 사용자가 닫은 패널을 상태 변화가 다시 열지 않는다.
+  const openDrafts = () => {
+    setPanelIntent("results");
+    setMobileView("results");
+  };
+
   // "새 대화"는 헤더로 옮겼다 — 대화 영역 우상단 floating 은 스크롤되는 메시지 위에
   // 겹쳐 첫 줄을 가렸고, 구매자 챗(/chat)과 자리가 달라 같은 동작이 다른 곳에 있었다.
   const handleNewChat = () => {
     startNewChat();
     setPanelIntent("list");
+    // 모바일 초안 결과 화면에서 새 대화를 시작하면 비워진 결과 대신 채팅으로 돌아간다.
+    // 작업 탭(주문·상품)을 보던 중이면 그대로 둔다
+    setMobileView((v) => (v === "results" ? "chat" : v));
   };
 
   // 새 질문을 보내면 직전 턴의 "목록으로"를 놓아준다. 이게 없으면 리포트를 닫아 둔 뒤
   // 다시 분석시켰을 때 done 전까지 우측이 목록에 묶여 스켈레톤이 뜨지 않는다.
+  // 검토 중인 초안은 가리지 않는다 — 수정 요청이 실패하면 카드로 돌아올 길이 없다.
+  const reviewingDraft = draftCount > 0;
   const sendFromInput: typeof send = (message, conditionActions, opts) => {
-    setPanelIntent("auto");
+    setPanelIntent((prev) =>
+      prev === "results" && reviewingDraft ? "results" : "auto",
+    );
     return send(message, conditionActions, opts);
   };
 
@@ -247,14 +277,38 @@ export default function SellerChatPage() {
             ? "수정할 내용을 입력해 주세요 — 예: 재고를 30개로 바꿔줘"
             : "상품 수정, 주문 조회, 판매 전략 등 무엇이든 물어보세요."
         }
+        // 초안 안내만 있는 데스크톱과 달리, 모바일은 작업 영역이 가려져 있어 초안으로 가는 입구가 필요하다.
+        // 등록 초안이 아니면 데스크톱에 보일 것이 없으므로 감싸는 칸째 숨긴다(레이아웃 유지).
+        aboveInputClassName={
+          !activeDraft && draftCount > 0 ? "mb-1 lg:hidden" : undefined
+        }
         aboveInput={
           activeDraft ? (
             // 상태("검토 중")는 실제 작업이 일어나는 우측 패널 제목이 말한다.
             // 여기서는 지금 이 입력창으로 무엇을 할 수 있는지만 짧게 알린다 —
             // 좌우에 같은 상태를 두 번 적으면 어느 쪽이 진짜인지 모호해진다.
-            <p className="px-1 text-xs text-muted-foreground">
-              채팅으로 고치면 오른쪽 초안에 바로 반영돼요.
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="px-1 text-xs text-muted-foreground">
+                {/* 수정 요청은 기존 초안을 고치지 않는다 — 새 draftId 의 초안이 오면 교체되고
+                    (수정 턴마다 재발급 — architecture/chat.md), 되묻기로 끝나면 초안이 오지 않는다.
+                    그래서 결과를 단정하지 않는다. 모바일엔 "오른쪽"이 없다 */}
+                <span className="hidden lg:inline">
+                  채팅으로 수정을 요청하면 오른쪽에 새 초안이 만들어질 수 있어요.
+                  검토한 뒤 등록해 주세요.
+                </span>
+                <span className="lg:hidden">
+                  채팅으로 수정을 요청하면 새 초안이 만들어질 수 있어요. 검토한 뒤
+                  등록해 주세요.
+                </span>
+              </p>
+              <DraftEntryButton
+                count={draftCount}
+                onClick={openDrafts}
+                className="lg:hidden"
+              />
+            </div>
+          ) : draftCount > 0 ? (
+            <DraftEntryButton count={draftCount} onClick={openDrafts} />
           ) : !started ? (
             // 대화 시작 전에만 추천 질문 노출
             <SuggestedQuestions         
@@ -301,10 +355,21 @@ export default function SellerChatPage() {
       analysisReport={analysisReport}
       analysisLoading={analysisLoading}
       onBackToList={() => setPanelIntent("list")}
+      onOpenDrafts={openDrafts}
       onConfirmDraft={confirmDraft}
       onCancelDraft={cancelDraft}
+      hasDuplicateRisk={(draft) =>
+        hasDuplicateRisk(unresolvedApprovals, draft, ownerId)
+      }
+      onAcknowledgeDraft={acknowledgeDraft}
       streamError={streamError}
-      onRetry={retry}
+      // 카드의 오류 상태는 마지막 말풍선의 error 에서 나온다(streamError) — 대상도 그 말풍선이다.
+      // 재시도할 수 없으면 버튼 자체를 주지 않는다(카드는 onRetry 가 있으면 버튼을 그린다, I-4)
+      onRetry={
+        canRetry(messages, isStreaming, lastMessage?.id)
+          ? () => retry(lastMessage.id)
+          : undefined
+      }
     />
   );
 
@@ -318,7 +383,10 @@ export default function SellerChatPage() {
       />
 
       {/* 모바일·태블릿: 세 영역 동시 표시 금지 → 탭 전환 */}
-      <div className="flex items-center gap-1 border-b px-3 lg:hidden">
+      <nav
+        aria-label="화면 전환"
+        className="flex items-center gap-1 border-b px-3 lg:hidden"
+      >
         {(
           [
             { key: "chat", label: "AI 채팅" },
@@ -326,12 +394,16 @@ export default function SellerChatPage() {
             { key: "products", label: "상품 관리" },
           ] as const
         ).map((t) => {
+          // 결과(초안·리포트)를 보는 동안에는 작업 탭이 현재 화면이 아니다 — 목록을 보일 때만 강조한다
           const active =
-            t.key === "chat" ? mobileView === "chat" : mobileView === t.key;
+            t.key === "chat"
+              ? mobileView === "chat"
+              : mobileView !== "chat" && !showResults && workspaceTab === t.key;
           return (
             <button
               key={t.key}
               type="button"
+              aria-current={active ? "page" : undefined}
               onClick={() => {
                 if (t.key === "chat") {
                   setMobileView("chat");
@@ -353,11 +425,13 @@ export default function SellerChatPage() {
             </button>
           );
         })}
-      </div>
+      </nav>
 
       <div className="flex min-h-0 flex-1">
         {/* 좌측: 대화 — 데스크톱 고정폭, 모바일은 mobileView=chat일 때만 */}
         <div
+          role="region"
+          aria-label="AI 채팅"
           className={cn(
             "min-h-0 flex-col border-r",
             "lg:flex lg:w-[330px] lg:flex-none xl:w-[450px]",
@@ -372,6 +446,15 @@ export default function SellerChatPage() {
         {/* 우측: 작업 영역 — 데스크탑 항상, 모바일은 orders/products일 때만.
             min-w-0: 넓은 표(min-w-*)가 이 flex 칸을 밀어내 탭마다 폭이 변하지 않도록 */}
         <div
+          role="region"
+          // 지금 이 영역이 무엇을 보여 주는지 — 모바일 결과 화면에선 어느 탭도 현재가 아니라 이 이름이 알린다
+          aria-label={
+            showResults
+              ? draftCount > 0
+                ? "초안 검토"
+                : "AI 결과"
+              : "작업 목록"
+          }
           className={cn(
             "min-h-0 min-w-0 flex-1 lg:flex",
             mobileView === "chat" ? "hidden" : "flex",
@@ -383,3 +466,4 @@ export default function SellerChatPage() {
     </div>
   );
 }
+
