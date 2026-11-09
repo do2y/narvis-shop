@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from "@/shared/stores/authStore";
 import type {
   ChatResult,
+  ChatScreenContext,
   ChatSession,
   ProductGroup,
   SellerDraft,
@@ -1649,3 +1650,86 @@ describe("useChat — 초안별 승인 상태 (I-5 · I-7)", () => {
     ]);
   });
 });
+
+// 개발자 라운드 D1~D8 에서 생존한 D3·D5·D6 의 공백을 메운다(03 §7). 기존 픽스처는 바꾸지 않는다.
+describe("useChat — 개발자 라운드 보강 (D3 · D5 · D6)", () => {
+  it("[D3] 재발급이 다른 sessionId 를 돌려주면 스토어의 sessionId 를 새 값으로 바꾼다", async () => {
+    // 기본 픽스처는 재발급도 "session-1" 이라 갱신 여부가 보이지 않는다 — 이 테스트만 다른 값을 준다
+    vi.mocked(refreshTicket).mockResolvedValueOnce({
+      ...session("ticket-2"),
+      sessionId: "session-2",
+    });
+    replies.push(rejected(401, "TOKEN_EXPIRED"), sse(token("안녕하세요"), DONE));
+    const { result } = setup();
+
+    await act(() => result.current.send("안녕"));
+
+    expect(refreshTicket).toHaveBeenCalledWith("SHOPPING", "session-1"); // 전제 — 첫 발급 id 로 재발급했다
+    expect(requestAuth(1)).toBe("Bearer ticket-2"); // 전제 — 재발급 티켓으로 다시 열었다
+    expect(state().sessionId).toBe("session-2");
+  });
+
+  it("[D5] 분석 턴 다음 턴은 meta 가 오기 전부터 레인이 비어 있다 — 이전 분석 레인이 남지 않는다", async () => {
+    replies.push(
+      sse(frame("meta", { lane: "analysis" }), token("지난주 분석"), frame("done", { finishReason: "stop", panel: "replace" })),
+    );
+    const next = openStream();
+    replies.push(next.reply);
+    const { result } = setup({ channel: "SELLER" });
+    await act(() => result.current.send("지난주 분석해 줘"));
+    expect(state().lane).toBe("analysis"); // 전제 — 분석 턴이 끝난 뒤에도 레인이 남아 있다
+
+    // 판매자 화면의 분석 스켈레톤 조건(ChatPage: isStreaming && lane === "analysis")을 **렌더될 때마다** 기록한다.
+    // 스토어 구독으로 보면 run 안의 동기 연속 호출 사이 중간 상태까지 잡혀, 화면에 그려지지 않는 값과 섞인다.
+    const rendered: boolean[] = [];
+    renderHook(() => {
+      const loading = useChatStore((s) => s.isStreaming && s.lane === "analysis");
+      rendered.push(loading);
+    });
+    expect(rendered).toEqual([false]); // 전제 — 응답이 없을 때는 스켈레톤이 아니다
+
+    act(() => {
+      void result.current.send("이번 주 주문은?");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    // 문제 구간: 새 턴은 시작됐고(응답 대기) 아직 meta 가 오지 않았다
+    expect(state().isStreaming).toBe(true);
+    expect(state().lane).toBeNull();
+    expect(rendered).not.toContain(true);
+
+    next.push(frame("meta", { lane: "general" }));
+    next.push(frame("done", { finishReason: "stop", panel: "keep" }));
+    next.close();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(state().lane).toBe("general");
+    expect(rendered).not.toContain(true);
+  });
+
+  it("[D6] getScreenContext 가 돌려준 화면 맥락을 AI 요청 body 의 screen 으로 그대로 보낸다", async () => {
+    const screenContext: ChatScreenContext = {
+      pageType: "home",
+      filters: { sort: "인기순" },
+      products: [{ productId: "7", name: "코튼 셔츠" }],
+    };
+    replies.push(sse(token("네"), DONE));
+    const { result } = setup({ getScreenContext: () => screenContext });
+
+    await act(() => result.current.send("이거 담아줘"));
+
+    expect(requestBody(0).screen).toEqual(screenContext);
+  });
+
+  it.each([
+    ["getScreenContext 가 없을 때", {}],
+    ["getScreenContext 가 undefined 를 돌려줄 때", { getScreenContext: () => undefined }],
+  ] as const)("[D6] %s는 screen 필드 없이 기존 요청 형식을 유지한다", async (_label, options) => {
+    replies.push(sse(token("네"), DONE));
+    const { result } = setup(options);
+
+    await act(() => result.current.send("안녕"));
+
+    expect(Object.keys(requestBody(0)).sort()).toEqual(["message", "sessionId", "threadId"]);
+  });
+});
+
