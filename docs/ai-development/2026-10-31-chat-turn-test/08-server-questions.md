@@ -91,6 +91,23 @@
 
 Q5의 `draftId` 멱등이 유효해도 키가 도움이 되는지 판단해 주세요. FE가 가장 우려하는 경우는 **결과 불명 뒤 새 `draftId`로 같은 내용을 승인하는 것**이고, 요청 단위 키로는 이를 막지 못할 수 있습니다. 서버가 같은 내용의 중복을 판별할 방법이 있는지도 함께 알려 주세요.
 
+### Q7. 401 뒤 티켓을 재발급하면 sessionId가 바뀔 수 있나요? (2026-11-09 추가)
+
+판매자 승인과 별개로 **모든 채팅 요청**에 해당하는 질문입니다.
+
+| 근거 | 내용 |
+|---|---|
+| FE 확인 | 스트림 시작이 401로 거부되면 FE는 티켓을 재발급받아 **1회 재요청**합니다. 재발급 응답의 `sessionId`로 스토어는 갱신하지만, 재요청 body는 **첫 발급 때 만든 것을 그대로** 씁니다([useChat.ts](../../../src/shared/chat/useChat.ts) 재발급 분기) |
+| FE 확인 | 그래서 재발급이 다른 `sessionId`를 돌려주면, 재요청의 body `sessionId`(옛 값)와 새 티켓이 서로 다른 세션을 가리킬 수 있습니다 |
+| 미확인 | 재발급이 `sessionId`를 바꾸는 경우가 실제로 있는지. FE 테스트 픽스처는 같은 값을 써 왔습니다(변이 D3 생존의 원인) |
+
+1. 401 이후 티켓을 재발급할 때 `sessionId`는 항상 기존 값을 유지하나요?
+2. `sessionId`가 바뀔 수 있다면, 새 티켓은 어느 `sessionId`에 귀속되나요?
+3. 재요청 body의 `sessionId`와 티켓에 귀속된 `sessionId`가 다르면 서버는 어떻게 처리하나요? (거부·티켓 기준 처리·body 기준 처리 중 무엇인지)
+4. 재발급 뒤 재요청할 때 FE가 body의 `sessionId`를 새 값으로 바꿔야 하나요?
+
+**현재 판단**: 서버 계약을 확인하지 못해 **프로덕션 결함으로 확정하지 않았고, 코드도 고치지 않았습니다.** 1번 답이 "항상 유지"라면 문제가 되지 않습니다.
+
 ### 참고: 패널 동작 확인
 
 승인 질문과 별개로, 초안 카드 표시와 관련해 다음 두 가지를 확인해 주세요.
@@ -137,4 +154,5 @@ Q5의 `draftId` 멱등이 유효해도 키가 도움이 되는지 판단해 주�
 | 승인 상태 판정 | [draftApproval.ts](../../../src/shared/chat/draftApproval.ts) |
 | action 처리 | [chatEventHandler.ts](../../../src/shared/chat/chatEventHandler.ts) |
 | action 타입 | [action.ts](../../../src/shared/types/chat/action.ts) |
-| 관련 이슈 | [07-issues.md](07-issues.md) I-2 · I-5 · I-6 · I-7 |
+| 재발급 재요청 | [useChat.ts](../../../src/shared/chat/useChat.ts) (`refreshTicket` 뒤 `streamChat`) · 테스트 `[D3]` |
+| 관련 이슈 | [07-issues.md](07-issues.md) I-2 · I-5 · I-6 · I-7 · Q7 은 03 §7 2회차 |
