@@ -86,7 +86,7 @@
 - **멀티탭은 탭 2개를 실제로 띄운 자동 검증이 없다** — `sessionCoordinator`의 판단 로직만 고정돼 있다
 - StrictMode 가짜 언마운트 회귀(`36fb6d5`)처럼 **브라우저에서만 드러난 결함**이 있었다
 - 커버리지는 측정하지 않는다
-- **커밋된 CI(`.github/workflows/ci.yml`)는 lint·build만 돌린다** — 테스트는 아직 PR 게이트가 아니다
+- CI(`.github/workflows/ci.yml`)에 테스트 단계를 넣었다(`3a89f89`, 2026-11-09). 로컬 Node 20에서 통과를 확인했지만 **실제 GitHub Actions 실행 결과는 PR 전까지 미검증**
 
 ## 실행
 
