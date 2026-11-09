@@ -46,6 +46,7 @@ Claude Code·ChatGPT 같은 생성형 AI로 개발하면서 **무엇을 맡겼�
 |---|---|
 | [claude-md-drift.md](claude-md-drift.md) | AI가 매 세션 읽는 규칙 문서(CLAUDE.md)가 구현보다 뒤처졌던 6개 지점 |
 | [2026-10-31-chat-turn-test/](2026-10-31-chat-turn-test/README.md) | `useChat` 턴 오케스트레이션 테스트 + 변이 검증 — AI가 쓴 공허한 테스트를 변이로 찾아낸 과정 (14/15 → 15/15) |
+| [2026-11-09-browser-e2e/](2026-11-09-browser-e2e/README.md) | T2 실제 브라우저 검증 — Playwright가 CORS 사전 요청을 대신 응답하던 하네스 함정 · C2 새로고침 가설 기각과 회귀 고정 |
 
 ## 기록 후보 — 기존 문서에 이미 근거가 있는 것
 
