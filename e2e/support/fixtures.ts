@@ -21,7 +21,11 @@ export const test = base.extend<{ sse: SseServer; api: ApiMock }>({
     await provide(server);
     await testInfo.attach("sse-log.json", {
       body: JSON.stringify(
-        { preflights: server.preflights, requests: server.requests },
+        {
+          preflights: server.preflights,
+          requests: server.requests,
+          events: server.events,
+        },
         null,
         2,
       ),
