@@ -1,0 +1,133 @@
+{
+  "tests": [
+    "src"
+  ],
+  "restored": {
+    "src/shared/chat/store.ts": {
+      "originalSha": "2ab558853060",
+      "restoredSha": "2ab558853060",
+      "identical": true
+    },
+    "src/shared/chat/useChat.ts": {
+      "originalSha": "180b8dd48b6d",
+      "restoredSha": "180b8dd48b6d",
+      "identical": true
+    },
+    "src/shared/chat/chatErrors.ts": {
+      "originalSha": "c07783cfb63e",
+      "restoredSha": "c07783cfb63e",
+      "identical": true
+    }
+  },
+  "restoredIdentical": true,
+  "baselineTotal": 504,
+  "results": [
+    {
+      "id": "D1",
+      "scenario": "D",
+      "target": "src/shared/chat/store.ts",
+      "desc": "endTurn 이 진행 문구를 비우지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[F] 진행 표시 중에 응답이 끊겨도 진행 문구가 남지 않는다 — 이 경로는 finally 만이 정리한다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected '상품을 검색하고 있어요' to be null"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D2",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "승계 실패 중에도 새 세션 생성 허용",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[C2] 승계 실패 중에는 새 세션을 만들지 말라고 코디네이터에 알린다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'SHOPPING', null, false ]"
+        },
+        {
+          "name": "[I-6] 승계 실패가 미해결이면 승인에서도 새 세션 생성을 막으라고 알린다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ 'SELLER', null, false, …(1) ]"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D3",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "401 재발급 결과의 sessionId 를 스토어에 쓰지 않음",
+      "verdict": "생존",
+      "failed": [],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D4",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "StreamInterruptedError 분기 삭제(일반 실패로)",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[C4] done·error 없이 끊기면 받은 답은 두고 '연결이 끊겼다'며 재시도를 연다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(5) } to match object { text: '반쯤 온 답', …(2) }"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D5",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "run 시작에서 이전 턴 레인을 비우지 않음",
+      "verdict": "생존",
+      "failed": [],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D6",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "send 가 화면 맥락(screen)을 body 에 싣지 않음",
+      "verdict": "생존",
+      "failed": [],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D7",
+      "scenario": "D",
+      "target": "src/shared/chat/useChat.ts",
+      "desc": "startNewChat 이 진행 중 스트림을 abort 하지 않음",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[A3] 답변 수신 중 새 대화 + 곧바로 새 질문 → 이전 턴 정리가 새 턴을 풀지 않고, 새 대화를 다시 누르면 새 턴이 끊긴다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected false to be true // Object.is equality"
+        }
+      ],
+      "byExpectedTest": false
+    },
+    {
+      "id": "D8",
+      "scenario": "D",
+      "target": "src/shared/chat/chatErrors.ts",
+      "desc": "429 를 재시도 가능으로",
+      "verdict": "검출",
+      "failed": [
+        {
+          "name": "[C5] 시작 거부 429 는 상태에 맞는 안내와 재시도 여부를 보이고 추적 id 를 남긴다",
+          "assertion": true,
+          "firstLine": "AssertionError: expected { …(6) } to match object { …(3) }"
+        }
+      ],
+      "byExpectedTest": false
+    }
+  ]
+}
