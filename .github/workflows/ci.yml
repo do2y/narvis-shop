@@ -24,3 +24,31 @@ jobs:
       # 백엔드가 없는 CI에서도 통과해야 한다 — 서버 fetch에 5초 타임아웃이 있고
       # 홈은 force-dynamic이라 빌드 시점에 백엔드를 부르지 않는다.
       - run: npm run build
+
+  # 실제 브라우저 E2E(Playwright) — check 와 병렬로 돌려 실패 원인이 섞이지 않게 한다.
+  # 앱 빌드·기동·/healthz 대기·종료는 playwright.config.ts 의 webServer 가 맡는다(check 와 빌드가 두 번 돈다 —
+  # 공유하려면 T2 설정을 바꿔야 해서 시간 비용을 택함). 백엔드·AI 서버는 테스트 서버로 대체해 시크릿이 필요 없다.
+  # 재시도는 설정에서 0 — 불안정한 실패를 숨기지 않는다.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      # 실패 원인 분석용 — html 리포트와 실패 테스트의 trace·스크린샷
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
