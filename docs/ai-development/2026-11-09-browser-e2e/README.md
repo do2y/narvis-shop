@@ -2,11 +2,15 @@
 
 > 시작 2026-11-09 · 도구 Claude Code (Claude Opus 5.5) · 브랜치 `test/e2e-harness` (기점 `origin/main` `2ffbeeb`)
 > 앞선 과제: [T1 — 채팅 턴 오케스트레이션 테스트](../2026-10-31-chat-turn-test/README.md)
+> AI 상호작용 기록: [interaction-log.md](interaction-log.md) — 결정에 영향을 준 지시·제안·정정
 
 ## 한 줄
 
 T1이 jsdom에서 확인한 채팅 동작이 **실제 브라우저의 사용자 시나리오**에서도 성립하는지 검증한다.
 테스트 개수가 아니라, 브라우저에서만 드러나는 장애를 재현하고 검증 범위를 분명히 남기는 것이 목표다.
+
+**작업 성격**: NARVIS 프로젝트 종료 후 개발자가 **개인적으로** 진행한 검증이다. Claude Code 를 활용해 테스트를 설계·실행하고,
+결함 주입(격리 worktree)으로 **테스트가 실제 결함을 잡는지**를 확인했다. 검증 범위·정책 기준·결함 분류·커밋은 개발자가 결정했다(1인 프로젝트, 별도 리뷰어 없음).
 
 ## T1과의 차이
 
@@ -28,6 +32,9 @@ T1이 jsdom에서 확인한 채팅 동작이 **실제 브라우저의 사용자 
 | **T2-D1** | 판매자 승인 요청 도중 연결 끊김 | **완료 — D1b 회귀 테스트 · D1a 관찰 3조건(재사용 연결에서 같은 승인 POST 서버 재도착 관찰, 앱 fetch 는 1회)** → [d1-seller-approval-disconnect.md](d1-seller-approval-disconnect.md) |
 | **T2-D2** | 판매자 승인 요청이 401 로 거부됨 | **완료 — 회귀 테스트 · 재발급·재전송 없이 처리 불명 안내 · MD1 직접 탐지** → [d2-seller-approval-401.md](d2-seller-approval-401.md) |
 | **T2-C1** | 일반 채팅 스트림 도중 끊김과 수동 재시도 | **완료 — reset·clean 회귀 테스트 · 결함 주입 MC1~MC5 탐지** → [c1-chat-stream-interrupt-retry.md](c1-chat-stream-interrupt-retry.md) |
+| T2 최종 보고 | P0 여섯 시나리오 종합 | **완료 `c78eb71`** → [t2-final-review.md](t2-final-review.md) |
+| **T2-C3** (후속) | 스트리밍 중 앱 안 화면 이동 후 복귀 | **결함 재현(RED 10/10) → 개발자가 "상태 구분 누락 결함"으로 분류 → B안 1단계로 해결(GREEN 10/10)**. 복원 정규화만 끈 실험에서 RED 4/4 → [c3-navigate-away-mid-stream.md](c3-navigate-away-mid-stream.md) |
+| **T2-C2c** (후속) | `done` 뒤 카드 조회 중 새로고침 | **관찰(회귀 계약 아님) — 초기 가설 기각 · "새 답변 + 이전 카드, 안내 없음" 관찰(결함 미확정)** → [c2c-reload-during-card-fetch.md](c2c-reload-during-card-fetch.md) |
 
 ### 시나리오별 분류 근거
 
