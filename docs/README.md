@@ -101,6 +101,7 @@ docs/
 | [claude-md-drift.md](ai-development/claude-md-drift.md) | AI가 매 세션 읽는 CLAUDE.md 가 구현보다 뒤처졌던 6개 지점 |
 | [2026-10-31-chat-turn-test/](ai-development/2026-10-31-chat-turn-test/README.md) | `useChat` 테스트를 AI로 쓰고 변이 15개로 유효성 검증 · AI 테스트의 공허한 통과를 찾은 과정 |
 | [2026-11-09-browser-e2e/](ai-development/2026-11-09-browser-e2e/README.md) | T2 실제 브라우저(Playwright) 검증 · 하네스 구조와 한계 · 시나리오별 재현 기록 |
+| [2026-11-10-e2e-ci.md](ai-development/2026-11-10-e2e-ci.md) | T3 Playwright E2E 를 GitHub Actions 에서 실행 · 워크플로 구조와 검증 범위 |
 
 ## archive/ — 보관
 
