@@ -62,7 +62,7 @@ AI는 코드 분석, 테스트 설계·구현, 실행 결과 정리 등을 지�
 | [claude-md-drift.md](claude-md-drift.md) | AI가 매 세션 읽는 규칙 문서(`CLAUDE.md`)가 구현보다 뒤처졌던 6개 지점 |
 | [2026-10-31-chat-turn-test/](2026-10-31-chat-turn-test/README.md) | **T1 — AI 작성 단위 테스트의 검증:** `useChat` 턴 오케스트레이션 테스트에 결함 주입을 적용해 테스트의 실제 탐지력을 확인한 과정. 첫 변이 세트에서 AI가 쓴 공허한 테스트를 찾아 보완(14/15 → 15/15) |
 | [2026-11-09-browser-e2e/](2026-11-09-browser-e2e/README.md) | **T2 — AI 활용 브라우저 E2E 검증:** Playwright 하네스 구축, CORS 사전 요청 검증이 공허해지던 하네스 문제 발견·구조 변경, 새로고침 가설 검증, 실패 상황별 회귀 테스트, 결함 주입으로 본 테스트 탐지력, 브라우저 계층 중복 도착 관찰 |
-| [2026-11-10-e2e-ci.md](2026-11-10-e2e-ci.md) | **T3 — E2E CI 자동화:** T2 의 Playwright E2E 15건을 GitHub Actions 독립 잡으로 실행하도록 구성 · Node 20 로컬 검증 · 실제 Actions 실행은 미확인 |
+| [2026-11-10-e2e-ci.md](2026-11-10-e2e-ci.md) | **T3 — E2E CI 자동화:** T2 의 Playwright E2E 15건을 GitHub Actions 독립 잡으로 실행하도록 구성 · Node 20 로컬 검증 · PR 첫 실행에서 두 잡 성공(1회) |
 
 ## 기록 후보 — 기존 문서에 이미 근거가 있는 것
 
