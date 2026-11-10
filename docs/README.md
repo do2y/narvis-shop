@@ -100,6 +100,7 @@ docs/
 | [README.md](ai-development/README.md) | 기록 원칙(기술 내용은 링크로만) · 템플릿 · 기존 문서에 근거가 있는 기록 후보 |
 | [claude-md-drift.md](ai-development/claude-md-drift.md) | AI가 매 세션 읽는 CLAUDE.md 가 구현보다 뒤처졌던 6개 지점 |
 | [2026-10-31-chat-turn-test/](ai-development/2026-10-31-chat-turn-test/README.md) | `useChat` 테스트를 AI로 쓰고 변이 15개로 유효성 검증 · AI 테스트의 공허한 통과를 찾은 과정 |
+| [2026-11-09-browser-e2e/](ai-development/2026-11-09-browser-e2e/README.md) | T2 실제 브라우저(Playwright) 검증 · 하네스 구조와 한계 · 시나리오별 재현 기록 |
 
 ## archive/ — 보관
 

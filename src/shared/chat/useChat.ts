@@ -260,7 +260,7 @@ export function useChat({
         });
       }
       // 스트리밍으로 채워질 빈 assistant 메시지 선 추가
-      addMessage({ id: newId(), role: "assistant", text: "" });
+      addMessage({ id: newId(), role: "assistant", text: "", status: "streaming" });
       beginTurn(turnId);
       setLane(null);
       setProgress(null);
@@ -362,6 +362,11 @@ export function useChat({
           // 말풍선에 실패를 남기지 않는다. 종전엔 startNewChat 의 abort 가 이 자리로
           // 떨어져 "응답을 받지 못했어요"가 새 대화 직전 말풍선에 붙었다.
           // (reset() 이 뒤따라 지우지만, 언마운트 경로에서는 지울 주체가 없다.)
+          //
+          // 다만 "완료"도 아니다 — 받은 데까지만 남은 답변이다. 응답 중이던 말풍선을 중단으로 표시해
+          // 돌아왔을 때 완료된 답변처럼 보이지 않게 한다(T2-C3). error 는 두지 않는다.
+          // 새 대화의 abort 는 reset() 뒤라 위의 isCurrent() 에서 먼저 반환되므로 여기에 오지 않는다.
+          useChatStore.getState().transitionLastAssistant("streaming", "interrupted");
         } else if (err instanceof SessionClaimPendingError) {
           // 승계 실패가 미해결 — 배너가 이미 떠 있고 사용자가 재시도/새 대화를
           // 골라야 한다. 말풍선의 재시도 버튼은 감춘다(같은 이유로 또 막힌다).

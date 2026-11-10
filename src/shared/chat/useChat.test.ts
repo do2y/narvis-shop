@@ -1733,3 +1733,119 @@ describe("useChat — 개발자 라운드 보강 (D3 · D5 · D6)", () => {
   });
 });
 
+
+describe("useChat — 답변 상태(T2-C3)", () => {
+  // "error 가 없다"만으로는 완료와 중단을 구별할 수 없어 상태를 둔다.
+  // 화면 판정(실패 말풍선·재시도)은 여전히 error 로 한다 — 아래는 상태 전이만 고정한다.
+
+  it("[S1] 전송하면 답변 말풍선이 streaming 으로 시작한다", async () => {
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result } = setup();
+
+    act(() => {
+      void result.current.send("안녕");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    stream.push(token("답변 일부"));
+    await waitFor(() => expect(lastMessage().text).toBe("답변 일부"));
+
+    expect(lastMessage()).toMatchObject({ role: "assistant", status: "streaming" });
+  });
+
+  it("[S2] done 을 받으면 complete — 이어지는 카드 조회가 끝나기 전에도(답변 텍스트는 이미 완성본)", async () => {
+    let resolveGroup!: (g: ProductGroup) => void;
+    vi.mocked(fetchChatListGroup).mockReturnValue(
+      new Promise((r) => {
+        resolveGroup = r;
+      }),
+    );
+    replies.push(sse(token("추천드려요"), frame("products.ready", { listIds: ["list-1"] }), DONE));
+    const onDone = vi.fn();
+    const { result } = setup({ onDone });
+
+    act(() => {
+      void result.current.send("셔츠 추천");
+    });
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+
+    expect(state().isStreaming).toBe(true); // 턴은 카드 조회를 기다린다
+    expect(lastMessage().status).toBe("complete");
+
+    resolveGroup({ title: "추천", items: [], recommendation: { listType: "PICK_ONE", itemsDropped: 1 } });
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+    expect(lastMessage().status).toBe("complete");
+  });
+
+  it("[S3] 네트워크 오류는 failed — 실패 표시(error)와 함께", async () => {
+    replies.push(() => {
+      throw new TypeError("Failed to fetch");
+    });
+    const { result } = setup();
+
+    await act(() => result.current.send("안녕"));
+
+    expect(lastMessage()).toMatchObject({ status: "failed", error: "응답을 받지 못했어요. 다시 시도해 주세요." });
+  });
+
+  it("[S4] 응답 도중 화면을 떠나면 interrupted — 오류가 아니므로 error·재전송 정보 없이 받은 텍스트를 남긴다", async () => {
+    const stream = openStream();
+    replies.push(stream.reply);
+    const { result, unmount } = setup();
+
+    act(() => {
+      void result.current.send("안녕");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    stream.push(token("답변 일부"));
+    await waitFor(() => expect(lastMessage().text).toBe("답변 일부"));
+
+    unmount();
+    await waitFor(() => expect(state().isStreaming).toBe(false));
+
+    expect(lastMessage()).toMatchObject({ text: "답변 일부", status: "interrupted" });
+    expect(lastMessage().error).toBeUndefined();
+    expect(lastMessage().resend).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1); // 자동 재전송 없음
+  });
+
+  it("[S5] 새 대화의 취소는 상태를 남기지 않는다 — 이전 말풍선은 비워지고 새 턴은 streaming 으로 시작한다", async () => {
+    const first = openStream();
+    const second = openStream();
+    replies.push(first.reply, second.reply);
+    const { result } = setup();
+
+    act(() => {
+      void result.current.send("첫 질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    first.push(token("첫 답변 일부"));
+    await waitFor(() => expect(lastMessage().text).toBe("첫 답변 일부"));
+
+    act(() => result.current.startNewChat());
+    expect(state().messages).toEqual([]);
+
+    act(() => {
+      void result.current.send("새 질문");
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    // 버려진 첫 턴의 abort 가 새 턴의 말풍선을 중단으로 바꾸지 않는다
+    await new Promise((r) => setTimeout(r, 0));
+    expect(state().messages.map((m) => [m.role, m.text, m.status])).toEqual([
+      ["user", "새 질문", undefined],
+      ["assistant", "", "streaming"],
+    ]);
+  });
+
+  it("[S6] 실패로 정해진 말풍선을 뒤따른 done 이 완료로 되돌리지 않는다", async () => {
+    replies.push(
+      sse(frame("error", { code: "LLM_UNAVAILABLE", message: "잠시 후 다시 시도해 주세요." }), DONE),
+    );
+    const { result } = setup();
+
+    await act(() => result.current.send("안녕"));
+
+    expect(lastMessage().status).toBe("failed");
+    expect(lastMessage().error).toBeDefined();
+  });
+});

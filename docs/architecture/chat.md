@@ -284,6 +284,10 @@ TTL 만료는 재시도해도 계속 404 라 **"다시 시도"를 권하지 않�
 | 시작 후 오류 | SSE `error` 이벤트 | 토큰이 흐르던 중 |
 | 세션 만료 | 404 / `SESSION_NOT_FOUND` | 두 경로 모두에서 올 수 있다 |
 | 승계 미해결 | `SessionClaimPendingError` | §9 |
+| 종결 없이 끊김 | `StreamInterruptedError`(done·error 없이 종료) · fetch `TypeError`(연결 끊김) | 실패 — 재시도 가능 |
+| **사용자 이탈** | `AbortError`(화면 이동으로 언마운트) | **오류가 아니다** — 실패를 남기지 않고 말풍선을 `interrupted` 로 둔다(§8) |
+
+"새 대화"의 abort 는 `reset()` 뒤라 그 턴이 이미 현재 턴이 아니어서 위 분기에 오지 않는다 — 말풍선은 `reset()` 이 비운다.
 
 ### 시작 전 거부 — 재시도 버튼을 줄지가 갈린다
 
@@ -305,10 +309,23 @@ CH-1 이 멱등이라 다른 탭이 세션을 축출하는 일이 없다. 캐시
 판정 함수가 타입 2개를 보는 이유: **출처가 둘**이다. 스트림 fetch 는 `StreamStartError`(status),
 티켓 재발급은 `ApiError`(code/status).
 
-### 재시도는 마지막 왕복을 걷어내고 다시 보낸다
+### 재시도 — 사용자가 누르는 것, 마지막 실패에만
 
-`dropLastExchange()` 가 마지막 assistant + 직전 user 를 제거하고 user 텍스트를 반환한다.
-마지막이 assistant 가 아니면 `null`(confirm 턴 등은 재시도 불가).
+재시도는 **사용자가 "다시 시도"를 누를 때만** 일어난다(자동 재전송은 §6 — 스트림 시작 401 의 1회뿐).
+버튼 노출과 실제 동작은 같은 판정 `canRetry`(`retryPolicy.ts`)를 쓴다 — 보이는데 눌러도 안 되는 버튼을 만들지 않는다.
+
+**가능한 조건(모두 만족)**: 응답 중이 아님 · 누른 말풍선이 **마지막** 말풍선 · 그것이 `error` 가 있는 assistant · `retryable` 이 false 가 아님 ·
+다시 보낼 것이 있음(직전 user 말풍선 또는 재전송 정보 `resend`).
+
+| 턴 | 다시 보내는 것 | 방법 |
+|---|---|---|
+| 일반 발화 | 같은 발화(이미지 포함) | `dropLastExchange()` 가 실패한 (user, assistant) 쌍을 지우고 그 텍스트로 `send` |
+| 칩 제거(말풍선 없음) | 같은 `conditionActions` | 실패 말풍선만 지우고(`dropLastFailure`) 다시 보냄. 조건 제거는 멱등이라 **요청이 나간 뒤 실패해도** 재전송 정보를 남긴다 |
+| 판매자 승인(말풍선 없음) | 같은 `draftId` | **요청을 보내기 전 실패에서만**(예: 세션 확보 실패). 요청을 보낸 뒤 실패하면 처리 여부를 알 수 없어 `retryable:false` 로 바꾸고 재전송 정보를 남기지 않는다(§10 승인 상태) |
+
+**불가능한 경우**: 응답 중 · 위쪽(마지막이 아닌) 실패 말풍선 · `retryable:false`(403·409·429·승계 미해결·요청 후 실패한 승인) ·
+`error` 가 없는 말풍선(완료 · `interrupted` — §8). 승인은 이와 별개로 `confirm()` 진입에서도 결과가 정해졌거나 진행 중인 초안을 거부한다.
+`dropLastExchange()` 는 마지막 말풍선이 실패한 assistant 가 아니면 아무것도 지우지 않는다.
 
 ---
 
@@ -426,6 +443,36 @@ abort → newThreadId(channel) → clearChat() → reset() → setThreadId
 복원은 **마운트 시 1회만.** 이후엔 스토어가 정본이고 저장만 따라간다 —
 복원 전에 저장이 돌면 **빈 스토어가 저장된 대화를 덮어쓴다.**
 
+단, **이 문서에서 응답 중인 턴이 살아 있으면(`activeTurnId` 있음) 복원 자체를 건너뛴다** —
+메시지·결과·sessionId·승계 실패 배너 모두. StrictMode 의 가짜 재마운트(`?q=` 로 막 시작한 전송)나
+카드 조회를 기다리는 턴이 있는 채로 화면에 돌아온 경우, 저장값으로 덮어쓰면 응답 중 말풍선이 아래의
+정규화로 "중단"이 돼 버린다.
+
+### 답변 상태 — "error 없음"은 완료가 아니다
+
+assistant 말풍선은 진행 상태 `status` 를 갖는다(`store.ts` `AssistantStatus`).
+
+| 상태 | 언제 | 전이 위치 |
+|---|---|---|
+| `streaming` | 빈 말풍선을 추가할 때 | `useChat.run` |
+| `complete` | SSE `done` 수신(현재 턴일 때만) | `chatEventHandler` `done` |
+| `failed` | 실패 표시(`error` 와 함께) | `failLastAssistant` |
+| `interrupted` | 화면 이동 abort(§6-1) · 저장된 `streaming` 을 복원할 때 | `useChat` abort 분기 · `normalizeRestoredMessages` |
+
+- 전이는 **조건부**다(`transitionLastAssistant(from, to)` — 지금 상태가 `from` 일 때만). 이미 실패로 정해진 말풍선을 뒤따른 `done` 이 완료로 되돌리지 않는다
+- **화면 판정은 지금처럼 `error` 로 한다** — 실패 말풍선·`canRetry`·`dropLastExchange` 는 `status` 를 보지 않는다
+- `status` 가 없는 말풍선(이전 저장 형식)은 완료로 본다
+- **`complete` 는 답변 텍스트의 완료다.** `done` 뒤의 카드 조회(§4)가 끝났는지와는 별개다 — 카드 조회 중에 끊겨도 답변은 `complete` 다
+
+**저장된 `streaming` 을 복원할 때 `interrupted` 로 바꾸는 이유**: 복원 시점에 그 턴은 살아 있지 않다 —
+`streaming` 으로 남았다면 완료되지 못하고 끊긴 것이다. 실패 표시가 저장되기 전에 페이지가 사라질 수 있고(새로고침),
+화면 이동 뒤에는 저장 구독이 이미 해제돼 abort 의 `interrupted` 전이가 저장되지 않는다. 그래서 **저장 시점이 아니라
+복원 시점에 판정한다.**
+
+**UI**: `interrupted` 는 받은 텍스트를 그대로 두고 아래에 상태 줄 "응답이 중단됐어요"(`role="status"`)를 붙인다.
+받은 텍스트가 없으면 빈 말풍선 없이 상태 줄만 둔다. 실패 말풍선 스타일·재시도 버튼은 없다 — 재시도는 `error` 가 있는
+말풍선만 받고, 자동 재전송도 없다. 사용자는 직접 다시 보낼 수 있다.
+
 ### `claimFailedSessionId` 가 따로 있는 이유
 
 승계 실패 시 `sessionId` 는 null 로 비워야 하지만(구 게스트 티켓으로 스트림을
@@ -540,7 +587,10 @@ CH-1 이 멱등이라 폴백이 다른 탭을 축출하지 않는다.
 
 결과 판단은 마지막 말풍선이 아니라 `results`의 초안 항목(`approval`)을 본다 — `shared/chat/draftApproval.ts`.
 
-- `action`에 `draftId`가 없고 서버 발행도 미확인이라 **어떤 이벤트도 특정 초안의 성공을 보장하지 못한다** → 성공으로 표시하지 않는다(`settled` 기록 경로 없음). 계약에 `draftId`가 생기면 연결
+- `action`에 `draftId`가 없어 **어떤 이벤트도 특정 초안의 성공을 보장하지 못한다** → 성공으로 표시하지 않는다(`settled` 기록 경로 없음). 계약에 `draftId`가 생기면 연결
+- 판매자 결과 action(`PRODUCT_UPDATED`·`PRODUCT_UPDATE_FAILED`)은 **로컬 AI 서버 코드 판독상 보내지 않는다** — 승인 스트림은 `meta`·`token`·`done`·`error` 뿐이다
+  ([08 §5](../ai-development/2026-10-31-chat-turn-test/08-server-questions.md#5-서버-코드-확인-결과-2026-11-10) Q2). 코드 판독이며 실행 검증·운영 배포본 확인은 아니다.
+  FE 의 처리 분기(오면 그 초안을 `closed`·`rejected` 로만 기록)는 계약 타입을 위한 방어 경로로 남겨 둔다
 - 요청 후 실패는 `unknown`, 판정 근거 없는 종료는 `closed` — **성공도 실패도 아니라 실행 여부를 모른다는 뜻**이고, 같은 초안을 다시 승인하지 못한다
 - 이후 같은 대상의 승인은 경고·2단계 확인. **중복 실행을 기술적으로 막지는 못한다**
 
@@ -654,6 +704,7 @@ case "report":
 10. **개방형 유니온 3곳**: `BuyerProgressStage` · `DraftSection.kind` ·
     `chartUnavailable.reason` — 전부 "FE 배포를 기다리게 하지 않으려는 것".
 11. **CH-7 실패는 code 로 분기하지 않는다** — 네트워크 실패까지 포함해 전부 배너.
+12. **`error` 가 없다고 완료가 아니다.** `status` 로 본다 — 화면 이동으로 끊긴 답변은 `interrupted`(§8).
 
 ---
 
@@ -667,6 +718,7 @@ case "report":
 | 403 | 구 게스트 티켓 사용 중 — ownership 방송 확인 (§3) |
 | 카드가 안 뜬다 | `products.ready` 는 왔는지, CH-5 조회가 404 인지 (§4) |
 | 카드가 이전 턴 것으로 남아 있다 | **정상 동작이다** (§4) |
+| 끊긴 답변이 완료된 답변처럼 보인다 | 말풍선 `status` 와 복원 정규화 — 살아 있는 턴이 있어 복원을 건너뛰었는지 (§8) |
 | 새로고침하니 AI 가 대화를 잊었다 | 서버 TTL 10분 초과 (§8·§9) |
 | 리포트가 안 보인다 | `done{replace}` 가 왔는지 (§10) |
 | 탭 2개에서 세션이 꼬인다 | BroadcastChannel 미지원 브라우저인지 (§3) |

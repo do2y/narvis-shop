@@ -61,7 +61,23 @@ export interface ChatMessage {
    * 대화와 함께 저장·복원되므로 읽을 때는 isResend 로 형식을 확인한다.
    */
   resend?: Resend;
+  /**
+   * assistant 말풍선의 진행 상태. **"error 가 없다"만으로는 완료와 중단을 구별할 수 없어서** 둔다(T2-C3).
+   * 화면 이동으로 끊긴 답변이 error 없이 남아 완료된 답변처럼 보이던 결함이 있었다.
+   *
+   * - streaming: 응답을 받는 중(빈 말풍선을 추가할 때)
+   * - complete: SSE `done` 을 받음 — 답변 텍스트가 완성본이다. 이어지는 카드 조회의 성패와는 무관하다
+   * - failed: 실패로 표시됨(error 와 함께)
+   * - interrupted: 사용자가 떠나서 끊김(화면 이동 abort) 또는 응답 중 상태로 저장된 채 복원됨.
+   *   **오류가 아니다** — error 를 두지 않고 재시도 버튼도 주지 않는다(T1: 떠난 것은 오류가 아님)
+   *
+   * 화면의 실패 판정(실패 말풍선 · canRetry · dropLastExchange)은 지금처럼 error 로 한다.
+   * 이 값이 없는 말풍선(이전 저장 형식)은 완료로 본다 — 이미 저장된 대화를 "중단"으로 바꾸지 않는다.
+   */
+  status?: AssistantStatus;
 }
+
+export type AssistantStatus = "streaming" | "complete" | "failed" | "interrupted";
 
 /**
  * 처리 여부가 불명확한 판매자 승인의 기록 — 이후 같은 대상을 승인할 때 경고하려고 남긴다.
@@ -152,6 +168,11 @@ interface ChatState {
   /** 저장된 대화 복원(chatPersistence) — 그 외 용도로 통째 교체하지 않는다 */
   setMessages: (messages: ChatMessage[]) => void;
   appendToLastAssistant: (text: string) => void; // token 이벤트 누적
+  /**
+   * 마지막 assistant 말풍선의 상태가 `from` 일 때만 `to` 로 바꾼다.
+   * 조건부인 이유: 이미 실패·완료로 정해진 말풍선을 늦게 온 신호가 덮어쓰지 않게 하려는 것이다.
+   */
+  transitionLastAssistant: (from: AssistantStatus, to: AssistantStatus) => void;
   // 마지막 assistant 말풍선을 에러 상태로. opts 로 재시도 가능 여부·추적 id 를 함께 싣는다.
   failLastAssistant: (
     message: string,
@@ -245,11 +266,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages[messages.length - 1] = {
           ...last,
           error: message,
+          status: "failed",
           // 판단 근거가 없으면 재시도 가능으로 둔다(구버전 서버·네트워크 오류 등)
           retryable: opts?.retryable ?? true,
           ...(opts?.requestId ? { requestId: opts.requestId } : {}),
         };
       }
+      return { messages };
+    }),
+  transitionLastAssistant: (from, to) =>
+    set((s) => {
+      const last = s.messages[s.messages.length - 1];
+      if (last?.role !== "assistant" || last.status !== from) return {};
+      const messages = [...s.messages];
+      messages[messages.length - 1] = { ...last, status: to };
       return { messages };
     }),
   dropLastExchange: () => {

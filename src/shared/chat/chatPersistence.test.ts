@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearChat, loadChat, saveChat } from "./chatPersistence";
+import {
+  clearChat,
+  loadChat,
+  normalizeRestoredMessages,
+  saveChat,
+} from "./chatPersistence";
 import type { ChatMessage } from "./store";
 
 const messages: ChatMessage[] = [
@@ -76,5 +81,26 @@ describe("chatPersistence", () => {
     const loaded = loadChat();
     expect(loaded?.sessionId).toBeNull();
     expect(loaded?.claimFailedSessionId).toBe("guest-1");
+  });
+});
+
+describe("normalizeRestoredMessages (T2-C3)", () => {
+  it("응답 중(streaming)으로 저장된 답변은 중단(interrupted)으로 복원한다 — 완료된 답변처럼 보이지 않게", () => {
+    const restored = normalizeRestoredMessages([
+      { id: "1", role: "user", text: "질문" },
+      { id: "2", role: "assistant", text: "받은 데까지", status: "streaming" },
+    ]);
+    expect(restored[1]).toMatchObject({ text: "받은 데까지", status: "interrupted" });
+    expect(restored[1].error).toBeUndefined();
+  });
+
+  it("상태가 없는 이전 저장 형식 · 완료 · 실패 · 사용자 말풍선은 그대로 둔다", () => {
+    const input: ChatMessage[] = [
+      { id: "1", role: "user", text: "질문" },
+      { id: "2", role: "assistant", text: "이전 형식 답변" },
+      { id: "3", role: "assistant", text: "완료", status: "complete" },
+      { id: "4", role: "assistant", text: "", status: "failed", error: "실패" },
+    ];
+    expect(normalizeRestoredMessages(input)).toEqual(input);
   });
 });

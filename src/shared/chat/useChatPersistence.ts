@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { loadChat, saveChat } from "./chatPersistence";
+import {
+  loadChat,
+  normalizeRestoredMessages,
+  saveChat,
+} from "./chatPersistence";
 import { useChatStore } from "./store";
 
 /**
@@ -15,10 +19,17 @@ export function useChatPersistence(): void {
   const restored = useRef(false);
 
   useEffect(() => {
+    // 이 문서에서 응답 중인 턴이 살아 있으면 복원하지 않는다 — 스토어가 정본이다.
+    // StrictMode 의 가짜 재마운트(?q= 로 막 시작한 전송)나, 카드 조회를 기다리는 턴이 있는 채로
+    // 화면에 돌아온 경우가 그렇다. 여기서 복원하면 응답 중 말풍선을 "중단"으로 바꿔 버린다(T2-C3).
+    if (useChatStore.getState().activeTurnId !== null) {
+      restored.current = true;
+      return;
+    }
     const saved = loadChat();
     if (saved?.messages.length) {
       const s = useChatStore.getState();
-      s.setMessages(saved.messages);
+      s.setMessages(normalizeRestoredMessages(saved.messages));
       s.setResults(saved.results);
       if (saved.sessionId) s.setSessionId(saved.sessionId);
       // 승계 실패 미해결 상태로 새로고침된 경우 배너를 되살린다 — 안 그러면

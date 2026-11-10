@@ -71,6 +71,24 @@ export function loadChat(): PersistedChat | null {
   }
 }
 
+/**
+ * 복원한 메시지 중 **응답 중(streaming) 상태로 저장된 말풍선을 중단(interrupted)으로** 바꾼다(T2-C3).
+ *
+ * 복원 시점에 응답 중인 턴은 없다 — 그런데 streaming 으로 남아 있다면 그 턴은 완료되지 못하고 끊긴 것이다
+ * (새로고침·탭 종료 등에서 실패 표시가 저장되기 전에 페이지가 사라진 경우). 그대로 두면 error 가 없어
+ * 완료된 답변처럼 보인다. 저장 시점(페이지 해제 중 비동기 처리)에 기대지 않고 복원 시점에 판정한다.
+ *
+ * 상태가 없는 말풍선(이전 저장 형식)은 건드리지 않는다 — 완료로 본다.
+ * 호출부는 **살아 있는 턴이 없을 때만** 불러야 한다(useChatPersistence).
+ */
+export function normalizeRestoredMessages(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map((m) =>
+    m.role === "assistant" && m.status === "streaming"
+      ? { ...m, status: "interrupted" }
+      : m,
+  );
+}
+
 /** "새 대화" 등 명시적으로 비울 때. */
 export function clearChat(): void {
   if (typeof window === "undefined") return;

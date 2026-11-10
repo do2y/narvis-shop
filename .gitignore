@@ -48,3 +48,9 @@ spec-fe.md
 devserver.log
 tmp_*
 docs/portfolio-highlights.html
+
+# playwright (e2e)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

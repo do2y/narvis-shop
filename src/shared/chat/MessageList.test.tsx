@@ -128,3 +128,49 @@ describe("MessageList — 재시도 버튼", () => {
     expect(screen.getByText("권한 없음")).toBeTruthy();
   });
 });
+
+describe("MessageList — 중단된 답변(T2-C3)", () => {
+  const interrupted = (id: string, text: string): ChatMessage => ({
+    id,
+    role: "assistant",
+    text,
+    status: "interrupted",
+  });
+
+  it("받은 텍스트를 남기고 그 아래에 상태 줄을 둔다 — 실패 말풍선·재시도 버튼은 없다", () => {
+    render(
+      <MessageList
+        messages={[user("u1", "질문"), interrupted("a1", "받은 데까지")]}
+        isStreaming={false}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("받은 데까지")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("응답이 중단됐어요");
+    expect(retryButtons()).toHaveLength(0);
+  });
+
+  it("받은 텍스트가 없으면 빈 말풍선 없이 상태 줄만 둔다", () => {
+    const { container } = render(
+      <MessageList
+        messages={[user("u1", "질문"), interrupted("a1", "")]}
+        isStreaming={false}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("status").textContent).toBe("응답이 중단됐어요");
+    // 답변 말풍선(rounded-tl-sm + bg-muted) — 아바타도 bg-muted 를 쓰므로 둘을 함께 본다
+    expect(container.querySelector(".rounded-tl-sm.bg-muted")).toBeNull();
+  });
+
+  it("완료된 답변에는 상태 줄이 없다", () => {
+    render(
+      <MessageList
+        messages={[user("u1", "질문"), { ...answered("a1", "완료된 답변"), status: "complete" }]}
+        isStreaming={false}
+        onRetry={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+});

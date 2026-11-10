@@ -359,3 +359,29 @@ describe("새 초안 도착 신호 (I-3)", () => {
     expect(onDone).toHaveBeenCalledWith("keep", { draftArrived: false });
   });
 });
+
+describe("createTurnHandler — 답변 상태(T2-C3)", () => {
+  beforeEach(() => {
+    useChatStore.getState().reset();
+  });
+
+  const streamingBubble = () =>
+    useChatStore
+      .getState()
+      .addMessage({ id: crypto.randomUUID(), role: "assistant", text: "답변", status: "streaming" });
+
+  it("done 을 받으면 응답 중이던 말풍선을 complete 로 바꾼다", () => {
+    streamingBubble();
+    createTurnHandler({}).onEvent({ type: "done", data: { finishReason: "stop" } });
+    expect(lastMessage().status).toBe("complete");
+  });
+
+  it("현재 턴이 아니면(새 대화 뒤 늦게 온 done) 말풍선 상태를 바꾸지 않는다", () => {
+    streamingBubble();
+    createTurnHandler({ isCurrent: () => false }).onEvent({
+      type: "done",
+      data: { finishReason: "stop" },
+    });
+    expect(lastMessage().status).toBe("streaming");
+  });
+});
