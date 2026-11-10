@@ -242,6 +242,9 @@ export function createTurnHandler({
       }
       case "done": {
         setProgress(null);
+        // 답변 텍스트는 여기서 완성된다 — 이어지는 카드 조회(CH-5)의 성패와는 별개다(T2-C2c).
+        // 응답 중일 때만 바꾼다: 이미 실패로 정해진 말풍선을 완료로 되돌리지 않는다.
+        useChatStore.getState().transitionLastAssistant("streaming", "complete");
         // zero_result: 결과 0건(에러 아님). AI token 안내가 없었으면 기본 문구로 채운다.
         if (e.data.finishReason === "zero_result") {
           const last = useChatStore.getState().messages.slice(-1)[0];
