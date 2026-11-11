@@ -22,6 +22,7 @@
 | 상태를 어디에 둘지 정한다 | [architecture/state.md](architecture/state.md) |
 | 배포를 만진다 | [migration/deploy-handoff.md](migration/deploy-handoff.md) |
 | 테스트를 추가한다 | [testing/contract-tests.md](testing/contract-tests.md) |
+| 브라우저 E2E·CI 를 건드린다 | [T2 README](ai-development/2026-11-09-browser-e2e/README.md) "하네스 구조" · [T3](ai-development/2026-11-10-e2e-ci.md) |
 
 ---
 
@@ -91,7 +92,7 @@ docs/
 
 | 문서 | 확인할 수 있는 것 |
 |---|---|
-| [contract-tests.md](testing/contract-tests.md) | 계약 문장을 테스트 제목으로 옮겨 상대 구현을 기다리지 않은 방식 · 시나리오별로 고정한 약속 · 비어 있는 곳(컴포넌트·통합·CI) |
+| [contract-tests.md](testing/contract-tests.md) | 계약 문장을 테스트 제목으로 옮겨 상대 구현을 기다리지 않은 방식 · 영역별로 고정한 약속(Vitest 526건, 2026-11-10) · 브라우저 E2E 층으로 가는 입구 · 남은 한계(커버리지 미측정 · 컴포넌트 내부 상태) |
 
 ## ai-development/ — AI 활용 개발 기록
 
@@ -99,8 +100,8 @@ docs/
 |---|---|
 | [README.md](ai-development/README.md) | 기록 원칙(기술 내용은 링크로만) · 템플릿 · 기존 문서에 근거가 있는 기록 후보 |
 | [claude-md-drift.md](ai-development/claude-md-drift.md) | AI가 매 세션 읽는 CLAUDE.md 가 구현보다 뒤처졌던 6개 지점 |
-| [2026-10-31-chat-turn-test/](ai-development/2026-10-31-chat-turn-test/README.md) | `useChat` 테스트를 AI로 쓰고 변이 15개로 유효성 검증 · AI 테스트의 공허한 통과를 찾은 과정 |
-| [2026-11-09-browser-e2e/](ai-development/2026-11-09-browser-e2e/README.md) | T2 실제 브라우저(Playwright) 검증 · 하네스 구조와 한계 · 시나리오별 재현 기록 |
+| [2026-10-31-chat-turn-test/](ai-development/2026-10-31-chat-turn-test/README.md) | T1 `useChat` 테스트를 AI로 쓰고 변이로 유효성 검증 · AI 테스트의 공허한 통과를 찾은 과정 · 재현된 결함의 단계별 수정 |
+| [2026-11-09-browser-e2e/](ai-development/2026-11-09-browser-e2e/README.md) | T2 실제 브라우저(Playwright) 검증 · 하네스 구조와 한계 · 시나리오별 재현 기록 · C3 결함 발견·수정 |
 | [2026-11-10-e2e-ci.md](ai-development/2026-11-10-e2e-ci.md) | T3 Playwright E2E 를 GitHub Actions 에서 실행 · 워크플로 구조와 검증 범위 |
 
 ## archive/ — 보관
@@ -123,7 +124,8 @@ docs/
 | SSR 성능 측정 | [performance/ssr-measurement.md](performance/ssr-measurement.md) |
 | 인증·API 통신 설계 | [architecture/auth.md](architecture/auth.md) · [troubleshooting/analytics-401-retry.md](troubleshooting/analytics-401-retry.md) |
 | 상태 관리 | [architecture/state.md](architecture/state.md) · [architecture/data.md](architecture/data.md) |
-| 테스트 | [testing/contract-tests.md](testing/contract-tests.md) |
+| 테스트 | [testing/contract-tests.md](testing/contract-tests.md) · [T2 최종 검토](ai-development/2026-11-09-browser-e2e/t2-final-review.md) · [T3 CI](ai-development/2026-11-10-e2e-ci.md) |
+| AI 산출물 검증 (변이·결함 주입) | [T1](ai-development/2026-10-31-chat-turn-test/README.md) · [T2](ai-development/2026-11-09-browser-e2e/README.md) |
 | 실제 오류 분석·해결 | [troubleshooting/stream-lifecycle-bugs.md](troubleshooting/stream-lifecycle-bugs.md) · [performance/image-loading.md](performance/image-loading.md) · [architecture/data.md](architecture/data.md) §3 · [troubleshooting/cart-event-migration.md](troubleshooting/cart-event-migration.md) · [migration/nextjs-migration-qa.md](migration/nextjs-migration-qa.md) |
 | 라이브러리 없이 만든 UI | [features/ui-implementation-notes.md](features/ui-implementation-notes.md) |
 
