@@ -1,7 +1,7 @@
 # T2 · 실제 브라우저 통합 시나리오 검증
 
 > 시작 2026-11-09 · 도구 Claude Code (Claude Opus 5.5) · 브랜치 `test/e2e-harness` (기점 `origin/main` `2ffbeeb`)
-> 앞선 과제: [T1 — 채팅 턴 오케스트레이션 테스트](../2026-10-31-chat-turn-test/README.md)
+> 앞선 과제: [T1 — 채팅 턴 오케스트레이션 테스트](../2026-10-31-chat-turn-test/README.md) · 다음 과제: [T3 — 이 E2E 를 GitHub Actions 에서 실행](../2026-11-10-e2e-ci.md)
 > AI 상호작용 기록: [interaction-log.md](interaction-log.md) — 결정에 영향을 준 지시·제안·정정
 
 ## 한 줄

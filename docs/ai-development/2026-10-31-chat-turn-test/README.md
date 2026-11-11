@@ -48,7 +48,7 @@
 | 테스트 코드 변경 | — | **+3,244 −6줄** (`e97e5f8` 시점 +3,160 · D 라운드 보강 +84) |
 | tsc · eslint · build | 통과 | 통과 |
 | 자동 코드 커버리지 | 측정 안 함 | 측정 안 함 |
-| CI 테스트 단계 | lint·build만 | `npm run test` 추가 `3a89f89` · 로컬 Node 20.20.2에서 CI 순서(eslint·test·build) 통과 · **GitHub Actions 실제 실행 미검증** |
+| CI 테스트 단계 | lint·build만 | `npm run test` 추가 `3a89f89` · 로컬 Node 20.20.2에서 CI 순서(eslint·test·build) 통과 · **GitHub Actions 실제 실행 미검증** (→ 후속: T3 의 PR #12 에서 `check` 잡이 2회 연속 성공 — [T3](../2026-11-10-e2e-ci.md#github-actions-실행-결과)) |
 | 브라우저 · 실서버 · BE 연동 검증 | — | **수행 안 함** |
 | 서버 승인 응답 · 재발급 sessionId 계약 | — | **확인 대기** ([08](08-server-questions.md) Q1~Q7) |
 

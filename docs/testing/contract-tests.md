@@ -1,9 +1,12 @@
 # 테스트 — 계약을 테스트로 고정한 이유와 범위
 
 > FE·BE·AI 서버가 **동시에** 개발되는 상황에서 "상대가 무엇을 보낼지"를 붙잡아 두려고 쓴 테스트의 기록.
-> 측정 기준 2026-10-31 — `npm run test` 결과 **39개 파일 · 509건 통과** (`useChat`·`MessageList`·판매자 `ChatPage` 테스트 추가 전 36 · 330).
+> 측정 기준 2026-11-10 — `npm run test` 결과 **40개 파일 · 526건 통과**.
+> 이전 시점: 2026-10-31 T1 시작 전 36 · 330 → 2026-11-09 T1 종료(`3a89f89`) 39 · 509 → T2 후속(C3 답변 상태 전이 +17) 40 · 526.
+> 아래 파일별 건수는 2026-11-10 기준이다.
 >
 > 설정: `vitest.config.mts` · 대상: `src/**/*.test.{ts,tsx}`(순수 모듈 + 훅 `useChat` + 컴포넌트 `MessageList` · 판매자 `ChatPage`)
+> 실제 브라우저 E2E(Playwright, `e2e/`)는 이 문서 범위 밖이다 → [아래 "브라우저 E2E"](#브라우저-e2e--별도-층)
 
 ## 문제 — 붙어야만 확인되는 화면
 
@@ -32,26 +35,26 @@
 - `이름만 맞아도 잡는다 — 환경마다 생성자가 달라 instanceof 로는 새 나간다`
 - `실패해도 말풍선은 남긴다 — 로그인했더니 대화가 사라지면 안 된다`
 
-## 무엇을 고정했나 — 채팅 (`src/shared/chat`, 13개 파일 · 106건)
+## 무엇을 고정했나 — 채팅 (`src/shared/chat`, 13개 파일 · 121건)
 
 | 변수 | 테스트 (건수) | 고정한 약속 | 근거 문서 |
 |---|---|---|---|
 | 프레임이 깨지거나 안 닫힘 | `streamChat.test.ts` (7) | 한 프레임의 문제가 턴 전체를 죽이지 않는다 · 종결 이벤트 없이 끝나면 실패다 | `docs/troubleshooting/stream-lifecycle-bugs.md` ① |
 | 사용자가 도중에 떠남 | `abortError.test.ts` (5) | 중단은 오류로 표시하지 않는다 | 같은 문서 ② |
-| 이벤트 순서 | `chatEventHandler.test.ts` (13) | `report`는 `done{replace}`에서만 커밋 · token이 progress를 지우지 않음 · 늦게 온 묶음도 `listIds` 순서 유지 · 조회 실패 시 이전 카드 유지 | `docs/architecture/chat.md` §4·§5 |
+| 이벤트 순서 | `chatEventHandler.test.ts` (20) | `report`는 `done{replace}`에서만 커밋 · token이 progress를 지우지 않음 · 늦게 온 묶음도 `listIds` 순서 유지 · 조회 실패 시 이전 카드 유지 | `docs/architecture/chat.md` §4·§5 |
 | AI가 stage를 추가함 | `progress.test.ts` (8) | 모르는 stage는 무시하되 직전 문구를 지우지 않는다 | `chat.md` §5 |
 | 칩이 값마다 1개로 옴 | `conditionRemoval.test.ts` (12) | `(field, value)` 쌍이라야 칩이 특정된다 | `chat.md` §7 |
-| 탭 여러 개 | `sessionCoordinator.test.ts` (13) | 신선한 캐시가 있으면 CH-1을 부르지 않는다 · 승계 실패 중에는 새 세션을 만들지 않는다 | `chat.md` §3·§9 |
+| 탭 여러 개 | `sessionCoordinator.test.ts` (19) | 신선한 캐시가 있으면 CH-1을 부르지 않는다 · 승계 실패 중에는 새 세션을 만들지 않는다 | `chat.md` §3·§9 |
 | 로그인 승계 실패 | `claimOnLogin.test.ts` (12) | 네트워크 실패도 배너로 알린다 · 말풍선은 남긴다 | `chat.md` §9 |
 | 구버전 서버가 report를 안 보냄 | `analysisReport.test.ts` (5) | token 연문을 부분치로 승계한다 | `chat.md` §10 |
 | 판매자 초안 만료 | `activeDraft.test.ts` (4) | 수정 턴에서 만료 시각도 함께 갱신된다 | `docs/architecture/state.md` |
 
-그 밖에 `chatPersistence`(7) · `threadId`(5) · `attachment`(10) · `errorMessage`(5).
+그 밖에 `chatPersistence`(9) · `threadId`(5) · `attachment`(10) · `errorMessage`(5).
 
 **테스트가 실제로 잡는지 확인한 방법** — `chatEventHandler.test.ts`를 추가할 때(`889bc03`)
 지키려는 규칙 6개를 일부러 깨 보고 테스트가 실패하는지 확인했다.
 
-## 턴 오케스트레이션 — `useChat.test.ts` (86건) · `MessageList.test.tsx` (5건)
+## 턴 오케스트레이션 — `useChat.test.ts` (97건) · `MessageList.test.tsx` (8건)
 
 위 부품들을 **엮는 쪽**(`useChat`의 전송·재시도·실패 분류·정리·생명주기)을 고정한다.
 
@@ -84,9 +87,19 @@
 - **순수 모듈과 훅 1개(`useChat`)의 단위 테스트다.** 세 서버가 실제로 붙었을 때의 동작은 수동으로 확인한다
 - **컴포넌트 내부 상태는 테스트가 없다** — 예: 이미지 업로드 세대 토큰(`ChatInput.tsx`)
 - **멀티탭은 탭 2개를 실제로 띄운 자동 검증이 없다** — `sessionCoordinator`의 판단 로직만 고정돼 있다
+  - → 후속(2026-11-10): 브라우저 E2E T2-A1이 opener 없는 새 탭 2개를 실제로 띄워 검증한다. BroadcastChannel·Web Locks 경로는 여전히 미검증
 - StrictMode 가짜 언마운트 회귀(`36fb6d5`)처럼 **브라우저에서만 드러난 결함**이 있었다
 - 커버리지는 측정하지 않는다
 - CI(`.github/workflows/ci.yml`)에 테스트 단계를 넣었다(`3a89f89`, 2026-11-09). 로컬 Node 20에서 통과를 확인했지만 **실제 GitHub Actions 실행 결과는 PR 전까지 미검증**
+  - → 후속(2026-11-10): PR #12에서 `check` 잡(ESLint · Vitest · build)이 2회 연속 성공했다. 잡 로그 본문은 보지 못했다 → [T3](../ai-development/2026-11-10-e2e-ci.md#github-actions-실행-결과)
+
+## 브라우저 E2E — 별도 층
+
+jsdom으로는 볼 수 없는 것(실제 소켓 끊김 · CORS 사전 요청 · 새로고침 · sessionStorage · 멀티탭)을 Playwright + Chromium으로 확인한다.
+`e2e/` 9개 파일 · 15건 — **회귀 계약 10건 · 관찰 5건**(A1 opener 탭 · C2c · D1a 3조건, 테스트 이름에 "관찰"이 붙고 현재 동작을 계약으로 고정하지 않는다).
+CI에서는 `check`와 별도인 `e2e` 잡으로 돈다.
+
+하네스 구조와 한계(테스트 서버 사용 · nginx·standalone 미경유 · Chromium만), 시나리오별 결과는 [T2 README](../ai-development/2026-11-09-browser-e2e/README.md) · [T2 최종 검토](../ai-development/2026-11-09-browser-e2e/t2-final-review.md)가 정본이다.
 
 ## 실행
 
